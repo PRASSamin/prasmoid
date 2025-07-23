@@ -1,0 +1,175 @@
+package runtime
+
+import (
+	"fmt"
+	"os"
+	"os/user"
+	"runtime"
+	"strconv"
+	"strings"
+	"syscall"
+	"unsafe"
+
+	"github.com/dop251/goja"
+	"golang.org/x/sys/unix"
+)
+
+func OS(vm *goja.Runtime, module *goja.Object) {
+	_os := module.Get("exports").(*goja.Object)
+
+	// arch()
+	_os.Set("arch", func(call goja.FunctionCall) goja.Value {
+		return vm.ToValue(runtime.GOARCH)
+	})
+
+	// platform()
+	_os.Set("platform", func(call goja.FunctionCall) goja.Value {
+		return vm.ToValue(runtime.GOOS)
+	})
+
+	// release() — kernel version
+	_os.Set("release", func(call goja.FunctionCall) goja.Value {
+		var uname syscall.Utsname
+		err := syscall.Uname(&uname)
+		if err != nil {
+			return vm.ToValue("unknown")
+		}
+		var release string
+		for _, c := range uname.Release {
+			if c == 0 {
+				break
+			}
+			release += string(byte(c))
+		}
+		return vm.ToValue(release)
+	})
+
+	// type()
+	_os.Set("type", func(call goja.FunctionCall) goja.Value {
+		return vm.ToValue("Linux") // Or adjust based on runtime.GOOS
+	})
+
+	// homedir()
+	_os.Set("homedir", func(call goja.FunctionCall) goja.Value {
+		home, _ := os.UserHomeDir()
+		return vm.ToValue(home)
+	})
+
+	// hostname()
+	_os.Set("hostname", func(call goja.FunctionCall) goja.Value {
+		name, err := os.Hostname()
+		if err != nil {
+			return vm.ToValue("unknown")
+		}
+		return vm.ToValue(name)
+	})
+
+	// tmpdir()
+	_os.Set("tmpdir", func(call goja.FunctionCall) goja.Value {
+		return vm.ToValue(os.TempDir())
+	})
+
+	// uptime()
+	_os.Set("uptime", func(call goja.FunctionCall) goja.Value {
+		if runtime.GOOS == "linux" {
+			data, _ := os.ReadFile("/proc/uptime")
+			uptime, _ := strconv.ParseFloat(strings.Fields(string(data))[0], 64)
+			return vm.ToValue(uptime)
+		} else {
+			return vm.ToValue("Error: uptime not supported on " + runtime.GOOS)
+		}
+	})
+
+	// freemem() and totalmem()
+	_os.Set("freemem", func(call goja.FunctionCall) goja.Value {
+		var mem syscall.Sysinfo_t
+		syscall.Sysinfo(&mem)
+		return vm.ToValue(mem.Freeram * uint64(mem.Unit))
+	})
+
+	_os.Set("totalmem", func(call goja.FunctionCall) goja.Value {
+		var mem syscall.Sysinfo_t
+		syscall.Sysinfo(&mem)
+		return vm.ToValue(mem.Totalram * uint64(mem.Unit))
+	})
+
+	// loadavg()
+	_os.Set("loadavg", func(call goja.FunctionCall) goja.Value {
+		var info syscall.Sysinfo_t
+		syscall.Sysinfo(&info)
+		return vm.ToValue([]float64{
+			float64(info.Loads[0]) / 65536.0,
+			float64(info.Loads[1]) / 65536.0,
+			float64(info.Loads[2]) / 65536.0,
+		})
+	})
+
+	// endianness()
+	_os.Set("endianness", func(call goja.FunctionCall) goja.Value {
+		var i int32 = 0x01020304
+		u := (*[4]byte)(unsafe.Pointer(&i))
+		if u[0] == 0x04 {
+			return vm.ToValue("LE")
+		}
+		return vm.ToValue("BE")
+	})
+
+	// availableParallelism()
+	_os.Set("availableParallelism", func(call goja.FunctionCall) goja.Value {
+		return vm.ToValue(runtime.NumCPU())
+	})
+
+	// machine()
+	_os.Set("machine", func(call goja.FunctionCall) goja.Value {
+		var uname unix.Utsname
+		if err := unix.Uname(&uname); err != nil {
+			return vm.ToValue("unknown")
+		}
+		var machine []byte
+		for _, c := range uname.Machine {
+			if c == 0 {
+				break
+			}
+			machine = append(machine, byte(c))
+		}
+		return vm.ToValue(string(machine))
+	})
+
+	// userInfo()
+	_os.Set("userInfo", func(call goja.FunctionCall) goja.Value {
+		user, err := user.Current()
+		shellPath := os.Getenv("SHELL")
+		if shellPath == "" {
+			shellPath = "unknown"
+		}
+		if err != nil {
+			return vm.ToValue("unknown")
+		}
+		obj := vm.NewObject()
+		obj.Set("uid", user.Uid)
+		obj.Set("gid", user.Gid)
+		obj.Set("name", user.Name)
+		obj.Set("username", user.Username)
+		obj.Set("homedir", user.HomeDir)
+		obj.Set("shell", shellPath)
+		return obj
+	})
+
+	
+	// === NOT IMPLEMENTED FUNCTIONS ===
+
+	notImplemented := func(name string) func(goja.FunctionCall) goja.Value {
+		return func(call goja.FunctionCall) goja.Value {
+			return vm.ToValue(fmt.Sprintf("os.%s is not implemented in this runtime", name))
+		}
+	}
+
+	notImplList := []string{
+		"cpus", "networkInterfaces", "setPriority", "getPriority", "version",
+	}
+
+	for _, name := range notImplList {
+		_os.Set(name, notImplemented(name))
+	}
+
+}

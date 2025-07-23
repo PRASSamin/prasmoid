@@ -1,0 +1,69 @@
+# Go binaries and compiled files
+*.exe
+*.test
+*.a
+*.o
+*.so
+*.dylib
+*.dll
+
+# Go build cache
+build/
+out/
+bin/
+obj/
+
+# Go modules cache
+/pkg/mod/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing and coverage files
+coverage.txt
+*.coverprofile
+
+# Generated files and directories
+gweight
+prasmoid
+
+# Dependencies directory
+deps/
+
+# Metadata files
+metadata.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Vendor directory
+vendor/
+
+# Test data
+testdata/
+
+# Documentation
+*.pdf
+*.doc
+*.docx
+*.md
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
