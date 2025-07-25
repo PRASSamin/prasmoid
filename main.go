@@ -13,6 +13,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -27,9 +28,16 @@ func main() {
 		return
 	}
 
+
 	switch os.Args[1] {
 	case "build":
-		BuildCli()
+        var builds = []bool{
+            false,
+            true,
+        }
+        for _, build := range builds {
+            BuildCli(build)
+        }
 	case "watch":
 		Watcher()
 	default:
@@ -141,58 +149,64 @@ func Watcher() {
 }
 
 func BuildDevelopment() {
-    command := exec.Command("go", "build", "-ldflags=-s -w", "-o", "prasmoid", "./src")
+    command := exec.Command("go", "build", "-ldflags=-s -w", "-o", strings.ToLower(internal.AppMeta.Name), "./src")
     
-    output, err := command.CombinedOutput()
-    if err != nil {
-        fmt.Printf("Build error: %v\nOutput: %s\n", err, string(output))
-        return
-    } 
+    command.Stdout = os.Stdout
+    command.Stderr = os.Stderr
+    command.Run()
 
     color.Green("Development build successful!")
 }
 
-func BuildCli() {
-	command := exec.Command("go", "build", "-ldflags=-s -w", "-o", "prasmoid", "./src")
-
-	output, err := command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Build error: %v\nOutput: %s\n", err, string(output))
-		return
+func BuildCli(compress bool) {
+	filename := "./dist/" + strings.ToLower(internal.AppMeta.Name)
+    os.RemoveAll("./dist")
+	version := internal.AppMeta.Version
+    
+	if compress {
+		filename += "-compressed"
+		version += "-compressed"
 	}
+
+	// Inject version into the binary
+	ldflags := fmt.Sprintf(`-s -w -X 'github.com/PRASSamin/prasmoid/internal.Version=%s'`, version)
+    
+	command := exec.Command("go", "build", "-ldflags", ldflags, "-o", filename, "./src")
+
+	command.Stdout = os.Stdout
+    command.Stderr = os.Stderr
+    command.Run()
 
 	color.Green("Build successful!")
-	color.Cyan("Starting executable compression...")
 
-	if !utils.IsPackageInstalled("upx") {
-        var confirm bool
-        confirmPrompt := &survey.Confirm{
-            Message: "UPX is not installed. Do you want to install it now?",
-            Default: true,
-        }
-        if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
-			return
-		}
+	if compress {
+		color.Cyan("Starting executable compression...")
 
-		if confirm {
-			if _, err := utils.TryInstallPackage("upx"); err != nil {
-				color.Red("Failed to install UPX.")
+		if !utils.IsPackageInstalled("upx") {
+			var confirm bool
+			confirmPrompt := &survey.Confirm{
+				Message: "UPX is not installed. Do you want to install it now?",
+				Default: true,
+			}
+			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-            color.Green("UPX installed successfully.")
-		} else {
-			color.Yellow("Operation cancelled.")
-			return
+			if confirm {
+				if _, err := utils.TryInstallPackage("upx"); err != nil {
+					color.Red("Failed to install UPX.")
+					return
+				}
+				color.Green("UPX installed successfully.")
+			} else {
+				color.Yellow("Compression cancelled.")
+				return
+			}
 		}
+
+		command = exec.Command("upx", "--best", "--lzma", filename)
+		command.Stdout = os.Stdout
+        command.Stderr = os.Stderr
+        command.Run()
+		color.Green("Compression successful!")
 	}
-
-	command = exec.Command("upx", "--best", "--lzma", "prasmoid")
-
-	output, err = command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Compression error: %v\nOutput: %s\n", err, string(output))
-		return
-	}
-
-	color.Green("Compression successful!")
 }

@@ -5,10 +5,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var CliConfig struct {
@@ -20,9 +19,6 @@ var CliConfig struct {
 }
 
 func init() {
-	if err := loadConfig("config.yml"); err != nil {
-		return
-	}
     rootCmd.AddCommand(VersionCmd)
 }
 
@@ -31,19 +27,6 @@ var VersionCmd = &cobra.Command{
     Short: "Show Prasmoid version",
     Long:  "Show Prasmoid version.",
     Run: func(cmd *cobra.Command, args []string) {
-        fmt.Println(CliConfig.Version)
+        fmt.Println(internal.AppMeta.Version)
     },
-}
-
-func loadConfig(path string) error {
-    data, err := os.ReadFile(path)
-    if err != nil {
-        return fmt.Errorf("failed to read config file: %w", err)
-    }
-
-    if err := yaml.Unmarshal(data, &CliConfig); err != nil {
-        return fmt.Errorf("failed to unmarshal config: %w", err)
-    }
-
-    return nil
 }

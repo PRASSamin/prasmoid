@@ -1,0 +1,81 @@
+# !/bin/bash
+
+# Exit on error
+set -e
+
+# Function to convert bytes to human-readable format
+formatted_size() {
+  local bytes=$1
+  local units=("B" "KB" "MB" "GB" "TB" "PB")
+  local i=0
+
+  while (( bytes >= 1024 && i < ${#units[@]} - 1 )); do
+    bytes=$(( bytes / 1024 ))
+    (( i++ ))
+  done
+
+  echo "${bytes} ${units[$i]}"
+}
+
+# Get all release assets
+ASSETS=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/latest" | jq '.assets')
+
+# Extract URLs for both binaries
+NORMAL_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .browser_download_url')
+COMPRESSED_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compressed") | .browser_download_url')
+
+# Get sizes
+NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
+COMPRESSED_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compressed") | .size')
+
+# Show selection prompt
+echo "Please select which version to install:"
+echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE)) - Recommended (faster performance)"
+echo "2) Prasmoid-compressed ($(formatted_size $COMPRESSED_SIZE)) - Smaller size"
+
+read -p "Enter your choice (1 or 2): " choice
+
+# Validate choice
+if [[ "$choice" != "1" && "$choice" != "2" ]]; then
+    echo "Invalid choice! Please enter 1 or 2."
+    exit 1
+fi
+
+# Select appropriate download URL and binary name
+if [[ "$choice" == "1" ]]; then
+    DOWNLOAD_URL="$NORMAL_URL"
+    BINARY_NAME="prasmoid"
+else
+    DOWNLOAD_URL="$COMPRESSED_URL"
+    BINARY_NAME="prasmoid"
+fi
+
+# Download the binary
+echo "Downloading $BINARY_NAME..."
+
+curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
+
+# Verify the download
+if [[ ! -f "$BINARY_NAME" ]]; then
+    echo "Download failed!"
+    exit 1
+fi
+
+# Make it executable
+chmod +x "$BINARY_NAME"
+
+# Install to /usr/bin
+echo "Installing to /usr/bin..."
+sudo cp "$BINARY_NAME" /usr/bin/prasmoid
+
+# Clean up
+rm "$BINARY_NAME"
+
+# Verify installation
+if [[ ! -f "/usr/bin/prasmoid" ]]; then
+    echo "Installation failed!"
+    exit 1
+fi
+
+# Success message
+echo "$BINARY_NAME installed successfully! You can now run it with: prasmoid"

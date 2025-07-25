@@ -30,6 +30,7 @@ coverage.txt
 # Generated files and directories
 gweight
 prasmoid
+dist
 
 # Dependencies directory
 deps/
@@ -57,7 +58,6 @@ testdata/
 *.pdf
 *.doc
 *.docx
-*.md
 
 # OS generated files
 .DS_Store
