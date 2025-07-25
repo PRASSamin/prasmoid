@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/PRASSamin/prasmoid/internal/runtime"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dop251/goja"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 // DiscoverAndRegisterCustomCommands scans for Js, Go files and registers them as cobra commands.
@@ -180,6 +180,7 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 			if err != nil {
 				color.Red("JS command error (%s): %v", path, err)
 			}
+			runtime.EventLoop.Wait()
 		}
 
 		cmd.GroupID = "custom"

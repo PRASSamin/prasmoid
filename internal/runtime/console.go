@@ -67,7 +67,6 @@ _console.Set("yellow", createColorLogger(color.Yellow))
 // Flexible color log: console.color("msg", "colorName")
 _console.Set("color", func(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
-		fmt.Println("Usage: console.color(...textParts, colorName)")
 		return goja.Undefined()
 	}
 
@@ -81,6 +80,11 @@ _console.Set("color", func(call goja.FunctionCall) goja.Value {
 		for _, arg := range call.Arguments {
 			parts = append(parts, fmt.Sprintf("%v", arg.Export()))
 		}
+	}
+
+	if !isValidColor(colorName) {
+		parts = append(parts, fmt.Sprintf("%v", colorName))
+		colorName = "white"
 	}
 
 	text := strings.Join(parts, " ")
@@ -141,5 +145,15 @@ func stringifyJS(v interface{}) string {
 			return fn.String()
 		}
 		return fmt.Sprintf("%v", val)
+	}
+}
+
+
+func isValidColor(colorName string) bool {
+	switch strings.ToLower(colorName) {
+	case "red", "green", "yellow", "blue", "magenta", "cyan", "black":
+		return true
+	default:
+		return false
 	}
 }

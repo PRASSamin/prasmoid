@@ -5,66 +5,78 @@
 </p>
 
 <p align="center">
-  <strong>The all-in-one CLI for KDE Plasmoid development.</strong>
+  <strong>The All in One Development Toolkit for KDE Plasmoids 🚀</strong>
   <br />
-  Build, test, and manage your plasmoids with ease.
+  Build, test, and manage your plasmoids with unparalleled ease and efficiency.
 </p>
 
 <p align="center">
-    <a href="#">
+    <a href="https://github.com/PRASSamin/prasmoid/pulls">
         <img src="https://img.shields.io/badge/PR-Welcome-brightgreen" alt="PRs Welcome">
     </a>
-    <a href="#">
+    <a href="https://go.dev/">
         <img src="https://img.shields.io/badge/Go-1.22-blue.svg" alt="Go Version">
     </a>
-    <a href="#">
+    <a href="./LICENSE">
         <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
     </a>
 </p>
 
 ---
 
-Prasmoid is a command-line tool built with Go that dramatically simplifies the development of KDE Plasma plasmoids. It provides a complete suite of commands to handle everything from project creation and live previews to versioning and packaging, allowing you to focus on building great plasmoids.
+## Why Prasmoid?
 
-One of its most powerful features is a built-in JavaScript runtime, which allows you to extend the CLI with your own custom commands tailored to your project's needs.
+While the core structure of KDE Plasma plasmoids is straightforward, the surrounding development workflow—including setup, building, testing, and deployment—often involves repetitive manual steps. **Prasmoid CLI** is designed to abstract away these complexities. It's a powerful command-line tool, crafted with Go, that provides a seamless, integrated experience, allowing you to **focus solely on writing your plasmoid's code**.
 
-## Features
+**Focus on your code, not the boilerplate.** Prasmoid handles the heavy lifting, from project scaffolding and live previews to smart versioning and packaging, allowing you to concentrate on creating amazing plasmoids.
 
-- **Project Scaffolding**: Create a new, fully-structured plasmoid project in seconds with `prasmoid init`.
-- **Live Preview**: Test your plasmoid in real-time with `plasmoidviewer` and enjoy automatic reloading on file changes.
-- **Automated Building**: Package your project into a distributable `.plasmoid` file with a single command.
-- **Code Formatting**: Keep your QML code clean and consistent with the built-in `qmlformat` integration.
-- **Smart Versioning**: Manage your project's version and changelog with a powerful `changeset` system.
-- **Extensible**: Write your own custom commands in JavaScript to automate any workflow you can imagine.
-- **User-Friendly**: Interactive prompts and automatic dependency checks make for a smooth development experience.
+One of its most revolutionary features is a **built-in, zero-dependency JavaScript runtime**. This allows you to extend the CLI with your own custom commands, automating any workflow imaginable, directly within your project – no Node.js installation required!
 
-## Installation
+## Key Features
 
-You can install Prasmoid directly from the source. Make sure you have **Go 1.22+** installed on your system.
+*   **Project Scaffolding (`init`)**: Kickstart your plasmoid projects in seconds with a fully structured and ready-to-go template.
+*   **Live Preview & Hot Restart (`preview`)**: Test your plasmoid in real-time using `plasmoidviewer` with automatic window restarts on file changes, ensuring a rapid development feedback loop.
+*   **Automated Building (`build`)**: Effortlessly package your project into a distributable `.plasmoid` archive with a single, simple command.
+*   **Code Formatting (`format`)**: Maintain pristine QML code quality and consistency with integrated `qmlformat` support.
+*   **Smart Versioning (`changeset`)**: Implement robust version control and generate changelogs automatically using a powerful `changeset` system, simplifying release management.
+*   **Extensible with Custom Commands (`commands`)**: Unleash limitless automation by writing your own project-specific commands in JavaScript, powered by Prasmoid's embedded runtime.
+*   **Seamless Integration (`link`, `install`)**: Easily link your development plasmoid to KDE's local directories for testing, or install it system-wide for production use.
+*   **User-Friendly Experience**: Enjoy interactive prompts, intelligent dependency checks, and clear command outputs for a smooth and intuitive development journey.
+
+## Getting Started
+
+### Installation
+
+Prasmoid is designed for quick and easy installation. Choose your preferred method:
+
+#### Recommended: Standard CLI
 
 ```bash
-go install github.com/PRASSamin/prasmoid@latest
+curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/refs/heads/main/install | bash -s 1
 ```
 
-This will compile and place the `prasmoid` binary in your Go bin directory (`$HOME/go/bin`). Ensure this directory is in your system's `PATH`.
+#### Compact: Compressed CLI
 
-## Getting Started: Your First Plasmoid
+```bash
+curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/refs/heads/main/install | bash -s 2
+```
 
-Creating a new plasmoid is as simple as running `prasmoid init`.
+> [!IMPORTANT]
+> Some antivirus software may flag the compressed version due to its high compression ratio. This is a **false positive**. Both versions are completely safe and malware-free, with the compressed version being generated directly from the standard build.
 
-1.  **Run the init command:**
+### Your First Plasmoid Project
+
+Creating a new plasmoid is incredibly simple with `prasmoid init`.
+
+1.  **Run the initialization command:**
 
     ```bash
     prasmoid init
     ```
 
-2.  **Answer the interactive prompts:** The CLI will guide you through configuring your project name, description, author details, and license.
+2.  **Follow the interactive prompts:** Prasmoid will guide you through setting up your project details:
 
     ```
-    ╭────────────────────────────────────────────╮
-    │    💠 Plasmoid Applet Project Generator    │
-    ╰────────────────────────────────────────────╯
-
     ? Project name: MyAwesomePlasmoid
     ? Description: A new plasmoid project.
     ? Choose a license: GPL-3.0+
@@ -74,151 +86,131 @@ Creating a new plasmoid is as simple as running `prasmoid init`.
     ? Initialize a git repository? Yes
     ```
 
-3.  **Navigate to your new project and start the preview:**
-    ```bash
-    cd MyAwesomePlasmoid
-    prasmoid preview --watch
-    ```
-    This will open your plasmoid in `plasmoidviewer`. The `--watch` flag tells Prasmoid to monitor your files for changes and automatically restart the preview.
+    Once completed, a new project directory will be created with your chosen configuration, ready for development!
 
 ## Command Reference
 
-### `prasmoid init`
+Prasmoid provides a comprehensive set of commands to manage your plasmoid projects.
 
-Initializes a new plasmoid project.
-
-```bash
-prasmoid init [flags]
-```
-
-- **-n, --name**: The name of the project. If not provided, you will be prompted.
-
-### `prasmoid build`
-
-Builds and packages the project into a `.plasmoid` archive in the `./build` directory.
-
-```bash
-prasmoid build [flags]
-```
-
-- **-o, --output**: Specify a different output directory.
-
-### `prasmoid preview`
-
-Launches the plasmoid in a live preview window.
-
-```bash
-prasmoid preview [flags]
-```
-
-- **-w, --watch**: Watches for file changes and automatically restarts the previewer.
-
-### `prasmoid format`
-
-Formats all `.qml` files in the `contents` directory using `qmlformat`.
-
-```bash
-prasmoid format [flags]
-```
-
-- **-d, --dir**: The directory to format (defaults to `./contents`).
-- **-w, --watch**: Watches for file changes and automatically formats them.
-
-### `prasmoid link` / `unlink`
-
-- `link`: Creates a symbolic link from your project directory to the KDE plasmoids directory (`~/.local/share/plasma/plasmoids/`), which is necessary for development.
-- `unlink`: Removes the symbolic link.
-
-### `prasmoid install` / `uninstall`
-
-- `install`: Copies the project files to the system-wide plasmoids directory for use.
-- `uninstall`: Removes the plasmoid from the system.
-
-### `prasmoid changeset`
-
-Manages versioning and changelogs.
-
-- **`prasmoid changeset add`**: Creates a new changeset file. You'll be prompted to select a version bump (patch, minor, major) and to write a summary of the changes.
-- **`prasmoid changeset apply`**: Applies all pending changesets, updating the version in `metadata.json` and prepending the changes to `CHANGELOG.md`.
-
-### `prasmoid commands`
-
-Manages custom, project-specific commands.
-
-- **`prasmoid commands add`**: Creates a new JavaScript file in your commands directory (`.prasmoid/commands/` by default) from a template.
-- **`prasmoid commands remove`**: Deletes a custom command file.
+| Command | Description | Usage & Flags |
+| :------ | :---------- | :------------ |
+| `init` | Initializes a new plasmoid project. | `prasmoid init [-n <name>]` <br> `-n, --name`: Specify the project name directly. |
+| `build` | Builds and packages the project into a distributable `.plasmoid` archive. | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Specify a custom output directory (defaults to `./build`). |
+| `preview` | Launches the plasmoid in a live preview window. | `prasmoid preview [-w]` <br> `-w, --watch`: Enable automatic reloading on file changes. |
+| `format` | Formats all `.qml` files in the `contents` directory using `qmlformat`. | `prasmoid format [-d <dir>] [-w]` <br> `-d, --dir`: Specify the directory to format (defaults to `./contents`). <br> `-w, --watch`: Watch for file changes and automatically format them. |
+| `link` | Creates a symbolic link from your project to the KDE plasmoids development directory (`~/.local/share/plasma/plasmoids/`). Essential for development and preview. | `prasmoid link [-w]` <br> `-w, --where`: Show the linked path without performing the link operation. |
+| `unlink` | Removes the symbolic link created by `prasmoid link`. | `prasmoid unlink` |
+| `install` | Installs the current plasmoid project to the system-wide plasmoids directory for production use. | `prasmoid install` |
+| `uninstall` | Removes the plasmoid from the system. | `prasmoid uninstall` |
+| `changeset` | Manages versioning and changelogs for your project. | See subcommands below. |
+| `changeset add` | Creates a new changeset file, prompting for version bump and summary. | `prasmoid changeset add [-b <type>] [-s <summary>]` <br> `-b, --bump`: Specify version bump type (`patch`, `minor`, `major`). <br> `-s, --summary`: Provide a changelog summary directly. |
+| `changeset apply` | Applies all pending changesets, updating `metadata.json` and `CHANGELOG.md`. | `prasmoid changeset apply` |
+| `commands` | Manages custom, project-specific JavaScript commands. | See subcommands below. |
+| `commands add` | Creates a new JavaScript command file from a template in `.prasmoid/commands/`. | `prasmoid commands add [-n <name>]` <br> `-n, --name`: Specify the command name. |
+| `commands remove` | Deletes a custom command. | `prasmoid commands remove [-n <name>]` <br> `-n, --name`: Specify the command name to remove. |
 
 ## Extending Prasmoid with Custom Commands
 
-Prasmoid's most powerful feature is its extensibility. You can write your own commands in JavaScript to automate project-specific tasks.
+Prasmoid's most powerful and unique feature is its extensibility through custom JavaScript commands. This allows you to automate any project-specific workflow directly within your CLI, without needing Node.js installed on your system.
 
-**Creating a Custom Command**
+### How it Works: The Embedded JavaScript Runtime
 
-1.  Run `prasmoid commands add` and give your command a name (e.g., `deploy`).
-2.  This creates a file like `.prasmoid/commands/deploy.js`.
-3.  Edit the file to define your command's logic.
+Prasmoid includes a lightweight, high-performance JavaScript runtime embedded directly within its Go binary. This runtime provides a Node.js-like environment, offering synchronous APIs for common modules such as `fs`, `os`, `path`, `child_process`, and a custom `prasmoid` module for CLI-specific interactions.
 
-**Example: A simple "hello" command**
+This means you can write powerful automation scripts in JavaScript, and Prasmoid will execute them natively, making your custom commands fast, portable, and truly zero-dependency for end-users.
 
-```javascript
-// .prasmoid/commands/hello.js
+### Creating a Custom Command
 
-/// <reference path="../../prasmoid.d.ts" />
-const prasmoid = require("prasmoid");
+1.  **Generate the command file:**
+    ```bash
+    prasmoid commands add deploy
+    ```
+    This will create a file like `.prasmoid/commands/deploy.js`.
 
-prasmoid.Command({
-  // The main function to run
-  run: (ctx) => {
-    const name = ctx.Flags().get("name") || "World";
-    console.green(`Hello, ${name}!`);
+2.  **Edit the file** to define your command's logic. Prasmoid automatically adds type definitions (`prasmoid.d.ts`) for autocompletion and type-checking in editors like VS Code.
 
-    const args = ctx.Args();
-    if (args.length > 0) {
-      console.yellow("Arguments received:", args.join(", "));
-    }
-  },
+    ```javascript
+    // .prasmoid/commands/hello.js
 
-  // A short description shown in the help list
-  short: "Prints a greeting.",
+    /// <reference path="../../prasmoid.d.ts" />
+    const prasmoid = require("prasmoid");
+    const fs = require("fs"); // Example: You can use fs module
 
-  // A longer, more detailed description
-  long: "A simple command that prints a greeting. You can use the --name flag to customize the greeting.",
+    prasmoid.Command({
+      // The main function to run when the command is executed
+      run: (ctx) => {
+        const name = ctx.Flags().get("name") || "World";
+        console.green(`Hello, ${name}!`); // Use Prasmoid's colored console
 
-  // Command-line flags
-  flags: [
-    {
-      name: "name",
-      shorthand: "n",
-      type: "string",
-      default: "World",
-      description: "The name to greet.",
-    },
-  ],
-});
-```
+        const args = ctx.Args();
+        if (args.length > 0) {
+          console.yellow("Arguments received:", args.join(", "));
+        }
 
-Now you can run your custom command:
+        // Example: Read a file using the embedded fs module
+        try {
+          const content = fs.readFileSync("somefile.txt", "utf8");
+          console.log("File content:", content);
+        } catch (e) {
+          console.red("Error reading file:", e.message);
+        }
+      },
 
-```bash
-$ prasmoid hello
-# Output: Hello, World!
+      // A short description shown in the help list
+      short: "Prints a greeting.",
 
-$ prasmoid hello --name "Prasmoid" an-argument
-# Output: Hello, Prasmoid!
-#         Arguments received: an-argument
-```
+      // A longer, more detailed description for 'prasmoid help hello'
+      long: "A simple command that prints a greeting. You can use the --name flag to customize the greeting.\n\nExample:\n  prasmoid hello --name 'Alice'",
 
-### Custom Command API
+      // Define command-line flags
+      flags: [
+        {
+          name: "name",
+          shorthand: "n",
+          type: "string",
+          default: "World",
+          description: "The name to greet.",
+        },
+      ],
+    });
+    ```
 
-Inside your JavaScript commands, you have access to a special runtime environment with built-in modules:
+3.  **Run your custom command:**
+    ```bash
+    $ prasmoid hello
+    # Output: Hello, World!
 
-- **`prasmoid`**: Interact with project metadata.
-- **`console`**: Print colored output to the terminal (`console.green`, `console.red`, etc.).
-- **`fs`**: A synchronous file system API, similar to Node.js's `fs` module.
-- **`os`**: Provides operating system-level information.
-- **`child_process`**: Execute shell commands.
+    $ prasmoid hello --name "Prasmoid" an-argument
+    # Output: Hello, Prasmoid!
+    #         Arguments received: an-argument
+    ```
 
-Type definitions are provided in `prasmoid.d.ts` for full autocompletion and type-checking in supported editors like VS Code.
+### Available JavaScript Modules & APIs
+
+The embedded runtime provides a subset of Node.js-like APIs, focusing on synchronous operations suitable for CLI scripting:
+
+*   **`prasmoid`**: Custom module for CLI interactions.
+    *   `prasmoid.Command(config)`: Registers a new command.
+    *   `prasmoid.getMetadata(key)`: Reads values from `metadata.json`.
+    *   `ctx.Args()`: Get command-line arguments.
+    *   `ctx.Flags().get(name)`: Get flag values.
+*   **`console`**: Enhanced logging with color support (`console.log`, `console.red`, `console.green`, `console.color`, etc.).
+*   **`fs`**: Synchronous file system operations (`fs.readFileSync`, `fs.writeFileSync`, `fs.existsSync`, `fs.readdirSync`, etc.).
+*   **`os`**: Operating system information (`os.arch`, `os.platform`, `os.homedir`, `os.tmpdir`, etc.).
+*   **`child_process`**: Execute shell commands synchronously (`child_process.execSync`).
+*   **`process`**: Process information and control (`process.exit`, `process.cwd`, `process.env`, `process.uptime`, `process.memoryUsage`, `process.nextTick`).
+*   **`path`**: Utilities for working with file paths (`path.join`, `path.resolve`, `path.basename`, `path.extname`, etc.).
+
+> [!NOTE]
+> The embedded runtime currently supports **synchronous** file system operations only. Asynchronous functions (e.g., `fs.readFile`) are not implemented.
+
+## Contributing
+
+We welcome contributions from the community! Whether it's bug reports, feature requests, or code contributions, your help is invaluable.
+
+*   **Report Bugs**: If you find an issue, please open a [GitHub Issue](https://github.com/PRASSamin/prasmoid/issues).
+*   **Suggest Features**: Have an idea for a new feature? Open an issue to discuss it.
+
 
 ## License
 

@@ -19,6 +19,7 @@ func NewRuntime() *goja.Runtime {
 	Register(vm, "child_process", ChildProcess)
 	Register(vm, "prasmoid", Prasmoid)
 	Register(vm, "console", Console)
+
 	return vm
 }
 
