@@ -1,6 +1,5 @@
-# !/bin/bash
+#!/bin/bash
 
-# Exit on error
 set -e
 
 # Function to convert bytes to human-readable format
@@ -28,54 +27,59 @@ COMPRESSED_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compres
 NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
 COMPRESSED_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compressed") | .size')
 
-# Show selection prompt
-echo "Please select which version to install:"
-echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE)) - Recommended (faster performance)"
-echo "2) Prasmoid-compressed ($(formatted_size $COMPRESSED_SIZE)) - Smaller size"
-
-read -p "Enter your choice (1 or 2): " choice
+# Handle user input based on TTY availability
+if [[ -t 0 ]]; then
+  echo "Please select which version to install:"
+  echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE)) - Recommended (faster performance)"
+  echo "2) Prasmoid-compressed ($(formatted_size $COMPRESSED_SIZE)) - Smaller size"
+  read -p "Enter your choice (1 or 2): " choice
+else
+  choice="${1:-1}"  # Default to 1 if no arg is passed
+fi
 
 # Validate choice
 if [[ "$choice" != "1" && "$choice" != "2" ]]; then
-    echo "Invalid choice! Please enter 1 or 2."
-    exit 1
+  echo "Invalid choice! Please enter 1 or 2."
+  exit 1
 fi
 
-# Select appropriate download URL and binary name
+# Select appropriate binary
 if [[ "$choice" == "1" ]]; then
-    DOWNLOAD_URL="$NORMAL_URL"
-    BINARY_NAME="prasmoid"
+  DOWNLOAD_URL="$NORMAL_URL"
+  BINARY_NAME="prasmoid"
 else
-    DOWNLOAD_URL="$COMPRESSED_URL"
-    BINARY_NAME="prasmoid"
+  DOWNLOAD_URL="$COMPRESSED_URL"
+  BINARY_NAME="prasmoid"
 fi
 
-# Download the binary
+# Download binary
 echo "Downloading $BINARY_NAME..."
-
 curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
 
-# Verify the download
+# Verify download
 if [[ ! -f "$BINARY_NAME" ]]; then
-    echo "Download failed!"
-    exit 1
+  echo "Download failed!"
+  exit 1
 fi
 
-# Make it executable
 chmod +x "$BINARY_NAME"
 
-# Install to /usr/bin
-echo "Installing to /usr/bin..."
-sudo cp "$BINARY_NAME" /usr/bin/prasmoid
-
-# Clean up
-rm "$BINARY_NAME"
-
-# Verify installation
-if [[ ! -f "/usr/bin/prasmoid" ]]; then
-    echo "Installation failed!"
-    exit 1
+# Detect if running as root, else use sudo
+if [[ "$EUID" -ne 0 ]]; then
+  echo "Installing to /usr/bin using sudo..."
+  sudo cp "$BINARY_NAME" /usr/bin/prasmoid
+else
+  echo "Installing to /usr/bin..."
+  cp "$BINARY_NAME" /usr/bin/prasmoid
 fi
 
-# Success message
-echo "$BINARY_NAME installed successfully! You can now run it with: prasmoid"
+rm "$BINARY_NAME"
+
+# Final check
+if [[ ! -f "/usr/bin/prasmoid" ]]; then
+  echo "Installation failed!"
+  exit 1
+fi
+
+echo "✅ $BINARY_NAME installed successfully!"
+echo "🚀 Run it anytime with: prasmoid"
