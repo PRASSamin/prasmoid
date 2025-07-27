@@ -1,0 +1,95 @@
+#!/bin/bash
+
+set -e
+
+# --- Helper Functions ---
+log_step() { echo -e "\033[0;36m→ $1\033[0m"; }
+log_done() { echo -e "\033[0;32m✔ $1\033[0m"; }
+log_fail() { echo -e "\033[0;31m✘ $1\033[0m"; exit 1; }
+
+# --- Argument Parsing ---
+if [ "$#" -lt 1 ]; then
+    log_fail "Usage: $0 <path_to_executable>"
+fi
+
+CURRENT_EXE=$1
+shift 1
+
+# --- Main Logic ---
+log_step "Checking for updates..."
+
+LATEST_RELEASE_INFO=$(curl -s "https://api.github.com/repos/PRASSamin/prasmoid/releases/latest")
+if [ -z "$LATEST_RELEASE_INFO" ]; then
+    log_fail "Failed to fetch release info from GitHub."
+fi
+
+CURRENT_VERSION=$("$CURRENT_EXE" version)
+
+LATEST_VERSION_TAG=$(echo "$LATEST_RELEASE_INFO" | jq -r ".tag_name" | sed "s/^v//")
+if [ -z "$LATEST_VERSION_TAG" ] || [ "$LATEST_VERSION_TAG" == "null" ]; then
+    log_fail "Could not parse latest version from GitHub."
+fi
+
+RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-compressed//")
+
+if [ "$LATEST_VERSION_TAG" == "$RAW_CURRENT_VERSION" ]; then
+    log_done "You are already using the latest version of Prasmoid (v$RAW_CURRENT_VERSION)."
+    exit 0
+fi
+
+IS_COMPRESSED=false
+if [[ "$CURRENT_VERSION" == *"-compressed"* ]]; then
+    IS_COMPRESSED=true
+fi
+
+if [ "$IS_COMPRESSED" = true ]; then
+    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name | endswith(\"-compressed\")) | .browser_download_url")
+else
+    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name == \"prasmoid\") | .browser_download_url")
+fi
+
+if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
+    log_fail "No suitable binary found for version $LATEST_VERSION_TAG."
+fi
+
+log_step "Downloading v$LATEST_VERSION_TAG..."
+
+TEMP_FILE=$(mktemp)
+curl -L -o "$TEMP_FILE" "$DOWNLOAD_URL"
+if [ $? -ne 0 ]; then
+    rm -f "$TEMP_FILE"
+    log_fail "Download failed."
+fi
+log_done "Download complete."
+
+chmod +x "$TEMP_FILE"
+
+# This script is executed by the Go binary, which already checks for root.
+# So, we can assume we have the necessary permissions.
+
+# Create a second script to perform the final replacement and relaunch
+# This avoids the "text file busy" error
+
+
+log_step "Moving new binary..."
+mv "$TEMP_FILE" "$CURRENT_EXE"
+
+log_done "Update complete."
+log_step "Relaunching CLI..."
+
+exec "$CURRENT_EXE"
+
+# chmod +x "$UPDATE_SCRIPT_PATH"
+
+# # Execute the second script in the background and get its PID
+# "$UPDATE_SCRIPT_PATH" &
+# UPDATE_PID=$!
+
+# # Wait for the background process to finish
+# wait $UPDATE_PID
+
+# # Clean up temporary files
+# rm -f "$UPDATE_SCRIPT_PATH"
+# rm -f "$TEMP_FILE"
+
+exit 0

@@ -4,10 +4,10 @@ Copyright 2025 PRAS
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,24 +59,26 @@ func Execute() {
 
 // -------- UPDATE CHECKER --------
 
-type LTSVersionData struct {
-	Tag_name string `json:"tag_name"`
-	Assets []struct {
-		URL string `json:"url"`
-		Name string `json:"name"`
-		BrowserDownloadURL string `json:"browser_download_url"`
-	} `json:"assets"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+type AssetData struct {
+	URL                 string `json:"url"`
+	Name                string `json:"name"`
+	BrowserDownloadURL  string `json:"browser_download_url"`
 }
+
+type LTSVersionData struct {
+	Tag_name string       `json:"tag_name"`
+	Assets   []AssetData  `json:"assets"`
+}
+
 type UpdateCache struct {
 	LastChecked time.Time `json:"last_checked"`
 	LatestTag   string    `json:"latest_tag"`
-	Data LTSVersionData
+	Data LTSVersionData   `json:"data"`
 }
 
 func CheckForUpdates() {
-	const githubAPI = "https://api.github.com/repos/PRASSamin/prasmoid/releases/latest"
+	const host = "api.github.com"
+	const path = "/repos/PRASSamin/prasmoid/releases/latest"
 	const checkInterval = 24 * time.Hour
 
 	cache, err := ReadUpdateCache()
@@ -87,27 +89,48 @@ func CheckForUpdates() {
 		return
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Get(githubAPI)
+	// Establish TLS connection to GitHub
+	conn, err := tls.Dial("tcp", host+":443", nil)
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	defer conn.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Manually write the HTTP GET request
+	request := fmt.Sprintf(
+		"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: Prasmoid-Updater\r\nConnection: close\r\n\r\n",
+		path, host,
+	)
+	_, err = conn.Write([]byte(request))
 	if err != nil {
 		return
 	}
 
-	if resp.StatusCode == http.StatusOK {
-		latestTag := getLatestTag(body)
-		writeUpdateCache(latestTag, body)
-		if isUpdateAvailable(latestTag) {
-			printUpdateMessage(latestTag)
-		}
+	// Read the raw HTTP response
+	raw, err := io.ReadAll(conn)
+	if err != nil {
+		return
+	}
+
+	// Parse the body from the response (after \r\n\r\n)
+	parts := strings.SplitN(string(raw), "\r\n\r\n", 2)
+	if len(parts) < 2 {
+		return
+	}
+	headers := parts[0]
+	body := parts[1]
+	fmt.Println(string(body))
+
+	// Optional: parse status code from headers
+	if !strings.Contains(headers, "200 OK") {
+		return
+	}
+
+	// Extract latest tag and do the same flow
+	latestTag := getLatestTag([]byte(body))
+	writeUpdateCache(latestTag, []byte(body))
+	if isUpdateAvailable(latestTag) {
+		printUpdateMessage(latestTag)
 	}
 }
 

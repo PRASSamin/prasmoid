@@ -96,7 +96,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | :------ | :---------- | :------------ |
 | `init` | Initializes a new plasmoid project. | `prasmoid init [-n <name>]` <br> `-n, --name`: Specify the project name directly. |
 | `build` | Builds and packages the project into a distributable `.plasmoid` archive. | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Specify a custom output directory (defaults to `./build`). |
-| `preview` | Launches the plasmoid in a live preview window. | `prasmoid preview [-w]` <br> `-w, --watch`: Enable automatic reloading on file changes. |
+| `preview` | Launches the plasmoid in a live preview window. | `prasmoid preview [-w]` <br> `-w, --watch`: Enable automatic window restart on file changes. |
 | `format` | Formats all `.qml` files in the `contents` directory using `qmlformat`. | `prasmoid format [-d <dir>] [-w]` <br> `-d, --dir`: Specify the directory to format (defaults to `./contents`). <br> `-w, --watch`: Watch for file changes and automatically format them. |
 | `link` | Creates a symbolic link from your project to the KDE plasmoids development directory (`~/.local/share/plasma/plasmoids/`). Essential for development and preview. | `prasmoid link [-w]` <br> `-w, --where`: Show the linked path without performing the link operation. |
 | `unlink` | Removes the symbolic link created by `prasmoid link`. | `prasmoid unlink` |

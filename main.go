@@ -17,6 +17,8 @@ import (
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
+var DIST_DIR, _ = filepath.Abs("./dist/")
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("System Monitor CLI Handler")
@@ -31,6 +33,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "build":
+        os.RemoveAll(DIST_DIR)
         var builds = []bool{
             false,
             true,
@@ -159,8 +162,7 @@ func BuildDevelopment() {
 }
 
 func BuildCli(compress bool) {
-	filename := "./dist/" + strings.ToLower(internal.AppMeta.Name)
-    os.RemoveAll("./dist")
+	filename := filepath.Join(DIST_DIR, strings.ToLower(internal.AppMeta.Name))
 	version := internal.AppMeta.Version
     
 	if compress {
@@ -177,7 +179,8 @@ func BuildCli(compress bool) {
     command.Stderr = os.Stderr
     command.Run()
 
-	color.Green("Build successful!")
+    filenameSize, _ := os.Stat(filename)
+	color.Green("Build successful! %s (%d mb)", filename, filenameSize.Size()/1024/1024)
 
 	if compress {
 		color.Cyan("Starting executable compression...")
