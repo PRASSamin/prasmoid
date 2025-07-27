@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/adrg/frontmatter"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func init() {
@@ -83,6 +83,11 @@ func ApplyChanges(){
 
 			if err := UpdateChangelog(meta.Next, meta.Date, body); err != nil {
 				color.Red("Changelog update failed in %s: %v", file, err)
+				continue
+			}
+
+			if err := os.Remove(file); err != nil {
+				color.Red("Failed to remove changeset file %s: %v", file, err)
 				continue
 			}
 		}
