@@ -1,6 +1,6 @@
 package internal
 
-var Version = "0.0.1-compressed"
+var Version = "0.0.1"
 
 type Metadata struct {
     Version string
