@@ -32,9 +32,6 @@ gweight
 prasmoid
 dist
 
-# Dependencies directory
-deps/
-
 # Metadata files
 metadata.json
 
