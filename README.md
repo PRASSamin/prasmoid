@@ -38,19 +38,19 @@ One of its most revolutionary features is a **built-in, zero-dependency JavaScri
 
 Prasmoid is designed for quick and easy installation. Choose your preferred method:
 
-> [!NOTE]
+> [!IMPORTANT]
 > The installer script requires `jq` to be installed for parsing GitHub API responses.
 
 #### Recommended: Standard CLI
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 1
+sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 1
 ```
 
 #### Compact: Compressed CLI
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 2
+sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 2
 ```
 
 ### Updating Prasmoid
@@ -62,7 +62,7 @@ Keep Prasmoid up to date with the latest features and improvements using one of 
 The simplest way to update Prasmoid is by using the built-in update command:
 
 ```bash
-prasmoid update me
+sudo prasmoid update me
 ```
 
 > [!TIP]
@@ -73,7 +73,7 @@ prasmoid update me
 If you prefer a manual update, you can use curl:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | bash -s $(which prasmoid)
+sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | bash -s $(which prasmoid)
 ```
 
 ## Your First Plasmoid Project
