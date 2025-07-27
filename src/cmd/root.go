@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -59,34 +58,24 @@ func Execute() {
 
 // -------- UPDATE CHECKER --------
 
-type AssetData struct {
-	URL                 string `json:"url"`
-	Name                string `json:"name"`
-	BrowserDownloadURL  string `json:"browser_download_url"`
-}
-
-type LTSVersionData struct {
-	Tag_name string       `json:"tag_name"`
-	Assets   []AssetData  `json:"assets"`
-}
-
-type UpdateCache struct {
-	LastChecked time.Time `json:"last_checked"`
-	LatestTag   string    `json:"latest_tag"`
-	Data LTSVersionData   `json:"data"`
-}
-
 func CheckForUpdates() {
 	const host = "api.github.com"
 	const path = "/repos/PRASSamin/prasmoid/releases/latest"
 	const checkInterval = 24 * time.Hour
 
 	cache, err := ReadUpdateCache()
-	if err == nil && time.Since(cache.LastChecked) < checkInterval {
-		if isUpdateAvailable(cache.LatestTag) {
-			printUpdateMessage(cache.LatestTag)
-		}
-		return
+	if err == nil {
+        if lastCheckedStr, ok := cache["last_checked"].(string); ok {
+            lastCheckedTime, err := time.Parse(time.RFC3339, lastCheckedStr)
+            if err == nil && time.Since(lastCheckedTime) < checkInterval {
+                if latestTag, ok := cache["latest_tag"].(string); ok {
+                    if isUpdateAvailable(latestTag) {
+                        printUpdateMessage(latestTag)
+                    }
+                }
+                return
+            }
+        }
 	}
 
 	// Establish TLS connection to GitHub
@@ -119,7 +108,6 @@ func CheckForUpdates() {
 	}
 	headers := parts[0]
 	body := parts[1]
-	fmt.Println(string(body))
 
 	// Optional: parse status code from headers
 	if !strings.Contains(headers, "200 OK") {
@@ -147,8 +135,7 @@ func getLatestTag(body []byte) string {
 		return ""
 	}
 
-	re := regexp.MustCompile(`^v`)
-	return re.ReplaceAllString(tag, "")
+	return strings.TrimPrefix(tag, "v")
 }
 
 func isUpdateAvailable(latestTag string) bool {
@@ -186,26 +173,26 @@ func getCacheFilePath() string {
 	return filepath.Join(dir, "prasmoid_update.json")
 }
 
-func ReadUpdateCache() (*UpdateCache, error) {
+func ReadUpdateCache() (map[string]interface{}, error) {
 	path := getCacheFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var cache UpdateCache
+	var cache map[string]interface{}
 	err = json.Unmarshal(data, &cache)
-	return &cache, err
+	return cache, err
 }
 
 func writeUpdateCache(tag string, body []byte) {
-	var vdata LTSVersionData
-	_ = json.Unmarshal(body, &vdata)
+	var releaseData map[string]interface{}
+	_ = json.Unmarshal(body, &releaseData)
 
-	cache := UpdateCache{
-		LastChecked: time.Now(),
-		LatestTag:   tag,
-		Data: vdata,
+	cache := map[string]interface{}{
+		"last_checked": time.Now().Format(time.RFC3339),
+		"latest_tag":   tag,
+		"data":         releaseData,
 	}
 	data, _ := json.Marshal(cache)
 	_ = os.WriteFile(getCacheFilePath(), data, 0o644)

@@ -67,10 +67,6 @@ chmod +x "$TEMP_FILE"
 # This script is executed by the Go binary, which already checks for root.
 # So, we can assume we have the necessary permissions.
 
-# Create a second script to perform the final replacement and relaunch
-# This avoids the "text file busy" error
-
-
 log_step "Moving new binary..."
 mv "$TEMP_FILE" "$CURRENT_EXE"
 
@@ -78,18 +74,5 @@ log_done "Update complete."
 log_step "Relaunching CLI..."
 
 exec "$CURRENT_EXE"
-
-# chmod +x "$UPDATE_SCRIPT_PATH"
-
-# # Execute the second script in the background and get its PID
-# "$UPDATE_SCRIPT_PATH" &
-# UPDATE_PID=$!
-
-# # Wait for the background process to finish
-# wait $UPDATE_PID
-
-# # Clean up temporary files
-# rm -f "$UPDATE_SCRIPT_PATH"
-# rm -f "$TEMP_FILE"
 
 exit 0

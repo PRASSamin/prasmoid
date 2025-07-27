@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -24,10 +23,10 @@ var LinkCmd = &cobra.Command{
 	Short: "Link plasmoid to local development directory",
 	Long:  "Create a symlink to local development folder for easy testing.",
 	Run: func(cmd *cobra.Command, args []string) {
-		// if !IsValidPlasmoid() {
-		// 	color.Red("Current directory is not a valid plasmoid.")
-		// 	return
-		// }
+		if !utils.IsValidPlasmoid() {
+			color.Red("Current directory is not a valid plasmoid.")
+			return
+		}
 		dest, err := utils.GetDevDest()
 		if err != nil {
 			color.Red(err.Error())
@@ -55,8 +54,7 @@ func LinkPlasmoid(dest string) error {
     if err != nil {
         return err
     }
-    currentDirName := filepath.Base(cwd)
 
 	// Link
-	return os.Symlink(filepath.Join(cwd, "..", currentDirName), dest)
+	return os.Symlink(cwd, dest)
 }

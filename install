@@ -81,5 +81,5 @@ if [[ ! -f "/usr/bin/prasmoid" ]]; then
   exit 1
 fi
 
-echo "✅ $BINARY_NAME installed successfully!"
-echo "🚀 Run it anytime with: prasmoid"
+echo "$BINARY_NAME installed successfully!"
+echo "Run it anytime with: prasmoid"
