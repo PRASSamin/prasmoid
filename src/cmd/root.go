@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -139,6 +140,12 @@ func getLatestTag(body []byte) string {
 }
 
 func isUpdateAvailable(latestTag string) bool {
+	re := regexp.MustCompile(`^([^-|_]+)`)
+	matches := re.FindStringSubmatch(internal.AppMeta.Version)
+	if len(matches) > 1 {
+		return latestTag != matches[1]
+	}
+	
 	return latestTag != internal.AppMeta.Version
 }
 
