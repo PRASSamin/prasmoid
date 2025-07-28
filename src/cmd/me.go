@@ -72,6 +72,8 @@ var meCmd = &cobra.Command{
 		if err := command.Run(); err != nil {
 			color.Red("Update failed: %v", err)
 		}
+
+		if err := os.Remove(GetCacheFilePath()); err != nil {}
 	},
 }
 

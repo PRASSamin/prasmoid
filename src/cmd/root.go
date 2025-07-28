@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -139,18 +139,50 @@ func getLatestTag(body []byte) string {
 	return strings.TrimPrefix(tag, "v")
 }
 
+
+// compareVersions returns:
+// -1 if current < latest
+//  0 if current == latest
+//  1 if current > latest
+func compareVersions(current, latest string) int {
+	parse := func(v string) []int {
+		v = strings.TrimPrefix(v, "v")
+		parts := strings.Split(v, ".")
+		out := make([]int, 3)
+		for i := 0; i < 3 && i < len(parts); i++ {
+			num, err := strconv.Atoi(parts[i])
+			if err != nil {
+				out[i] = 0
+			} else {
+				out[i] = num
+			}
+		}
+		return out
+	}
+
+	curr := parse(current)
+	lat := parse(latest)
+
+	for i := 0; i < 3; i++ {
+		if curr[i] < lat[i] {
+			return -1
+		}
+		if curr[i] > lat[i] {
+			return 1
+		}
+	}
+	return 0
+}
+
 func isUpdateAvailable(latestTag string) bool {
 	if latestTag == "" {
 		return false
 	}
-	re := regexp.MustCompile(`^([^-|_]+)`)
-	matches := re.FindStringSubmatch(internal.AppMeta.Version)
-	if len(matches) > 1 {
-		return latestTag != matches[1]
-	}
-	
-	return latestTag != internal.AppMeta.Version
+
+	current := internal.AppMeta.Version
+	return compareVersions(current, latestTag) < 0
 }
+
 
 func printUpdateMessage(latest string) {
 	// Get terminal width
@@ -175,7 +207,7 @@ func printUpdateMessage(latest string) {
 	fmt.Println()
 }
 
-func getCacheFilePath() string {
+func GetCacheFilePath() string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		dir = os.TempDir()
@@ -184,7 +216,7 @@ func getCacheFilePath() string {
 }
 
 func ReadUpdateCache() (map[string]interface{}, error) {
-	path := getCacheFilePath()
+	path := GetCacheFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -205,5 +237,5 @@ func writeUpdateCache(tag string, body []byte) {
 		"data":         releaseData,
 	}
 	data, _ := json.Marshal(cache)
-	_ = os.WriteFile(getCacheFilePath(), data, 0o644)
+	_ = os.WriteFile(GetCacheFilePath(), data, 0o644)
 }
