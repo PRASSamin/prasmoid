@@ -34,7 +34,11 @@ RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-portable//")
 
 if [ "$LATEST_VERSION_TAG" == "$RAW_CURRENT_VERSION" ]; then
     log_done "You are already using the latest version of Prasmoid (v$RAW_CURRENT_VERSION)."
-    exit 0
+    printf "\033[1;34m→\033[0m Do you want to update? y/N "
+    read -r response
+    if [[ "$response" != "y" ]]; then
+        exit 0
+    fi
 fi
 
 IS_PORTABLE=false
