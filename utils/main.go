@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/PRASSamin/prasmoid/deps"
 	"github.com/PRASSamin/prasmoid/internal/runtime"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/fatih/color"
@@ -80,53 +81,6 @@ func IsPackageInstalled(name string) bool {
 	return err == nil
 }
 
-// Detect package manager
-func DetectPackageManager() (string, error) {
-	pmCommands := []string{"dnf", "apt"}
-	for _, cmd := range pmCommands {
-		_, err := exec.LookPath(cmd)
-		if err == nil {
-			return cmd, nil
-		}
-	}
-	fmt.Println((pmCommands))
-	return "", fmt.Errorf("no supported package manager found (dnf, apt)")
-}
-
-
-// Get package name for a binary
-func GetPackageForBinary(name string) (string, error) {
-    path, err := exec.LookPath(name)
-    if err != nil {
-        return "", fmt.Errorf("binary %s not found", name)
-    }
-
-	pm, err := DetectPackageManager()
-	if err != nil {
-		return "", err
-	}
-
-	if pm == "apt" {
-		out, err := exec.Command("dpkg", "-S", path).Output()
-		if err != nil {
-			return "", fmt.Errorf("dpkg -S failed: %v", err)
-		}
-		parts := strings.SplitN(string(out), ":", 2)
-		return strings.TrimSpace(parts[0]), nil
-	} 
-	
-	if pm == "dnf"{
-		 out, err := exec.Command("rpm", "-qf", path).Output()
-    if err != nil {
-        return "", fmt.Errorf("rpm -qf failed: %v", err)
-    }
-	return strings.TrimSpace(string(out)), nil
-	}
-   
-
-    return "", fmt.Errorf("")
-}
-
 // UpdateMetadata updates a key in the metadata.json file.
 //
 // Parameters:
@@ -190,71 +144,121 @@ func UpdateMetadata(key string, value interface{}, sectionOpt ...string) error {
 	return nil
 }
 
-
-func TryInstallPackage(pkg string) (bool, error) {
-	pm, err := DetectPackageManager()
-	if err != nil {
-		return false, err
-	}
-
-	switch pm {
-	case "dnf":
-		cmd := exec.Command("sudo", "dnf", "install", "-y", pkg)
-		cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-		if cmd.Run() == nil {
-			return true, nil
-		} else {
-			return false, fmt.Errorf("failed to install %s", pkg)
-		}
-
-	case "apt":
-		cmd := exec.Command("sudo", "apt", "install", "-y", pkg)
-		cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-		if cmd.Run() == nil {
-			return true, nil
-		} else {
-			return false, fmt.Errorf("failed to install %s", pkg)
-		}
-	default:
-		return false, fmt.Errorf("unsupported package manager: %s", pm)
-	}
+var supportedPackageManagers = map[string]string{
+	"apt":    "apt",
+	"dnf":    "dnf",
+	"pacman": "pacman",
+	"nix-env": "nix",
 }
 
+// Detect package manager
+func DetectPackageManager() (string, error) {
+	for binary, pm := range supportedPackageManagers {
+		_, err := exec.LookPath(binary)
+		if err == nil {
+			return pm, nil
+		}
+	}
+	return "", fmt.Errorf("no supported package manager found: %+v", supportedPackageManagers)
+}
 
-func InstallPackages(packages []string) error {
-	pm, err := DetectPackageManager()
-	highlight := color.New(color.FgGreen, color.Bold).SprintFunc()
+func GetBinPath() (string, error) {
+	defaultCandidates := []string{
+		"/usr/bin",
+		"/usr/local/bin",
+		"/bin",
+		"/nix/var/nix/profiles/default/bin",
+	}
+
+	pathEnv := os.Getenv("PATH")
+	paths := strings.Split(pathEnv, ":")
+
+	for _, candidate := range defaultCandidates {
+		for _, p := range paths {
+			if p == candidate {
+				if info, err := os.Stat(p); err == nil && info.IsDir() {
+					return p, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no supported bin path found: %+v", defaultCandidates)
+}
+
+func InstallPackage(pm, binName string, pkgNames map[string]string) error {
+	binPath, err := GetBinPath()
 	if err != nil {
+		return fmt.Errorf("failed to get bin path: %v", err)
+	}
+
+	pkgName, ok := pkgNames[pm]
+	if !ok {
+		return fmt.Errorf("unsupported package manager: %s", pm)
+	}
+
+	var cmd *exec.Cmd
+	switch pm {
+	case "nix":
+		cmd = exec.Command("nix-env", "-iA", pkgName)
+	case "pacman":
+		cmd = exec.Command("sudo", "pacman", "-S", "--noconfirm", pkgName)
+	default:
+		cmd = exec.Command("sudo", pm, "install", "-y", pkgName)
+	}
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		color.Yellow("Warning: install command exited with error: %v", err)
+	}
+
+	if err := ensureBinaryLinked(binName, binPath); err != nil {
 		return err
 	}
 
-	switch pm {
-	case "dnf":
-        fmt.Printf("Trying to install %s with dnf...\n", highlight(strings.Join(packages, " ")))
+	color.Green("%s installed!", binName)
+	return nil
+}
 
-		cmd := exec.Command("sudo", "dnf", "install", "-y", "--skip-unavailable")
-		cmd.Args = append(cmd.Args, packages...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
-
-	case "apt":
-		for _, pkg := range packages {
-			fmt.Printf("Trying to install '%s' with apt...\n", highlight(pkg))
-			cmd := exec.Command("sudo", "apt", "install", "-y", pkg)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				color.Yellow("Skipping '%s': not found or failed to install.\n", pkg)
-			}
-		}
-		return nil
-
-	default:
-		return fmt.Errorf("unsupported package manager: %s", pm)
+// ensureBinaryLinked looks for a binary and symlinks it into our binPath.
+func ensureBinaryLinked(binName, binPath string) error {
+	if _, err := exec.LookPath(binName); err == nil {
+		return nil // already found in PATH
 	}
+
+	color.Yellow("Binary %s not in PATH, searching manually...", binName)
+	findCmd := exec.Command("sudo", "find", "/", "-type", "f", "-name", binName)
+	out, err := findCmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to locate %s binary: %v", binName, err)
+	}
+
+	path := strings.TrimSpace(strings.Split(string(out), "\n")[0])
+	if path == "" {
+		return fmt.Errorf("%s not found on system", binName)
+	}
+
+	link := filepath.Join(binPath, binName)
+	if _, err := os.Lstat(link); err == nil {
+		color.Yellow("Warning: symlink already exists at %s, skipping...", link)
+		return nil
+	}
+
+	if err := os.Symlink(path, link); err != nil {
+		return fmt.Errorf("failed to create symlink: %v", err)
+	}
+
+	return nil
+}
+
+func InstallQmlformat(pm string) error {
+	return InstallPackage(pm, deps.QmlFormatPackageName["binary"], deps.QmlFormatPackageName)
+}
+
+func InstallPlasmoidPreview(pm string) error {
+	return InstallPackage(pm, deps.PlasmoidPreviewPackageName["binary"], deps.PlasmoidPreviewPackageName)
 }
 
 

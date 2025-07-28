@@ -32,7 +32,9 @@ var InstallCmd = &cobra.Command{
 			color.Red("Failed to install plasmoid:", err)
 			return
 		}
-		color.Green("Plasmoid installed successfully in %s", color.BlueString(utils.GetDevDest()))
+
+		dest, _ := utils.GetDevDest()
+		color.Green("Plasmoid installed successfully in %s", color.BlueString(dest))
 		color.Cyan("\n- Please restart plasmashell to apply changes.")
 	},
 }

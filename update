@@ -30,20 +30,20 @@ if [ -z "$LATEST_VERSION_TAG" ] || [ "$LATEST_VERSION_TAG" == "null" ]; then
     log_fail "Could not parse latest version from GitHub."
 fi
 
-RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-compressed//")
+RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-portable//")
 
 if [ "$LATEST_VERSION_TAG" == "$RAW_CURRENT_VERSION" ]; then
     log_done "You are already using the latest version of Prasmoid (v$RAW_CURRENT_VERSION)."
     exit 0
 fi
 
-IS_COMPRESSED=false
-if [[ "$CURRENT_VERSION" == *"-compressed"* ]]; then
-    IS_COMPRESSED=true
+IS_PORTABLE=false
+if [[ "$CURRENT_VERSION" == *"-portable"* ]]; then
+    IS_PORTABLE=true
 fi
 
-if [ "$IS_COMPRESSED" = true ]; then
-    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name | endswith(\"-compressed\")) | .browser_download_url")
+if [ "$IS_PORTABLE" = true ]; then
+    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name | endswith(\"-portable\")) | .browser_download_url")
 else
     DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name == \"prasmoid\") | .browser_download_url")
 fi

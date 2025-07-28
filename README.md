@@ -39,15 +39,24 @@ One of its most revolutionary features is a **built-in, zero-dependency JavaScri
 Prasmoid is designed for quick and easy installation. Choose your preferred method:
 
 > [!IMPORTANT]
-> The installer script requires `jq` to be installed for parsing GitHub API responses.
+> The installer script requires jq to be installed for parsing GitHub API responses.
+> Install it via `sudo apt install jq`, `sudo dnf install jq`, `sudo pacman -S jq` depending on your distro.
 
-#### Recommended: Standard CLI
+#### Recommended: Standard Build (Native)
+
+- **Best for**: `Arch`, `Fedora`, `Ubuntu`, `Debian`, and most general-purpose Linux distros.
+- This version is compiled with CGO enabled and links to your system's native libraries for full integration and performance.
+- Might not work on minimal or stripped-down systems without standard dev libraries.
 
 ```bash
 sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 1
 ```
 
-#### Compact: Compressed CLI
+#### Portable Build (Static)
+
+- **Best for**: `Alpine`, `NixOS`, minimal Docker images, CI/CD environments, or any system without full libc/glibc.
+- Fully statically linked (CGO disabled), built to just run anywhere, even on weird-ass environments where shared libs are missing.
+- Slightly larger binary, but way more portable.
 
 ```bash
 sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 2
@@ -106,6 +115,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 
 | Command           | Description                                                                                                                                                       | Usage & Flags                                                                                                                                                                             |
 | :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`           | Setup plasmoid development environment(e.g. install dependencies)                                                                                                 | `prasmoid setup`                                                                                                                                                                          |
 | `init`            | Initializes a new plasmoid project.                                                                                                                               | `prasmoid init [-n <name>]` <br> `-n, --name`: Specify the project name directly.                                                                                                         |
 | `build`           | Builds and packages the project into a distributable `.plasmoid` archive.                                                                                         | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Specify a custom output directory (defaults to `./build`).                                                                        |
 | `preview`         | Launches the plasmoid in a live preview window.                                                                                                                   | `prasmoid preview [-w]` <br> `-w, --watch`: Enable automatic window restart on file changes.                                                                                              |

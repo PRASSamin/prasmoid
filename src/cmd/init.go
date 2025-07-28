@@ -374,16 +374,28 @@ func validateProjectName(ans interface{}) error {
 }
 
 func InitPlasmoid() error {
-	var missingDeps []string
-	for _, dep := range deps.Dependencies {
-		if !utils.IsPackageInstalled(dep) {
-			missingDeps = append(missingDeps, dep)
+	pm, err := utils.DetectPackageManager()
+	if err != nil {
+		return err
+	}
+
+	if !utils.IsPackageInstalled(deps.QmlFormatPackageName["binary"]) {
+		color.Yellow("Installing qmlformat...")
+		if err := utils.InstallQmlformat(pm); err != nil {
+			return err
 		}
 	}
 
-	if len(missingDeps) > 0 {
-		color.Yellow("Installing missing dependencies: %s", strings.Join(missingDeps, ", "))
-		if err := utils.InstallPackages(missingDeps); err != nil {
+	if !utils.IsPackageInstalled(deps.PlasmoidPreviewPackageName["binary"]) {
+		color.Yellow("Installing plasmoidviewer...")
+		if err := utils.InstallPlasmoidPreview(pm); err != nil {
+			return err
+		}
+	}
+
+	if !utils.IsPackageInstalled(deps.CurlPackageName["binary"]) {
+		color.Yellow("Installing curl...")
+		if err := utils.InstallPackage(pm, deps.CurlPackageName["binary"], deps.CurlPackageName); err != nil {
 			return err
 		}
 	}

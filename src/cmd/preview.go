@@ -18,6 +18,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 
+	"github.com/PRASSamin/prasmoid/deps"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -68,7 +69,8 @@ var PreviewCmd = &cobra.Command{
 			}
 		}
 
-		if !utils.IsPackageInstalled("plasmoidviewer") {
+		if !utils.IsPackageInstalled(deps.PlasmoidPreviewPackageName["binary"]) {
+			pm, _ := utils.DetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "plasmoidviewer is not installed. Do you want to install it first?",
@@ -79,7 +81,7 @@ var PreviewCmd = &cobra.Command{
 			}
 			
 			if confirm {
-				if err := utils.InstallPackages([]string{"plasmoidviewer"}); err != nil {
+				if err := utils.InstallPackage(pm, deps.PlasmoidPreviewPackageName["binary"], deps.PlasmoidPreviewPackageName); err != nil {
 					color.Red("Failed to install plasmoidviewer:", err)
 					return
 				}

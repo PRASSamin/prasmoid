@@ -9,12 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/PRASSamin/prasmoid/internal"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 var DIST_DIR, _ = filepath.Abs("./dist/")
@@ -34,6 +32,7 @@ func main() {
 	switch os.Args[1] {
 	case "build":
         os.RemoveAll(DIST_DIR)
+        color.Blue("Building cli...")
         var builds = []bool{
             false,
             true,
@@ -156,60 +155,40 @@ func BuildDevelopment() {
     
     command.Stdout = os.Stdout
     command.Stderr = os.Stderr
-    command.Run()
+    if err := command.Run(); err != nil {
+        color.Red("Build failed! " + err.Error())
+        return
+    }
 
     color.Green("Development build successful!")
 }
 
-func BuildCli(compress bool) {
+func BuildCli(portable bool) {
 	filename := filepath.Join(DIST_DIR, strings.ToLower(internal.AppMeta.Name))
 	version := internal.AppMeta.Version
+    var cgo = 1
     
-	if compress {
-		filename += "-compressed"
-		version += "-compressed"
+	if portable {
+		filename += "-portable"
+		version += "-portable"
+        cgo = 0
 	}
 
 	// Inject version into the binary
 	ldflags := fmt.Sprintf(`-s -w -X 'github.com/PRASSamin/prasmoid/internal.Version=%s'`, version)
     
 	command := exec.Command("go", "build", "-ldflags", ldflags, "-o", filename, "./src")
+    
+    // Set CGO_ENABLED in the command's environment
+    command.Env = append(os.Environ(), fmt.Sprintf("CGO_ENABLED=%d", cgo))
 
 	command.Stdout = os.Stdout
     command.Stderr = os.Stderr
-    command.Run()
+    if err := command.Run(); err != nil {
+        color.Red("Build failed! " + err.Error())
+        return
+    }
 
     filenameSize, _ := os.Stat(filename)
 	color.Green("Build successful! %s (%d mb)", filename, filenameSize.Size()/1024/1024)
-
-	if compress {
-		color.Cyan("Starting executable compression...")
-
-		if !utils.IsPackageInstalled("upx") {
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "UPX is not installed. Do you want to install it now?",
-				Default: true,
-			}
-			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
-				return
-			}
-			if confirm {
-				if _, err := utils.TryInstallPackage("upx"); err != nil {
-					color.Red("Failed to install UPX.")
-					return
-				}
-				color.Green("UPX installed successfully.")
-			} else {
-				color.Yellow("Compression cancelled.")
-				return
-			}
-		}
-
-		command = exec.Command("upx", "--best", "--lzma", filename)
-		command.Stdout = os.Stdout
-        command.Stderr = os.Stderr
-        command.Run()
-		color.Green("Compression successful!")
-	}
 }

@@ -21,17 +21,17 @@ ASSETS=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/lates
 
 # Extract URLs for both binaries
 NORMAL_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .browser_download_url')
-COMPRESSED_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compressed") | .browser_download_url')
+PORTABLE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .browser_download_url')
 
 # Get sizes
 NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
-COMPRESSED_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-compressed") | .size')
+PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .size')
 
 # Handle user input based on TTY availability
 if [[ -t 0 ]]; then
   echo "Please select which version to install:"
-  echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE)) - Recommended (faster performance)"
-  echo "2) Prasmoid-compressed ($(formatted_size $COMPRESSED_SIZE)) - Smaller size"
+  echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE))"
+  echo "2) Prasmoid-portable ($(formatted_size $PORTABLE_SIZE)) (Recommended for minimal systems e.g. Alpine, NixOS, etc.)"
   read -p "Enter your choice (1 or 2): " choice
 else
   choice="${1:-1}"  # Default to 1 if no arg is passed
@@ -48,7 +48,7 @@ if [[ "$choice" == "1" ]]; then
   DOWNLOAD_URL="$NORMAL_URL"
   BINARY_NAME="prasmoid"
 else
-  DOWNLOAD_URL="$COMPRESSED_URL"
+  DOWNLOAD_URL="$PORTABLE_URL"
   BINARY_NAME="prasmoid"
 fi
 

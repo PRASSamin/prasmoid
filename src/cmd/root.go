@@ -140,6 +140,9 @@ func getLatestTag(body []byte) string {
 }
 
 func isUpdateAvailable(latestTag string) bool {
+	if latestTag == "" {
+		return false
+	}
 	re := regexp.MustCompile(`^([^-|_]+)`)
 	matches := re.FindStringSubmatch(internal.AppMeta.Version)
 	if len(matches) > 1 {

@@ -12,10 +12,11 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 var watch bool
@@ -37,7 +38,8 @@ var FormatCmd = &cobra.Command{
 			color.Red("Current directory is not a valid plasmoid.")
 			return
 		}
-		if !utils.IsPackageInstalled("qmlformat") {
+		if !utils.IsPackageInstalled(deps.QmlFormatPackageName["binary"]) {
+			pm, _ := utils.DetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "qmlformat is not installed. Do you want to install it?",
@@ -48,8 +50,7 @@ var FormatCmd = &cobra.Command{
 			}
 			
 			if confirm {
-				_, err := utils.TryInstallPackage("qmlformat")
-				if err != nil {
+				if err := utils.InstallQmlformat(pm); err != nil {
 					color.Red("Failed to install qmlformat.")
 					return
 				} 
