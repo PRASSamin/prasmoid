@@ -62,7 +62,7 @@ func TestInitPlasmoid(t *testing.T) {
 		"metadata.json",
 		"contents/ui/main.qml",
 		"contents/config/main.xml",
-		"contents/icons/plasmoid.svg",
+		"contents/icons/prasmoid.svg",
 		".gitignore",
 		"prasmoid.config.js",
 		".prasmoid/commands",

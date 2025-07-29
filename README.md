@@ -62,6 +62,16 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install | bash -s 2
 ```
 
+#### Arch Linux (AUR)
+
+- **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
+
+- Official AUR package maintained by [clorteau](https://github.com/clorteau). Big thanks for making life easier for the Arch gang! 🙌
+
+```bash
+yay -S prasmoid
+```
+
 ### Updating Prasmoid
 
 Keep Prasmoid up to date with the latest features and improvements using one of these methods:
@@ -113,26 +123,34 @@ Creating a new plasmoid is incredibly simple with `prasmoid init`.
 
 Prasmoid provides a comprehensive set of commands to manage your plasmoid projects.
 
-| Command           | Description                                                                                                                                                       | Usage & Flags                                                                                                                                                                             |
-| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`           | Setup plasmoid development environment(e.g. install dependencies)                                                                                                 | `prasmoid setup`                                                                                                                                                                          |
-| `init`            | Initializes a new plasmoid project.                                                                                                                               | `prasmoid init [-n <name>]` <br> `-n, --name`: Specify the project name directly.                                                                                                         |
-| `build`           | Builds and packages the project into a distributable `.plasmoid` archive.                                                                                         | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Specify a custom output directory (defaults to `./build`).                                                                        |
-| `preview`         | Launches the plasmoid in a live preview window.                                                                                                                   | `prasmoid preview [-w]` <br> `-w, --watch`: Enable automatic window restart on file changes.                                                                                              |
-| `format`          | Formats all `.qml` files in the `contents` directory using `qmlformat`.                                                                                           | `prasmoid format [-d <dir>] [-w]` <br> `-d, --dir`: Specify the directory to format (defaults to `./contents`). <br> `-w, --watch`: Watch for file changes and automatically format them. |
-| `link`            | Creates a symbolic link from your project to the KDE plasmoids development directory (`~/.local/share/plasma/plasmoids/`). Essential for development and preview. | `prasmoid link [-w]` <br> `-w, --where`: Show the linked path without performing the link operation.                                                                                      |
-| `unlink`          | Removes the symbolic link created by `prasmoid link`.                                                                                                             | `prasmoid unlink`                                                                                                                                                                         |
-| `install`         | Installs the current plasmoid project to the system-wide plasmoids directory for production use.                                                                  | `prasmoid install`                                                                                                                                                                        |
-| `uninstall`       | Removes the plasmoid from the system.                                                                                                                             | `prasmoid uninstall`                                                                                                                                                                      |
-| `changeset`       | Manages versioning and changelogs for your project.                                                                                                               | See subcommands below.                                                                                                                                                                    |
-| `changeset add`   | Creates a new changeset file, prompting for version bump and summary.                                                                                             | `prasmoid changeset add [-b <type>] [-s <summary>]` <br> `-b, --bump`: Specify version bump type (`patch`, `minor`, `major`). <br> `-s, --summary`: Provide a changelog summary directly. |
-| `changeset apply` | Applies all pending changesets, updating `metadata.json` and `CHANGELOG.md`.                                                                                      | `prasmoid changeset apply`                                                                                                                                                                |
-| `commands`        | Manages custom, project-specific JavaScript commands.                                                                                                             | See subcommands below.                                                                                                                                                                    |
-| `commands add`    | Creates a new JavaScript command file from a template in `.prasmoid/commands/`.                                                                                   | `prasmoid commands add [-n <name>]` <br> `-n, --name`: Specify the command name.                                                                                                          |
-| `commands remove` | Deletes a custom command.                                                                                                                                         | `prasmoid commands remove [-n <name>]` <br> `-n, --name`: Specify the command name to remove.                                                                                             |
-| `update`          | Manage update operations.                                                                                                                                         | See subcommands below.                                                                                                                                                                    |
-| `me`              | Updates Prasmoid to the latest version.                                                                                                                           | `prasmoid update me`                                                                                                                                                                      |
-| `version`         | Displays the current version of Prasmoid.                                                                                                                         | `prasmoid version`                                                                                                                                                                        |
+| Command             | Description                                                             | Usage & Flags                                                                                                                                 |
+| :------------------ | :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`             | Bootstraps the development environment (e.g. installs dependencies).    | `prasmoid setup`                                                                                                                              |
+| `init`              | Initializes a new plasmoid project.                                     | `prasmoid init [-n <name>]` <br> `-n, --name`: Project name.                                                                                  |
+| `build`             | Packages the project into a `.plasmoid` archive.                        | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Output directory (default: `./build`).                                                |
+| `preview`           | Launches the plasmoid in a live preview window.                         | `prasmoid preview [-w]` <br> `-w, --watch`: Auto-restart on file changes.                                                                     |
+| `format`            | Formats all `.qml` files in the `contents` directory using `qmlformat`. | `prasmoid format [-d <dir>] [-w]` <br> `-d, --dir`: Directory to format (default: `./contents`). <br> `-w, --watch`: Watch and auto-format.   |
+| `link`              | Symlinks the project to KDE’s development plasmoids directory.          | `prasmoid link [-w]` <br> `-w, --where`: Show the linked path only.                                                                           |
+| `unlink`            | Removes the symlink created by `link`.                                  | `prasmoid unlink`                                                                                                                             |
+| `install`           | Installs the plasmoid system-wide for production use.                   | `prasmoid install`                                                                                                                            |
+| `uninstall`         | Uninstalls the plasmoid from the system.                                | `prasmoid uninstall`                                                                                                                          |
+| `changeset`         | Manages versioning and changelogs.                                      | See subcommands below.                                                                                                                        |
+| `changeset add`     | Creates a new changeset with version bump and summary.                  | `prasmoid changeset add [-b <type>] [-s <summary>]` <br> `-b, --bump`: `patch`, `minor`, or `major`. <br> `-s, --summary`: Changelog summary. |
+| `changeset apply`   | Applies pending changesets to `metadata.json` and `CHANGELOG.md`.       | `prasmoid changeset apply`                                                                                                                    |
+| `commands`          | Manages custom JavaScript CLI commands.                                 | See subcommands below.                                                                                                                        |
+| `commands add`      | Adds a new custom JS command in `.prasmoid/commands/`.                  | `prasmoid commands add [-n <name>]` <br> `-n, --name`: Command name.                                                                          |
+| `commands remove`   | Removes a custom command.                                               | `prasmoid commands remove [-n <name>]` <br> `-n, --name`: Command name.                                                                       |
+| `i18n`              | Handles internationalization tasks.                                     | See subcommands below.                                                                                                                        |
+| `i18n extract`      | Extracts strings for translation from metadata and QML files.           | `prasmoid i18n extract` <br> `--no-po`: Skip `.po` generation.                                                                                |
+| `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output. <br> `--restart`: Restart plasmashell after compiling.                          |
+| `i18n locales`      | Manages supported locales.                                              | See subcommands below.                                                                                                                        |
+| `i18n locales edit` | Launches locale selector to edit supported locales.                     | `prasmoid i18n locales edit`                                                                                                                  |
+| `regen`             | Regenerates config or type definition files.                            | See subcommands below.                                                                                                                        |
+| `regen types`       | Regenerates `prasmoid.d.ts`.                                            | `prasmoid regen types`                                                                                                                        |
+| `regen config`      | Regenerates `prasmoid.config.js`.                                       | `prasmoid regen config`                                                                                                                       |
+| `update`            | Update-related utilities.                                               | See subcommands below.                                                                                                                        |
+| `update me`         | Updates Prasmoid itself to the latest version.                          | `prasmoid update me`                                                                                                                          |
+| `version`           | Shows the current version of Prasmoid.                                  | `prasmoid version`                                                                                                                            |
 
 ## Extending Prasmoid with Custom Commands
 
@@ -232,12 +250,23 @@ The embedded runtime provides a subset of Node.js-like APIs, focusing on synchro
 > [!NOTE]
 > The embedded runtime currently supports **synchronous** file system operations only. Asynchronous functions (e.g., `fs.readFile`) are not implemented.
 
+---
+
 ## Contributing
 
 We welcome contributions from the community! Whether it's bug reports, feature requests, or code contributions, your help is invaluable.
 
 - **Report Bugs**: If you find an issue, please open a [GitHub Issue](https://github.com/PRASSamin/prasmoid/issues).
 - **Suggest Features**: Have an idea for a new feature? Open an issue to discuss it.
+
+---
+
+## 💖 Credits
+
+- **clorteau** – for packaging Prasmoid on the Arch AUR  
+  [GitHub](https://github.com/clorteau) · [Reddit](https://www.reddit.com/user/_northernlights_)
+
+---
 
 ## License
 

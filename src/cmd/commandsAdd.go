@@ -12,31 +12,13 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/utils"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
 var commandTemplates = map[string]string{
-	"js": `/// <reference path="%s" />
-const prasmoid = require("prasmoid");
-
-prasmoid.Command({
-    run: (ctx) => {
-		const plasmoidId = prasmoid.getMetadata("Id");
-		if (!plasmoidId) {
-			console.red(
-			"Could not get Plasmoid ID. Are you in a valid project directory?"
-			);
-			return;
-		}
-
-		console.color('%s Called', "blue");
-	},
-	short: "A brief description of your command.",
-	long: "A longer description that spans multiple lines and likely contains examples\nand usage of using your command. For example:\n\nPlasmoid CLI is a CLI tool for KDE Plasmoid development.\nIt's a all-in-one tool for plasmoid development.",
-	flags: [],
-});`,
+	"js": consts.JS_COMMAND_TEMPLATE,
 }
 
 var commandName string
@@ -51,8 +33,6 @@ var CommandsAddCmd = &cobra.Command{
 	Short: "Add a custom command",
 	Long:  "Add a custom command to the project.",
 	Run: func(cmd *cobra.Command, args []string) {
-		config, _ := utils.LoadConfigRC()
-
 		invalidChars := regexp.MustCompile(`[\\/:*?"<>|\s@]`)
 		
 		// Ask for command name
@@ -70,7 +50,7 @@ var CommandsAddCmd = &cobra.Command{
 					return errors.New("invalid characters in command name")
 				}
 				
-				baseName := filepath.Join(config.Commands.Dir, name)
+				baseName := filepath.Join(ConfigRC.Commands.Dir, name)
 				if _, err := os.Stat(baseName + ".js"); err == nil {
 					return errors.New("command name already exists with extension .js")
 				}
@@ -82,12 +62,12 @@ var CommandsAddCmd = &cobra.Command{
 
 		template := commandTemplates["js"]
 
-		if _, err := os.Stat(config.Commands.Dir); os.IsNotExist(err) {
-			os.MkdirAll(config.Commands.Dir, 0755)
+		if _, err := os.Stat(ConfigRC.Commands.Dir); os.IsNotExist(err) {
+			os.MkdirAll(ConfigRC.Commands.Dir, 0755)
 		}
 
 		commandFile := commandName + ".js"
-		filePath := filepath.Join(config.Commands.Dir, commandFile)
+		filePath := filepath.Join(ConfigRC.Commands.Dir, commandFile)
 
 		// Create the new command file
 		file, err := os.Create(filePath)

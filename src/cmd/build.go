@@ -34,14 +34,25 @@ var BuildCmd = &cobra.Command{
 			color.Red("Current directory is not a valid plasmoid.")
 			return
 		}
-		color.Cyan(" Starting plasmoid build...")
+
+		// compile translations
+		color.Cyan("→ Compiling translations...")
+		if err := CompileI18n(ConfigRC, false); err != nil {
+			color.Red("Failed to compile translations: %v", err)
+			// We don't necessarily want to stop the build if translations fail
+			color.Yellow("Continuing build without translations...")
+		} else {
+			color.Green("Translations compiled successfully.")
+		}
+
+		color.Cyan("→ Starting plasmoid build...")
 		plasmoidID, ierr := utils.GetDataFromMetadata("Id")
 		version, verr := utils.GetDataFromMetadata("Version")
 		if ierr != nil || verr != nil {
 			color.Red("Failed to get plasmoid version: %v", fmt.Errorf("%v or %v", ierr, verr))
 			return
 		}
-		zipFileName := plasmoidID + "-" + version + ".plasmoid"
+		zipFileName := plasmoidID.(string) + "-" + version.(string) + ".plasmoid"
 
 		if err := os.RemoveAll(buildOutputDir); err != nil {
 			color.Red("Failed to clean build dir: %v", err)
@@ -74,7 +85,7 @@ var BuildCmd = &cobra.Command{
 			return
 		}
 
-		color.Green(" Build complete: %s", filepath.Join(buildOutputDir, zipFileName))
+		color.Green("Build complete: %s", color.YellowString(filepath.Join(buildOutputDir, zipFileName)))
 	},
 }
 

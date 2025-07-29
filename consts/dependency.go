@@ -1,4 +1,4 @@
-package deps
+package consts
 
 var QmlFormatPackageName = map[string]string{
 	"apt":    "qt6-tools-dev",
@@ -22,4 +22,12 @@ var CurlPackageName = map[string]string{
 	"pacman": "curl",
 	"nix":    "nixpkgs.curl",
 	"binary": "curl",
+}
+
+var GettextPackageName = map[string]string{
+	"apt":    "gettext",
+	"dnf":    "gettext",
+	"pacman": "",
+	"nix":    "", // TODO: fill it before release
+	"binary": "xgettext",
 }

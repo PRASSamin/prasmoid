@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/core"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/internal/runtime"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/fatih/color"
@@ -31,27 +34,41 @@ func GetDevDest() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", id), nil
+	return filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", id.(string)), nil
 }
 
-// Get metadata from metadata.json
-func GetDataFromMetadata(key string) (string, error) {
-	data, err := os.ReadFile("metadata.json")
+// GetDataFromMetadata reads metadata.json and returns the requested key's value from the KPlugin section
+func GetDataFromMetadata(key string) (interface{}, error) {
+	const fileName = "metadata.json"
+
+	data, err := os.ReadFile(fileName)
 	if err != nil {
-		return "", fmt.Errorf("metadata.json not found")
+		return nil, fmt.Errorf("failed to read %s: %w", fileName, err)
 	}
+
 	var meta map[string]interface{}
-	err = json.Unmarshal(data, &meta)
-	if err != nil {
-		return "", err
+	if err := json.Unmarshal(data, &meta); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", fileName, err)
 	}
-	if plugin, ok := meta["KPlugin"].(map[string]interface{}); ok {
-		if id, ok := plugin[key].(string); ok {
-			return id, nil
-		}
+
+	kpluginRaw, ok := meta["KPlugin"]
+	if !ok {
+		return nil, fmt.Errorf("KPlugin section not found in %s", fileName)
 	}
-	return "", fmt.Errorf("%s not found in metadata.json", key)
+
+	kplugin, ok := kpluginRaw.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("KPlugin section has unexpected structure in %s", fileName)
+	}
+
+	value, ok := kplugin[key]
+	if !ok {
+		return nil, fmt.Errorf("key '%s' not found in KPlugin", key)
+	}
+
+	return value, nil
 }
+
 
 // Check if plasmoid is installed
 func IsInstalled() (bool, string, error) {
@@ -61,13 +78,13 @@ func IsInstalled() (bool, string, error) {
 	}
 
 	// Check user directory
-	userPath := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", id)
+	userPath := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", id.(string))
 	if _, err := os.Stat(userPath); err == nil {
 		return true, userPath, nil
 	}
 
 	// Check system directory
-	systemPath := filepath.Join("/usr/share/plasma/plasmoids", id)
+	systemPath := filepath.Join("/usr/share/plasma/plasmoids", id.(string))
 	if _, err := os.Stat(systemPath); err == nil {
 		return true, systemPath, nil
 	}
@@ -254,11 +271,11 @@ func ensureBinaryLinked(binName, binPath string) error {
 }
 
 func InstallQmlformat(pm string) error {
-	return InstallPackage(pm, deps.QmlFormatPackageName["binary"], deps.QmlFormatPackageName)
+	return InstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName)
 }
 
 func InstallPlasmoidPreview(pm string) error {
-	return InstallPackage(pm, deps.PlasmoidPreviewPackageName["binary"], deps.PlasmoidPreviewPackageName)
+	return InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName)
 }
 
 
@@ -272,42 +289,121 @@ func IsValidPlasmoid() bool {
 	return true
 }
 
+func EnsureStringAndValid(name string, value interface{}, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	str, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("%s value is not a string", name)
+	}
+	return str, nil
+}
 
-func LoadConfigRC() (types.Config, error) {
+func LoadConfigRC() (types.Config) {
+	if !IsValidPlasmoid() {
+		return types.Config{}
+	}
     var configFileName string = "prasmoid.config.js"
-	
 	defaultConfig := types.Config{
 		Commands: types.ConfigCommands{
 			Dir: ".prasmoid/commands",
-			DefaultRT: "js",
+		},
+		I18n: types.ConfigI18n{
+			Dir: "translations",
+			Locales: []string{"en"},
 		},
 	}
 
     data, err := os.ReadFile(configFileName)
     if err != nil {
-        return defaultConfig, err
+		color.Yellow("Configuration file (prasmoid.config.js) not found.\n" +
+		"Run 'prasmoid regen config'\n")
+        return defaultConfig
     }
     vm := runtime.NewRuntime()
     _, err = vm.RunString(string(data))
     if err != nil {
-        return defaultConfig, err
+		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
+		"Run 'prasmoid regen config'\n")
+        return defaultConfig
     }
     config := vm.Get("config")
     if config == nil {
-        return defaultConfig, fmt.Errorf("config not found in %s", configFileName)
+		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
+		"Run 'prasmoid regen config'\n")
+        return defaultConfig
     }
     
     // Convert to JSON bytes
     configBytes, err := json.Marshal(config.Export())
     if err != nil {
-        return defaultConfig, fmt.Errorf("failed to marshal config: %v", err)
+		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +"Run 'prasmoid regen config'\n")
+        return defaultConfig
     }
     
     // Unmarshal into Config struct
     var result types.Config
     if err := json.Unmarshal(configBytes, &result); err != nil {
-        return defaultConfig, fmt.Errorf("failed to unmarshal config: %v", err)
+		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
+		"Run 'prasmoid regen config'\n")
+        return defaultConfig
     }
     
-    return result, nil
+    return result
+}
+
+func AskForLocales(defaultLocales ...[]string) []string {
+	var defaults []string
+	if len(defaultLocales) > 0 {
+		defaults = defaultLocales[0]
+	} else {
+		defaults = []string{"en"}
+	}
+
+	// Build options: map shortcode ➝ full name
+	localeOptions := []string{}
+	for code, name := range consts.KDELocales {
+		localeOptions = append(localeOptions, fmt.Sprintf("%s (%s)", code, name))
+	}
+	sort.Strings(localeOptions)
+
+	// Convert passed defaults like "en" ➝ "en (English)"
+	defaultDisplay := make([]string, 0, len(defaults))
+	for _, code := range defaults {
+		if name, ok := consts.KDELocales[code]; ok {
+			defaultDisplay = append(defaultDisplay, fmt.Sprintf("%s (%s)", code, name))
+		}
+	}
+
+	var selectedWithNames []string
+
+	localeQuestion := &survey.MultiSelect{
+		Message: "Select locales:",
+		Options: localeOptions,
+		Default: defaultDisplay,
+	}
+
+	if err := survey.AskOne(localeQuestion, &selectedWithNames, survey.WithValidator(func(ans interface{}) error {
+		selected, ok := ans.([]core.OptionAnswer)
+		if !ok {
+			return fmt.Errorf("invalid type for answer")
+		}
+		if len(selected) == 0 {
+			return fmt.Errorf("you must select at least one locale")
+		}
+		return nil
+	})); err != nil {
+		return nil
+	}
+
+	// Extract shortcodes only, in quoted form
+	locales := make([]string, 0, len(selectedWithNames))
+	for _, full := range selectedWithNames {
+		if parts := strings.SplitN(full, " ", 2); len(parts) > 0 {
+			locales = append(locales, parts[0])
+		}
+	}
+
+	return locales
 }

@@ -4,7 +4,7 @@ Copyright 2025 PRAS
 package cmd
 
 import (
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -27,7 +27,7 @@ var SetupCmd = &cobra.Command{
 		return
 	}
 
-	if !utils.IsPackageInstalled(deps.QmlFormatPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
 		color.Yellow("Installing qmlformat...")
 		if err := utils.InstallQmlformat(pm); err != nil {
 			color.Red("Failed to install qmlformat.")
@@ -35,7 +35,7 @@ var SetupCmd = &cobra.Command{
 		}
 	}
 
-	if !utils.IsPackageInstalled(deps.PlasmoidPreviewPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
 		color.Yellow("Installing plasmoidviewer...")
 		if err := utils.InstallPlasmoidPreview(pm); err != nil {
 			color.Red("Failed to install plasmoidviewer.")
@@ -43,9 +43,9 @@ var SetupCmd = &cobra.Command{
 		}
 	}
 
-	if !utils.IsPackageInstalled(deps.CurlPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.CurlPackageName["binary"]) {
 		color.Yellow("Installing curl...")
-		if err := utils.InstallPackage(pm, deps.CurlPackageName["binary"], deps.CurlPackageName); err != nil {
+		if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
 			color.Red("Failed to install curl.")
 			return
 		}

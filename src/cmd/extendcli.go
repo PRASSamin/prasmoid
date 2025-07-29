@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/PRASSamin/prasmoid/internal/runtime"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dop251/goja"
 	"github.com/fatih/color"
@@ -15,9 +14,8 @@ import (
 )
 
 // DiscoverAndRegisterCustomCommands scans for Js, Go files and registers them as cobra commands.
-func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command) {
-	config, _ := utils.LoadConfigRC()
-	commandsDir := config.Commands.Dir
+func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command) {	
+	commandsDir := ConfigRC.Commands.Dir
 
 	// Check if command directory exists
 	if _, err := os.Stat(commandsDir); os.IsNotExist(err) {
@@ -36,7 +34,7 @@ func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command) {
 		if file.IsDir() {
 			continue
 		}
-		if isIgnored(file.Name(), config.Commands.Ignore, commandsDir) {
+		if isIgnored(file.Name(), ConfigRC.Commands.Ignore, commandsDir) {
 			continue
 		}
 		filteredFiles = append(filteredFiles, file)

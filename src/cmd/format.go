@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
@@ -38,7 +38,7 @@ var FormatCmd = &cobra.Command{
 			color.Red("Current directory is not a valid plasmoid.")
 			return
 		}
-		if !utils.IsPackageInstalled(deps.QmlFormatPackageName["binary"]) {
+		if !utils.IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{

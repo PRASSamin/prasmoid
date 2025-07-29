@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ var meCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if !utils.IsPackageInstalled(deps.CurlPackageName["binary"]) {
+		if !utils.IsPackageInstalled(consts.CurlPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
@@ -45,7 +45,7 @@ var meCmd = &cobra.Command{
 			}
 			
 			if confirm {
-				if err := utils.InstallPackage(pm, deps.CurlPackageName["binary"], deps.CurlPackageName); err != nil {
+				if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
 					color.Red("Failed to install curl:", err)
 					return
 				}

@@ -18,7 +18,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -69,7 +69,7 @@ var PreviewCmd = &cobra.Command{
 			}
 		}
 
-		if !utils.IsPackageInstalled(deps.PlasmoidPreviewPackageName["binary"]) {
+		if !utils.IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
@@ -81,7 +81,7 @@ var PreviewCmd = &cobra.Command{
 			}
 			
 			if confirm {
-				if err := utils.InstallPackage(pm, deps.PlasmoidPreviewPackageName["binary"], deps.PlasmoidPreviewPackageName); err != nil {
+				if err := utils.InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
 					color.Red("Failed to install plasmoidviewer:", err)
 					return
 				}
@@ -111,11 +111,11 @@ func previewPlasmoid(watch bool) error {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	if watch {
-		watchOnChange("./contents", id)
+		watchOnChange("./contents", id.(string))
 		return nil
 	}
 
-	plasmoidViewer := exec.CommandContext(ctx, "plasmoidviewer", "-a", id)
+	plasmoidViewer := exec.CommandContext(ctx, "plasmoidviewer", "-a", id.(string))
 	plasmoidViewer.Stdout = os.Stdout
 	plasmoidViewer.Stderr = os.Stderr
 	return plasmoidViewer.Run()

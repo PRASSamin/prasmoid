@@ -47,7 +47,7 @@ var ChangesetAddCmd = &cobra.Command{
 
 		bumpLabels := make(map[string]string)
 		for _, bumpType := range []string{"patch", "minor", "major"} {
-			if nextVer, err := GetNextVersion(version, bumpType); err == nil {
+			if nextVer, err := GetNextVersion(version.(string), bumpType); err == nil {
 				bumpLabels[bumpType] = fmt.Sprintf("%s (%s)", bumpType, nextVer)
 			} else {
 				color.Red("Failed to compute next version for %s: %v", bumpType, err)
@@ -79,7 +79,7 @@ var ChangesetAddCmd = &cobra.Command{
 		// Handle next version: flag or compute
 		if next == "" {
 			var err error
-			next, err = GetNextVersion(version, bump)
+			next, err = GetNextVersion(version.(string), bump)
 			if err != nil {
 				color.Red("Failed to compute next version for %s: %v", bump, err)
 				return

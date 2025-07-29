@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -27,10 +26,9 @@ var CommandsRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove a custom command",
 	Long:  "Remove a custom command to the project.",
-	Run: func(cmd *cobra.Command, args []string) {
-		config, _ := utils.LoadConfigRC()
+	Run: func(cmd *cobra.Command, args []string) {		
 		availableCmds := []string{}
-		filepath.Walk(config.Commands.Dir, func(path string, info os.FileInfo, err error) error {
+		filepath.Walk(ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
 				return nil
 			}
@@ -61,7 +59,7 @@ var CommandsRemoveCmd = &cobra.Command{
 		fileName := matches[1]
 
 		// Remove the file
-		filePath := filepath.Join(config.Commands.Dir, fileName)
+		filePath := filepath.Join(ConfigRC.Commands.Dir, fileName)
 		
 		var confirm bool
 		confirmPrompt := &survey.Confirm{

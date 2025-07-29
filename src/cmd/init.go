@@ -19,7 +19,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/PRASSamin/prasmoid/deps"
+	"github.com/PRASSamin/prasmoid/consts"
+	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -55,174 +56,17 @@ type ProjectConfig struct {
 	AuthorEmail string
 	License     string
 	InitGit     bool
+	Locales     []string
 }
 
 var Config ProjectConfig
 
 var FileTemplates = map[string]string{
-	"contents/ui/main.qml": `import QtQuick 6.5
-import QtQuick.Layouts 6.5
-import org.kde.kirigami 2.20 as Kirigami
-import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.plasmoid 2.0
-
-PlasmoidItem {
-    id: root
-
-    Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
-
-    RowLayout {
-        id: rowLayout
-        anchors.centerIn: root
-
-        Text {
-            text: "Hello from {{.Name}}!"
-            color: "white"
-            font.pointSize: 18
-        }
-    }
-}`,
-	"contents/config/main.xml": `<kcfg>
-  <group name="General">
-    <entry name="exampleOption" type="Bool">
-      <default>true</default>
-    </entry>
-  </group>
-</kcfg>
-`,
-	"contents/icons/plasmoid.svg": `
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="14" fill="#4A90E2"/>
-  <text x="16" y="21" text-anchor="middle" font-size="12" fill="#fff">P</text>
-</svg>
-`,
-	".gitignore": `# Build artifacts
-build/
-*.plasmoid
-
-# IDE files
-.vscode/
-.idea/
-
-# OS-specific
-.DS_Store
-`,
-"prasmoid.config.js": `const config = {
-  commands: {
-    dir: ".prasmoid/commands",
-    ignore: []
-  },
-};
-`,
-"prasmoid.d.ts": `/**
- * This file provides type definitions for the custom command environment in Prasmoid.
- * It is used by code editors like VS Code to provide autocompletion and type-checking.
- *
- * @see https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
- */
-
-/**
- * The context object passed to every custom command's Run function.
- */
-interface CommandContext {
-  /**
-   * Returns the command-line arguments passed after the command name.
-   * @returns {string[]} An array of arguments.
-   * @example
-   * const args = ctx.Args();
-   * console.log(args[0]);
-   */
-  Args(): string[];
-
-  /**
-   * Provides access to the flags passed to the command.
-   */
-  Flags(): {
-    /**
-     * Retrieves the value of a specific flag.
-     * @param name The name of the flag to retrieve.
-     * @returns {string | boolean | undefined} The value of the flag, or undefined if not found.
-     * @example
-     * const name = ctx.Flags().get("name");
-     */
-    get(name: string): string | boolean | undefined;
-
-    /**
-     * You can also access flags directly as properties, but using get() is recommended for better type safety.
-     * @example
-     * const myFlag = ctx.Flags().myFlagName; // Type is 'any'
-     */
-    [key: string]: any;
-  };
-}
-
-/**
- * The global prasmoid module for interacting with the project.
- */
-declare module "prasmoid" {
-  /**
-   * Retrieves a value from the project's metadata.json file.
-   * @param key The key from the "KPlugin" section of metadata.json (e.g., "Id", "Version").
-   * @returns {string | undefined} The value from the metadata, or undefined if not found.
-   */
-  export function getMetadata(key: string): string | undefined;
-  /**
-   * Registers a custom command.
-   * @param config The configuration for the command.
-   */
-  export function Command(config: Config): void;
-}
-
-/**
- * Configuration for the custom command.
- */
-interface Config {
-  run: (ctx: CommandContext) => void;
-  /** A brief description of your command. */
-  short: string;
-  /** A longer description that spans multiple lines. */
-  long: string;
-  /** Optional aliases for the command. */
-  alias?: string[];
-  /** Flag definitions for the command. */
-  flags?: {
-    name: string;
-    shorthand?: string;
-    type: "string" | "boolean";
-    default?: string | boolean;
-    description: string;
-  }[];
-}
-
-interface Console {
-  /**
-   * Logs a red-colored message.
-   */
-  red(...message: any[]): void;
-
-  /**
-   * Logs a green-colored message.
-   */
-  green(...message: any[]): void;
-
-  /**
-   * Logs a yellow-colored message.
-   */
-  yellow(...message: any[]): void;
-
-  /**
-   * Flexible color logger. Last argument must be a color string.
-   * @example
-   * console.color("Hey", "you!", "red")
-   */
-  color(
-    ...message: any[],
-    color: "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "black"
-  ): void;
-}
-
-declare var console: Console;
-`,
+	"contents/ui/main.qml": consts.MAIN_QML,
+	"contents/config/main.xml": consts.MAIN_XML,
+	"contents/icons/prasmoid.svg": consts.PRASMOID_SVG,
+	".gitignore": consts.GITIGNORE,
+	"prasmoid.d.ts": consts.PRASMOID_DTS,
 }
 
 func init() {
@@ -242,7 +86,6 @@ var InitCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println()
 		color.Yellow("Creating project at: %s", Config.Path)
 		fmt.Println()
 
@@ -335,6 +178,8 @@ func gatherProjectConfig() error {
 		return err
 	}
 
+	Config.Locales = utils.AskForLocales()
+
 	// Check for git and ask to initialize
 	if utils.IsPackageInstalled("git") {
 		gitQuestion := &survey.Confirm{
@@ -379,23 +224,23 @@ func InitPlasmoid() error {
 		return err
 	}
 
-	if !utils.IsPackageInstalled(deps.QmlFormatPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
 		color.Yellow("Installing qmlformat...")
 		if err := utils.InstallQmlformat(pm); err != nil {
 			return err
 		}
 	}
 
-	if !utils.IsPackageInstalled(deps.PlasmoidPreviewPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
 		color.Yellow("Installing plasmoidviewer...")
 		if err := utils.InstallPlasmoidPreview(pm); err != nil {
 			return err
 		}
 	}
 
-	if !utils.IsPackageInstalled(deps.CurlPackageName["binary"]) {
+	if !utils.IsPackageInstalled(consts.CurlPackageName["binary"]) {
 		color.Yellow("Installing curl...")
-		if err := utils.InstallPackage(pm, deps.CurlPackageName["binary"], deps.CurlPackageName); err != nil {
+		if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
 			return err
 		}
 	}
@@ -409,6 +254,11 @@ func InitPlasmoid() error {
 
 	// Create metadata.json
 	if err := createMetadataFile(); err != nil {
+		return err
+	}
+
+	// Create config.js
+	if err := CreateConfigFile(Config.Locales); err != nil {
 		return err
 	}
 
@@ -438,11 +288,6 @@ func createFileFromTemplate(relPath, contentTmpl string) error {
 		return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(fullPath), err)
 	}
 
-	if _, err := os.Stat(fullPath); err == nil {
-		color.Yellow("Skipping existing file: %s", relPath)
-		return nil
-	}
-
 	tmpl, err := template.New(relPath).Parse(contentTmpl)
 	if err != nil {
 		return fmt.Errorf("failed to parse template for %s: %w", relPath, err)
@@ -456,27 +301,64 @@ func createFileFromTemplate(relPath, contentTmpl string) error {
 	return os.WriteFile(fullPath, buf.Bytes(), 0644)
 }
 
+func CreateConfigFile(locales []string) error {
+	fullPath := filepath.Join(Config.Path, "prasmoid.config.js")
+	RC := types.Config{
+		Commands: types.ConfigCommands{
+			Dir: ".prasmoid/commands",
+			Ignore: []string{},
+		},
+		I18n: types.ConfigI18n{
+			Dir: "translations",
+			Locales: locales,
+		},
+	}
+	configData, _ := json.MarshalIndent(RC, "", "  ")
+	content := fmt.Sprintf(`/// <reference path="prasmoid.d.ts" />
+/** @type {PrasmoidConfig} */
+const config = %v;`, string(configData))
+	return os.WriteFile(fullPath, []byte(content), 0644)
+}
+
 func createMetadataFile() error {
 	fullPath := filepath.Join(Config.Path, "metadata.json")
-	var authors []Author
+	var authors []map[string]interface{}
 	if strings.TrimSpace(Config.AuthorName) != "" || strings.TrimSpace(Config.AuthorEmail) != "" {
-		authors = append(authors, Author{Name: Config.AuthorName, Email: Config.AuthorEmail})
+		authorMap := map[string]interface{}{
+			"Name":  Config.AuthorName,
+			"Email": Config.AuthorEmail,
+		}
+		// Add localized author names
+		for _, locale := range Config.Locales {
+			cleanLocale := strings.Trim(locale, "\"")
+			authorMap[fmt.Sprintf("Name[%s]", cleanLocale)] = Config.AuthorName
+		}
+		authors = append(authors, authorMap)
 	}
 
-	metadata := Metadata{
-		KPackageStructure: "Plasma/Applet",
-		KPlugin: KPlugin{
-			Authors:          authors,
-			Description:      Config.Description,
-			EnabledByDefault: true,
-			FormFactors:      []string{"desktop", "tablet", "handset"},
-			Id:               Config.ID,
-			License:          Config.License,
-			Name:             Config.Name,
-			Version:          "0.0.1",
+	// Use a map for dynamic keys
+	metadata := map[string]interface{}{
+		"KPackageStructure": "Plasma/Applet",
+		"KPlugin": map[string]interface{}{
+			"Authors":          authors,
+			"Description":      Config.Description,
+			"EnabledByDefault": true,
+			"FormFactors":      []string{"desktop", "tablet", "handset"},
+			"Id":               Config.ID,
+			"License":          Config.License,
+			"Name":             Config.Name,
+			"Version":          "0.0.1",
 		},
-		XPlasmaAPIMinimumVersion: "6.0",
-		XPlasmaProvides:          []string{},
+		"X-Plasma-API-Minimum-Version": "6.0",
+		"X-Plasma-Provides":          []string{},
+	}
+
+	// Add localized placeholders for Name and Description directly under KPlugin
+	kplugin := metadata["KPlugin"].(map[string]interface{})
+	for _, locale := range Config.Locales {
+		cleanLocale := strings.Trim(locale, "\"")
+		kplugin[fmt.Sprintf("Name[%s]", cleanLocale)] = Config.Name
+		kplugin[fmt.Sprintf("Description[%s]", cleanLocale)] = Config.Description
 	}
 
 	data, err := json.MarshalIndent(metadata, "", "  ")

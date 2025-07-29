@@ -24,7 +24,7 @@ func TestBuildCommand(t *testing.T) {
 	// 3. Verify the .plasmoid file was created
 	plasmoidID, _ := utils.GetDataFromMetadata("Id")
 	version, _ := utils.GetDataFromMetadata("Version")
-	zipFileName := plasmoidID + "-" + version + ".plasmoid"
+	zipFileName := plasmoidID.(string) + "-" + version.(string) + ".plasmoid"
 	zipFilePath := filepath.Join(buildOutputDir, zipFileName)
 
 	if _, err := os.Stat(zipFilePath); os.IsNotExist(err) {
@@ -47,7 +47,7 @@ func TestBuildCommand(t *testing.T) {
 		"metadata.json",
 		"contents/ui/main.qml",
 		"contents/config/main.xml",
-		"contents/icons/plasmoid.svg",
+		"contents/icons/prasmoid.svg",
 	}
 
 	for _, file := range expectedFiles {

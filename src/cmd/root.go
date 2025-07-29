@@ -15,12 +15,18 @@ import (
 	"time"
 
 	"github.com/PRASSamin/prasmoid/internal"
+	"github.com/PRASSamin/prasmoid/types"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
+// project wise prasmoid config
+var ConfigRC types.Config
+
 func init() {
+	ConfigRC = utils.LoadConfigRC()
 	rootCmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    "custom",
