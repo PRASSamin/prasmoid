@@ -1,5 +1,7 @@
 # CHANGELOG
 
+---
+
 ## [v0.0.3] - 2025-07-29
 
 #### Features
@@ -31,6 +33,8 @@
 
 - Renamed `deps` ➜ `consts` for cleaner architecture and more intuitive constant management.
 
+---
+
 ## [v0.0.2] - 2025-07-28
 
 #### Changes
@@ -39,6 +43,8 @@
 - Refactor package management to support multiple package managers (apt, dnf, pacman, nix).
 - Update the build process to be more flexible.
 - Remove support for compressed version of the binary.
+
+---
 
 ## [v0.0.1] - 2025-07-28
 

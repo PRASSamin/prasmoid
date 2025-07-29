@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/PRASSamin/prasmoid/utils"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -97,13 +98,14 @@ func generatePoFiles(poDir string) error {
 }
 
 func cleanupBackupFiles(poDir string) error {
-	backupFiles, err := filepath.Glob(filepath.Join(poDir, "*.{po~,pot~,bak}"))
+	poDir, _ = filepath.Abs(poDir)
+	backupFiles, err := doublestar.Glob(os.DirFS(poDir), "*.{po~,pot~,bak}")
 	if err != nil {
 		return fmt.Errorf("failed to find backup files: %w", err)
 	}
 
 	for _, file := range backupFiles {
-		if err := os.Remove(file); err != nil {
+		if err := os.Remove(filepath.Join(poDir, file)); err != nil {
 			// Don't fail the whole process, just log a warning
 			color.Yellow("Warning: failed to remove backup file %s: %v", file, err)
 		}
