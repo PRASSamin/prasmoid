@@ -278,6 +278,44 @@ func InstallPlasmoidPreview(pm string) error {
 	return InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName)
 }
 
+func InstallDependencies() error {
+	pm, err := DetectPackageManager()
+	if err != nil {
+		return err
+	}
+	
+	if !IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
+		color.Yellow("Installing qmlformat...")
+		if err := InstallQmlformat(pm); err != nil {
+			return err
+		}
+	}
+
+	if !IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
+		color.Yellow("Installing plasmoidviewer...")
+		if err := InstallPlasmoidPreview(pm); err != nil {
+			return err
+		}
+	}
+
+
+	if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
+		color.Yellow("Installing gettext...")
+		if err := InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
+			return err
+		}
+	}
+
+	if !IsPackageInstalled(consts.CurlPackageName["binary"]) {
+		color.Yellow("Installing curl...")
+		if err := InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
+			return err
+		}
+	}	
+
+	return nil
+}
+
 
 func IsValidPlasmoid() bool {
 	if _, err := os.Stat("metadata.json"); err != nil {

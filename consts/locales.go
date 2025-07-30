@@ -1,5 +1,8 @@
 package consts
 
+/*
+[List of locales]https://stackoverflow.com/questions/3191664/list-of-all-locales-and-their-short-codes/28357857#28357857)
+*/
 var KDELocales = map[string]string{
 	"af": "Afrikaans",
 	"ar": "Arabic",

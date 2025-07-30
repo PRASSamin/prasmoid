@@ -27,7 +27,7 @@ var CurlPackageName = map[string]string{
 var GettextPackageName = map[string]string{
 	"apt":    "gettext",
 	"dnf":    "gettext",
-	"pacman": "",
-	"nix":    "", // TODO: fill it before release
+	"pacman": "gettext",
+	"nix":    "nixpkgs.gettext",
 	"binary": "xgettext",
 }

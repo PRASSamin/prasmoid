@@ -1,5 +1,8 @@
 /*
 Copyright © 2025 PRAS
+
+[Documentation reference](https://develop.kde.org/docs/plasma/widget/translations-i18n/)
+[Logic reference](https://github.com/Zren/plasma-applet-lib/blob/master/package/translate/merge)
 */
 package cmd
 
@@ -12,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fatih/color"
@@ -32,9 +37,26 @@ var I18nExtractCmd = &cobra.Command{
 			return
 		}
 
-		if !utils.IsPackageInstalled("xgettext") {
-			color.Red("xgettext command not found. Please install gettext.")
-			return
+		if !utils.IsPackageInstalled(consts.GettextPackageName["binary"]) {
+			pm, _ := utils.DetectPackageManager()
+			var confirm bool
+			confirmPrompt := &survey.Confirm{
+				Message: "gettext is not installed. Do you want to install it first?",
+				Default: true,
+			}
+			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+				return
+			}
+			
+			if confirm {
+				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
+					color.Red("Failed to install gettext:", err)
+					return
+				}
+			} else {
+				fmt.Println("Operation cancelled.")
+				return
+			}
 		}
 
 		color.Cyan("Extracting translatable strings...")

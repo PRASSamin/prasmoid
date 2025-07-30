@@ -219,30 +219,8 @@ func validateProjectName(ans interface{}) error {
 }
 
 func InitPlasmoid() error {
-	pm, err := utils.DetectPackageManager()
-	if err != nil {
+	if err := utils.InstallDependencies(); err != nil {
 		return err
-	}
-
-	if !utils.IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
-		color.Yellow("Installing qmlformat...")
-		if err := utils.InstallQmlformat(pm); err != nil {
-			return err
-		}
-	}
-
-	if !utils.IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
-		color.Yellow("Installing plasmoidviewer...")
-		if err := utils.InstallPlasmoidPreview(pm); err != nil {
-			return err
-		}
-	}
-
-	if !utils.IsPackageInstalled(consts.CurlPackageName["binary"]) {
-		color.Yellow("Installing curl...")
-		if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
-			return err
-		}
 	}
 
 	// Create project files from templates

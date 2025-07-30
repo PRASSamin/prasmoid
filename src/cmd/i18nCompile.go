@@ -1,5 +1,8 @@
 /*
 Copyright © 2025 PRAS
+
+[Documentation reference](https://develop.kde.org/docs/plasma/widget/translations-i18n/)
+[Logic reference](https://github.com/Zren/plasma-applet-lib/blob/master/package/translate/build)
 */
 package cmd
 
