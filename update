@@ -87,7 +87,7 @@ mv "$TEMP_FILE" "$CURRENT_EXE"
 
 log_done "Update complete."
 log_step "Current version: $CURRENT_VERSION"
-log_step "New version: $(echo "$LATEST_RELEASE_INFO" | jq -r '.tag_name') ($LATEST_HASH)"
+log_step "New version: $LATEST_TAG ($LATEST_HASH)"
 
 log_step "Relaunching CLI..."
 exec "$CURRENT_EXE"
