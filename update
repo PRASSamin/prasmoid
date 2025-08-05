@@ -67,9 +67,9 @@ log_step "Verifying checksum..."
 # move to dir containing the temp file, make 2nd temp file named correctly for sha256sum
 pushd $(dirname "$TEMP_FILE")
 if $IS_PORTABLE; then
-    TEMP_EXE="prasmoid"
-else
     TEMP_EXE="prasmoid-portable"
+else
+    TEMP_EXE="prasmoid"
 fi
 cp $(basename "$TEMP_FILE") $TEMP_EXE
 
