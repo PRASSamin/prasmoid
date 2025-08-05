@@ -264,7 +264,7 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 ## 💖 Credits
 
 - **clorteau** – for packaging Prasmoid on the Arch AUR  
-  [GitHub](https://github.com/clorteau) · [Reddit](https://www.reddit.com/user/_northernlights_)
+  [GitHub](https://github.com/clorteau)
 
 ---
 

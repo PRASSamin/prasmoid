@@ -27,6 +27,9 @@ PORTABLE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable"
 NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
 PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .size')
 
+# Get URLs for checksums file
+SHA256_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url')
+
 # Handle user input based on TTY availability
 if [[ -t 0 ]]; then
   echo "Please select which version to install:"
@@ -49,7 +52,7 @@ if [[ "$choice" == "1" ]]; then
   BINARY_NAME="prasmoid"
 else
   DOWNLOAD_URL="$PORTABLE_URL"
-  BINARY_NAME="prasmoid"
+  BINARY_NAME="prasmoid-portable"
 fi
 
 # Download binary
@@ -60,6 +63,13 @@ curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
 if [[ ! -f "$BINARY_NAME" ]]; then
   echo "Download failed!"
   exit 1
+fi
+
+if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
+  echo "✓ Checksum passed"
+else
+  echo "✗ Checksum failed!" >&2
+  exit 2
 fi
 
 chmod +x "$BINARY_NAME"
