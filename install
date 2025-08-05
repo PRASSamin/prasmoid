@@ -29,6 +29,10 @@ PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable
 
 # Get URLs for checksums file
 SHA256_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url')
+if [[ -z "$SHA256_URL" ]]; then
+  echo "Error: SHA256SUMS file is missing from the release assets. Cannot continue." >&2
+  exit 3
+fi
 
 # Handle user input based on TTY availability
 if [[ -t 0 ]]; then
