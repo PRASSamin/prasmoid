@@ -27,9 +27,8 @@ PORTABLE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable"
 NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
 PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .size')
 
-# Checksums
-NORMAL_SHA256="72e4c2b772188ff7ac3ac1b210238a2b9aff1ef8a2844f11df999a44990dcc96"
-PORTABLE_SHA256="0f037fb456ba4c7fdafa4f76aa121d1123d869e3fa4a76777bd047213f8705e6"
+# Get URLs for checksums file
+SHA256_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url')
 
 # Handle user input based on TTY availability
 if [[ -t 0 ]]; then
@@ -50,12 +49,10 @@ fi
 # Select appropriate binary
 if [[ "$choice" == "1" ]]; then
   DOWNLOAD_URL="$NORMAL_URL"
-  SHA256="$NORMAL_SHA256"
   BINARY_NAME="prasmoid"
 else
   DOWNLOAD_URL="$PORTABLE_URL"
-  SHA256="$PORTABLE_SHA256"
-  BINARY_NAME="prasmoid"
+  BINARY_NAME="prasmoid-portable"
 fi
 
 # Download binary
@@ -68,10 +65,10 @@ if [[ ! -f "$BINARY_NAME" ]]; then
   exit 1
 fi
 
-# Verify checksum
-SHA256_CALCULATED=$(sha256sum "$BINARY_NAME" | awk '{print $1}')
-if [ "$SHA256_CALCULATED" != "$SHA256" ]; then
-  echo "Checksum verification failed!!"
+if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
+  echo "✓ Checksum passed"
+else
+  echo "✗ Checksum failed!" >&2
   exit 2
 fi
 
