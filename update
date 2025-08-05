@@ -36,7 +36,7 @@ fi
 
 SHA256_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
 if [[ -z "$SHA256_URL" ]]; then
-  log_fail "SHA256SUMS file missing in release."
+  log_fail "SHA256SUMS file missing in release. This is likely a problem with the release itself, not your setup. Please check the release page on GitHub for updates, or contact the maintainers (open an issue at https://github.com/PRASSamin/prasmoid/issues) for assistance."
 fi
 
 log_step "Fetching SHA256SUMS..."
