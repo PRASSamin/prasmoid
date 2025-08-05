@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/exec"
@@ -40,6 +41,9 @@ func main() {
         for _, build := range builds {
             BuildCli(build)
         }
+        if err := generateChecksums(); err != nil {
+            color.Red("Failed to generate checksums: %v", err)
+        }
 	case "watch":
 		Watcher()
 	default:
@@ -63,18 +67,18 @@ func Watcher() {
     }
     defer watcher.Close()
 
-    // Function to determine if we should watch a file/directory
+    // determine if we should watch a file/directory
     shouldWatch := func(path string, info os.FileInfo) bool {
-        // Ignore .git, .DS_Store, and build artifacts
+        // ignore .git, .DS_Store, and build artifacts
         if strings.Contains(path, ".git") || 
            strings.Contains(path, ".DS_Store") {
             return false
         }
-        // Watch Go files and directories
+        // watch go files and directories
         return strings.HasSuffix(path, ".go") || info.IsDir()
     }
 
-    // Walk through the project directory and add watchers
+    // walk through the project directory and add watchers
     err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if err != nil {
             return err
@@ -118,15 +122,14 @@ func Watcher() {
                     return
                 }
 
-                // Only rebuild on create, write, or remove events for Go files
+                // create, write, remove
                 if event.Op&fsnotify.Write == fsnotify.Write || 
                    event.Op&fsnotify.Create == fsnotify.Create || 
                    event.Op&fsnotify.Remove == fsnotify.Remove {
                     
                     if strings.HasSuffix(event.Name, ".go") {
-                        // Get the base filename
+                        // get the base filename
                         baseName := filepath.Base(event.Name)
-                        // Only print if it's a different file than last time
                         if baseName != lastChangedFile {
                             fmt.Println("\nFile changed:", baseName)
                             lastChangedFile = baseName
@@ -174,12 +177,12 @@ func BuildCli(portable bool) {
         cgo = 0
 	}
 
-	// Inject version into the binary
+	// inject version into the binary
 	ldflags := fmt.Sprintf(`-s -w -X 'github.com/PRASSamin/prasmoid/internal.Version=%s'`, version)
     
 	command := exec.Command("go", "build", "-ldflags", ldflags, "-o", filename, "./src")
     
-    // Set CGO_ENABLED in the command's environment
+    // set cgo enabled
     command.Env = append(os.Environ(), fmt.Sprintf("CGO_ENABLED=%d", cgo))
 
 	command.Stdout = os.Stdout
@@ -191,4 +194,35 @@ func BuildCli(portable bool) {
 
     filenameSize, _ := os.Stat(filename)
 	color.Green("Build successful! %s (%d mb)", filename, filenameSize.Size()/1024/1024)
+}
+
+func generateChecksums() error {
+	files, err := os.ReadDir(DIST_DIR)
+	if err != nil {
+		return fmt.Errorf("failed to read dist directory: %v", err)
+	}
+
+	var checksums []string
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		filePath := filepath.Join(DIST_DIR, file.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %v", file.Name(), err)
+		}
+
+		hash := sha256.Sum256(data)
+		checksums = append(checksums, fmt.Sprintf("%x  %s", hash, file.Name()))
+	}
+
+	checksumFile := filepath.Join(DIST_DIR, "sha256sums.txt")
+	if err := os.WriteFile(checksumFile, []byte(strings.Join(checksums, "\n")), 0644); err != nil {
+		return fmt.Errorf("failed to write checksum file: %v", err)
+	}
+
+	color.Green("Generated checksums in %s", checksumFile)
+	return nil
 }
