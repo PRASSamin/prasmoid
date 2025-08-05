@@ -73,7 +73,12 @@ else
     TEMP_EXE="prasmoid-portable"
 fi
 cp $(basename "$TEMP_FILE") $TEMP_EXE
+
 SHA256_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
+if [[ -z "$SHA256_URL" ]]; then
+  log_fail "Error: SHA256SUMS file is missing from the release assets. Cannot continue."
+fi
+
 if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
     log_done "Checksum passed"
 else
@@ -81,7 +86,6 @@ else
 fi
 rm $TEMP_EXE
 popd
-
 
 chmod +x "$TEMP_FILE"
 
