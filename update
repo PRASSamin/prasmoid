@@ -15,8 +15,7 @@ fi
 CURRENT_EXE=$1
 shift 1
 
-# --- Main Logic ---
-log_step "Checking for updates..."
+log_step "Checking for update..."
 
 LATEST_RELEASE_INFO=$(curl -s "https://api.github.com/repos/PRASSamin/prasmoid/releases/latest")
 if [ -z "$LATEST_RELEASE_INFO" ]; then
@@ -24,36 +23,44 @@ if [ -z "$LATEST_RELEASE_INFO" ]; then
 fi
 
 CURRENT_VERSION=$("$CURRENT_EXE" version)
-
-LATEST_VERSION_TAG=$(echo "$LATEST_RELEASE_INFO" | jq -r ".tag_name" | sed "s/^v//")
-if [ -z "$LATEST_VERSION_TAG" ] || [ "$LATEST_VERSION_TAG" == "null" ]; then
-    log_fail "Could not parse latest version from GitHub."
-fi
-
 RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-portable//")
-
-if [ "$LATEST_VERSION_TAG" == "$RAW_CURRENT_VERSION" ]; then
-    log_done "You are already using the latest version of Prasmoid (v$RAW_CURRENT_VERSION)."
-    exit 0
-fi
-
 IS_PORTABLE=false
 if [[ "$CURRENT_VERSION" == *"-portable"* ]]; then
     IS_PORTABLE=true
 fi
 
-if [ "$IS_PORTABLE" = true ]; then
-    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name | endswith(\"-portable\")) | .browser_download_url")
-else
-    DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name == \"prasmoid\") | .browser_download_url")
+ASSET_NAME="prasmoid"
+if $IS_PORTABLE; then
+    ASSET_NAME="prasmoid-portable"
 fi
 
+SHA256_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
+if [[ -z "$SHA256_URL" ]]; then
+  log_fail "SHA256SUMS file missing in release."
+fi
+
+log_step "Fetching SHA256SUMS..."
+
+SHA256_CONTENT=$(curl -sL "$SHA256_URL")
+LATEST_HASH=$(echo "$SHA256_CONTENT" | grep " $ASSET_NAME$" | awk '{print $1}')
+if [[ -z "$LATEST_HASH" ]]; then
+  log_fail "Could not find hash for $ASSET_NAME in SHA256SUMS."
+fi
+
+log_step "Calculating current binary hash..."
+CURRENT_HASH=$(sha256sum "$CURRENT_EXE" | awk '{print $1}')
+
+if [ "$CURRENT_HASH" == "$LATEST_HASH" ]; then
+    log_done "You are already using the latest version of Prasmoid ($RAW_CURRENT_VERSION.$LATEST_HASH)."
+    exit 0
+fi
+
+log_step "New binary available. Downloading $ASSET_NAME..."
+
+DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name == \"$ASSET_NAME\") | .browser_download_url")
 if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
-    log_fail "No suitable binary found for version $LATEST_VERSION_TAG."
-    exit 1
+    log_fail "Download URL for $ASSET_NAME not found."
 fi
-
-log_step "Downloading v$LATEST_VERSION_TAG..."
 
 TEMP_FILE=$(mktemp)
 curl -L -o "$TEMP_FILE" "$DOWNLOAD_URL"
@@ -61,42 +68,28 @@ if [ $? -ne 0 ]; then
     rm -f "$TEMP_FILE"
     log_fail "Download failed."
 fi
-log_done "Download complete."
 
-log_step "Verifying checksum..."
-# move to dir containing the temp file, make 2nd temp file named correctly for sha256sum
-pushd $(dirname "$TEMP_FILE")
-if $IS_PORTABLE; then
-    TEMP_EXE="prasmoid-portable"
-else
-    TEMP_EXE="prasmoid"
-fi
-cp $(basename "$TEMP_FILE") $TEMP_EXE
+log_step "Verifying downloaded binary hash..."
+DOWNLOADED_HASH=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
 
-SHA256_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
-if [[ -z "$SHA256_URL" ]]; then
-  log_fail "Error: SHA256SUMS file is missing from the release assets. Cannot continue."
+if [ "$DOWNLOADED_HASH" != "$LATEST_HASH" ]; then
+    rm -f "$TEMP_FILE"
+    log_fail "Checksum verification failed for downloaded binary."
 fi
-
-if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
-    log_done "Checksum passed"
-else
-    log_fail "Checksum failed!"
-fi
-rm $TEMP_EXE
-popd
 
 chmod +x "$TEMP_FILE"
 
 # This script is executed by the Go binary, which already checks for root.
 # So, we can assume we have the necessary permissions.
 
-log_step "Moving new binary..."
+log_step "Replacing old binary..."
 mv "$TEMP_FILE" "$CURRENT_EXE"
 
 log_done "Update complete."
-log_step "Relaunching CLI..."
+log_step "Current version: $CURRENT_VERSION"
+log_step "New version: $(echo "$LATEST_RELEASE_INFO" | jq -r '.tag_name') ($LATEST_HASH)"
 
+log_step "Relaunching CLI..."
 exec "$CURRENT_EXE"
 
 exit 0
