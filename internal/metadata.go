@@ -2,7 +2,7 @@ package internal
 
 var Version = "0.0.3"
 
-type Metadata struct {
+type AppMetadata struct {
     Version string
     Name    string
     Author  string
@@ -10,7 +10,7 @@ type Metadata struct {
     Github  string
 }
 
-var AppMeta = Metadata{
+var AppMetaData = AppMetadata{
     Version: Version,
     Name:    "Prasmoid",
     Author:  "PRAS",

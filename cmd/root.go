@@ -41,7 +41,7 @@ var rootCmd = &cobra.Command{
 	Long:  "CLI for building, packaging, and managing KDE plasmoid projects efficiently.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if cmd.Flag("version").Changed {
-			fmt.Println(internal.AppMeta.Version)
+			fmt.Println(internal.AppMetaData.Version)
 			os.Exit(0)
 		}
 
@@ -185,7 +185,7 @@ func isUpdateAvailable(latestTag string) bool {
 		return false
 	}
 
-	current := internal.AppMeta.Version
+	current := internal.AppMetaData.Version
 	return compareVersions(current, latestTag) < 0
 }
 
@@ -207,8 +207,8 @@ func printUpdateMessage(latest string) {
 	}
 
 	fmt.Println(star(bottom))
-	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internal.AppMeta.Version, latest))))
-	fmt.Println(star(printLine("Run `prasmoid update me` to update")))
+	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internal.AppMetaData.Version, latest))))
+	fmt.Println(star(printLine("Run `prasmoid upgrade` to update")))
 	fmt.Println(star(bottom))
 	fmt.Println()
 }

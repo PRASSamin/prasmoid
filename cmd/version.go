@@ -27,6 +27,6 @@ var VersionCmd = &cobra.Command{
     Short: "Show Prasmoid version",
     Long:  "Show Prasmoid version.",
     Run: func(cmd *cobra.Command, args []string) {
-        fmt.Println(internal.AppMeta.Version)
+        fmt.Println(internal.AppMetaData.Version)
     },
 }

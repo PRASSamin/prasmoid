@@ -2,7 +2,7 @@
 
 set -e
 
-# Function to convert bytes to human-readable format
+# --- Helper Functions ---
 formatted_size() {
   local bytes=$1
   local units=("B" "KB" "MB" "GB" "TB" "PB")
@@ -15,6 +15,9 @@ formatted_size() {
 
   echo "${bytes} ${units[$i]}"
 }
+log_step() { echo -e "\033[0;36m→ $1\033[0m"; }
+log_done() { echo -e "\033[0;32m✔ $1\033[0m"; }
+log_fail() { echo -e "\033[0;31m✘ $1\033[0m"; exit 1; }
 
 # Get all release assets
 ASSETS=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/latest" | jq '.assets')
@@ -30,8 +33,7 @@ PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable
 # Get URLs for checksums file
 SHA256_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url')
 if [[ -z "$SHA256_URL" ]]; then
-  echo "Error: SHA256SUMS file is missing from the release assets. Cannot continue." >&2
-  exit 3
+  log_fail "Error: SHA256SUMS file is missing from the release assets. Cannot continue."
 fi
 
 # Handle user input based on TTY availability
@@ -46,8 +48,7 @@ fi
 
 # Validate choice
 if [[ "$choice" != "1" && "$choice" != "2" ]]; then
-  echo "Invalid choice! Please enter 1 or 2."
-  exit 1
+  log_fail "Invalid choice! Please enter 1 or 2."
 fi
 
 # Select appropriate binary
@@ -65,25 +66,23 @@ curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
 
 # Verify download
 if [[ ! -f "$BINARY_NAME" ]]; then
-  echo "Download failed!"
-  exit 1
+  log_fail "Download failed!"
 fi
 
 if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
-  echo "✓ Checksum passed"
+  log_done "Checksum passed"
 else
-  echo "✗ Checksum failed!" >&2
-  exit 2
+  log_fail "Checksum failed!"
 fi
 
 chmod +x "$BINARY_NAME"
 
 # Detect if running as root, else use sudo
 if [[ "$EUID" -ne 0 ]]; then
-  echo "Installing to /usr/bin using sudo..."
+  log_step "Installing to /usr/bin using sudo..."
   sudo cp "$BINARY_NAME" /usr/bin/prasmoid
 else
-  echo "Installing to /usr/bin..."
+  log_step "Installing to /usr/bin..."
   cp "$BINARY_NAME" /usr/bin/prasmoid
 fi
 
@@ -91,9 +90,8 @@ rm "$BINARY_NAME"
 
 # Final check
 if [[ ! -f "/usr/bin/prasmoid" ]]; then
-  echo "Installation failed!"
-  exit 1
+  log_fail "Installation failed!"
 fi
 
-echo "$BINARY_NAME installed successfully!"
-echo "Run it anytime with: prasmoid"
+log_done "$BINARY_NAME installed successfully!"
+echo -e "\Run it anytime with: prasmoid"

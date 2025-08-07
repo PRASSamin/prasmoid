@@ -95,6 +95,18 @@ wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i pras
 wget https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf install prasmoid-0.0.3-1.fc42.x86_64.rpm
 ```
 
+#### Installation via Go
+
+- **Best for**: `Any system with Go installed`.
+- **_Tested on_**: 'Fedora Linux 42(KDE)'
+
+> [!IMPORTANT]
+> This method requires Go to be installed on your system.
+
+```bash
+go install github.com/PRASSamin/prasmoid
+```
+
 ### Updating Prasmoid
 
 Keep Prasmoid up to date with the latest features and improvements using one of these methods:
@@ -104,7 +116,7 @@ Keep Prasmoid up to date with the latest features and improvements using one of 
 The simplest way to update Prasmoid is by using the built-in update command:
 
 ```bash
-sudo prasmoid update me
+sudo prasmoid upgrade
 ```
 
 > [!TIP]
@@ -115,8 +127,24 @@ sudo prasmoid update me
 If you prefer a manual update, you can use curl:
 
 ```bash
-sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | bash -s $(which prasmoid)
+sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | sudo bash -s $(which prasmoid)
 ```
+
+#### Go Upgrade
+
+#### Upgrading Go Installations
+
+If you installed Prasmoid using `go install`, use the following command to upgrade:
+
+```bash
+sudo env "PATH=$PATH" prasmoid upgrade
+```
+
+> [!NOTE]
+> You can also use the `Manual Update via Curl` method mentioned above. However, if you want to use the CLI method, you must use the `env "PATH=$PATH"` prefix as shown.
+
+> [!WARNING]
+> The `env "PATH=$PATH"` is required because `sudo` uses a restricted PATH by default. This ensures the system can locate the Go-installed `prasmoid` binary in your user's Go bin directory.
 
 ## Your First Plasmoid Project
 
@@ -171,8 +199,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `regen`             | Regenerates config or type definition files.                            | See subcommands below.                                                                                                                        |
 | `regen types`       | Regenerates `prasmoid.d.ts`.                                            | `prasmoid regen types`                                                                                                                        |
 | `regen config`      | Regenerates `prasmoid.config.js`.                                       | `prasmoid regen config`                                                                                                                       |
-| `update`            | Update-related utilities.                                               | See subcommands below.                                                                                                                        |
-| `update me`         | Updates Prasmoid itself to the latest version.                          | `prasmoid update me`                                                                                                                          |
+| `upgrade`           | Updates Prasmoid itself to the latest version.                          | `prasmoid upgrade`                                                                                                                            |
 | `version`           | Shows the current version of Prasmoid.                                  | `prasmoid version`                                                                                                                            |
 
 ## Extending Prasmoid with Custom Commands

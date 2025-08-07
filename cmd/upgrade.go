@@ -20,13 +20,12 @@ import (
 )
 
 func init() {
-	updateCmd.AddCommand(meCmd)
+	rootCmd.AddCommand(upgradeCmd)
 }
 
-var meCmd = &cobra.Command{
-	Use:   "me",
-	Short: "Update Prasmoid CLI",
-	Long:  "Update Prasmoid CLI to the latest version from GitHub releases.",
+var upgradeCmd = &cobra.Command{
+	Use:   "upgrade",
+	Short: "Upgrade to latest version of Prasmoid CLI.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := checkRoot(); err != nil {
 			fmt.Println(err.Error())

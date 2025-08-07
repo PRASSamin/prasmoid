@@ -3,7 +3,7 @@ package cmd_tests
 import (
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/src/cmd"
+	"github.com/PRASSamin/prasmoid/cmd"
 )
 
 func TestGetNextVersion(t *testing.T) {

@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/src/cmd"
+	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func TestI18nCompileCommand(t *testing.T) {
-	// 1. Set up a temporary project
+	// Set up a temporary project
 	projectDir, cleanup := setupTestProject(t)
 	defer cleanup()
 

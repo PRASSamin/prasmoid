@@ -7,21 +7,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/src/cmd"
+	"github.com/PRASSamin/prasmoid/cmd"
 
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func TestBuildCommand(t *testing.T) {
-	// 1. Set up a temporary project
+	// Set up a temporary project
 	tmpDir, cleanup := setupTestProject(t)
 	defer cleanup()
 
-	// 2. Execute the build command
+	// Execute the build command
 	buildOutputDir := filepath.Join(tmpDir, "build") // Set the output dir for the test
 	cmd.BuildCmd.Run(nil, []string{})
 
-	// 3. Verify the .plasmoid file was created
+	// Verify the .plasmoid file was created
 	plasmoidID, _ := utils.GetDataFromMetadata("Id")
 	version, _ := utils.GetDataFromMetadata("Version")
 	zipFileName := plasmoidID.(string) + "-" + version.(string) + ".plasmoid"
@@ -31,7 +31,7 @@ func TestBuildCommand(t *testing.T) {
 		t.Fatalf("Expected .plasmoid file '%s' to be created, but it was not", zipFilePath)
 	}
 
-	// 4. Unzip and verify the contents
+	// Unzip and verify the contents
 	unzipDir, err := os.MkdirTemp("", "unzip-test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir for unzipping: %v", err)
