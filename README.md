@@ -65,7 +65,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Arch Linux (AUR)
 
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
-- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-25)
+- **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-25)
 
 - Official AUR package
 
@@ -76,7 +76,7 @@ yay -S prasmoid
 #### Debian (.deb)
 
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
-- ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-25), 'Kubuntu 25.04'
+- **_Tested on_**: 'Debian testing' (nightly snapshot 2025-08-25), 'Kubuntu 25.04'
 
 - [Official Debian package](https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb)
 
@@ -84,7 +84,17 @@ yay -S prasmoid
 wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
 ```
 
-FEEL FREE TO HOST SOMEWHERE ELSE, I DON'T MIND EITHER WAY
+#### Installation via Go
+
+- **Best for**: `Any system with Go installed`.
+- **_Tested on_**: 'Fedora Linux 42(KDE)'
+
+> [!IMPORTANT]
+> This method requires Go to be installed on your system.
+
+```bash
+go install github.com/PRASSamin/prasmoid
+```
 
 ### Updating Prasmoid
 
@@ -95,7 +105,7 @@ Keep Prasmoid up to date with the latest features and improvements using one of 
 The simplest way to update Prasmoid is by using the built-in update command:
 
 ```bash
-sudo prasmoid update me
+sudo prasmoid upgrade
 ```
 
 > [!TIP]
@@ -106,8 +116,24 @@ sudo prasmoid update me
 If you prefer a manual update, you can use curl:
 
 ```bash
-sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | bash -s $(which prasmoid)
+sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update | sudo bash -s $(which prasmoid)
 ```
+
+#### Go Upgrade
+
+#### Upgrading Go Installations
+
+If you installed Prasmoid using `go install`, use the following command to upgrade:
+
+```bash
+sudo env "PATH=$PATH" prasmoid upgrade
+```
+
+> [!NOTE]
+> You can also use the `Manual Update via Curl` method mentioned above. However, if you want to use the CLI method, you must use the `env "PATH=$PATH"` prefix as shown.
+
+> [!WARNING]
+> The `env "PATH=$PATH"` is required because `sudo` uses a restricted PATH by default. This ensures the system can locate the Go-installed `prasmoid` binary in your user's Go bin directory.
 
 ## Your First Plasmoid Project
 
@@ -162,7 +188,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `regen`             | Regenerates config or type definition files.                            | See subcommands below.                                                                                                                        |
 | `regen types`       | Regenerates `prasmoid.d.ts`.                                            | `prasmoid regen types`                                                                                                                        |
 | `regen config`      | Regenerates `prasmoid.config.js`.                                       | `prasmoid regen config`                                                                                                                       |
-| `upgrade`           | Updates Prasmoid itself to the latest version.                          | `prasmoid upgrade`                                                                                                                           |
+| `upgrade`           | Updates Prasmoid itself to the latest version.                          | `prasmoid upgrade`                                                                                                                            |
 | `version`           | Shows the current version of Prasmoid.                                  | `prasmoid version`                                                                                                                            |
 
 ## Extending Prasmoid with Custom Commands

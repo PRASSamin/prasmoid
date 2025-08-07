@@ -208,7 +208,7 @@ func printUpdateMessage(latest string) {
 
 	fmt.Println(star(bottom))
 	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internal.AppMetaData.Version, latest))))
-	fmt.Println(star(printLine("Run `prasmoid update me` to update")))
+	fmt.Println(star(printLine("Run `prasmoid upgrade` to update")))
 	fmt.Println(star(bottom))
 	fmt.Println()
 }

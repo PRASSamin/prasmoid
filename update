@@ -69,6 +69,8 @@ if [ $? -ne 0 ]; then
     log_fail "Download failed."
 fi
 
+LATEST_VERSION=$(echo "$LATEST_RELEASE_INFO" | jq -r ".tag_name" | sed "s/^v//")
+
 log_step "Verifying downloaded binary hash..."
 DOWNLOADED_HASH=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
 
@@ -85,9 +87,7 @@ chmod +x "$TEMP_FILE"
 log_step "Replacing old binary..."
 mv "$TEMP_FILE" "$CURRENT_EXE"
 
-log_done "Update complete."
-log_step "Current version: $CURRENT_VERSION"
-log_step "New version: $LATEST_TAG ($LATEST_HASH)"
+log_done "Update complete $LATEST_VERSION ($LATEST_HASH)"
 
 log_step "Relaunching CLI..."
 exec "$CURRENT_EXE"
