@@ -21,8 +21,8 @@ Build, test, and manage your plasmoids with unparalleled ease and efficiency.
 
 %install
 install -Dm755 %{SOURCE0} "$RPM_BUILD_ROOT/usr/bin/prasmoid"
-install -Dm644 %{SOURCE1} "$RPM_BUILD_ROOT/usr/share/doc/prasmoid/README.md"
-install -Dm644 %{SOURCE2} "$RPM_BUILD_ROOT/usr/share/licenses/prasmoid/LICENSE.md"
+install -Dm644 %{SOURCE2} "$RPM_BUILD_ROOT/usr/share/doc/prasmoid/README.md"
+install -Dm644 %{SOURCE1} "$RPM_BUILD_ROOT/usr/share/licenses/prasmoid/LICENSE.md"
 
 %files
 %{_bindir}/prasmoid
