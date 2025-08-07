@@ -65,12 +65,26 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Arch Linux (AUR)
 
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
+- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-25)
 
-- Official AUR package maintained by [clorteau](https://github.com/clorteau). Big thanks for making life easier for the Arch gang! 🙌
+- Official AUR package
 
 ```bash
 yay -S prasmoid
 ```
+
+#### Debian (.deb)
+
+- **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
+- ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-25), 'Kubuntu 25.04'
+
+- [Official Debian package](https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb)
+
+```bash
+wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
+```
+
+FEEL FREE TO HOST SOMEWHERE ELSE, I DON'T MIND EITHER WAY
 
 ### Updating Prasmoid
 
@@ -263,7 +277,7 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 
 ## 💖 Credits
 
-- **clorteau** – for packaging Prasmoid on the Arch AUR  
+- **clorteau** – for the Arch AUR and Debian derivatives packages
   [GitHub](https://github.com/clorteau)
 
 ---
