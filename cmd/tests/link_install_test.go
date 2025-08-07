@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/src/cmd"
+	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
