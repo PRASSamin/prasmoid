@@ -65,7 +65,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Arch Linux (AUR)
 
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
-- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-25)
+- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-05)
 
 - Official AUR package
 
@@ -76,7 +76,7 @@ yay -S prasmoid
 #### Debian (.deb)
 
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
-- ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-25), 'Kubuntu 25.04'
+- ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
 
 - [Official Debian package](https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb)
 
@@ -84,7 +84,16 @@ yay -S prasmoid
 wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
 ```
 
-FEEL FREE TO HOST SOMEWHERE ELSE, I DON'T MIND EITHER WAY
+#### Fedora (.rpm)
+
+- **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
+- ***Tested on***: 'Fedora 42'
+
+- [Official Fedora package](https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm)
+
+```bash
+wget https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf install prasmoid-0.0.3-1.fc42.x86_64.rpm
+```
 
 ### Updating Prasmoid
 
@@ -277,8 +286,7 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 
 ## 💖 Credits
 
-- **clorteau** – for the Arch AUR and Debian derivatives packages
-  [GitHub](https://github.com/clorteau)
+- **clorteau** – for the Arch, .deb and .rpm packages - [GitHub](https://github.com/clorteau)
 
 ---
 
