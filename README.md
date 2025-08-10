@@ -100,7 +100,7 @@ wget https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf in
 - **Best for**: Anywhere with snaps available.
 - ***Tested on***: 'Kubuntu 25.04'
 
-- [Official snap package](https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm)
+- [Official snap package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.0.3_amd64.snap)
 
 ```bash
 wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.0.3_amd64.snap && sudo snap install --dangerous prasmoid_v0.0.3_amd64.snap
