@@ -78,10 +78,10 @@ yay -S prasmoid
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
 - ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
 
-- [Official Debian package](https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb)
+- [Official Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-0_amd64.deb)
 
 ```bash
-wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
+wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
 ```
 
 #### Fedora (.rpm)
@@ -89,10 +89,10 @@ wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i pras
 - **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
 - ***Tested on***: 'Fedora 42'
 
-- [Official Fedora package](https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm)
+- [Official Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-1.fc42.x86_64.rpm)
 
 ```bash
-wget https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf install prasmoid-0.0.3-1.fc42.x86_64.rpm
+wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf install prasmoid-0.0.3-1.fc42.x86_64.rpm
 ```
 
 #### Snap
