@@ -1,0 +1,48 @@
+# last update 20250808
+
+name: prasmoid
+base: core22 # current=core24, keeping a bit of backwards compatibility since prasmoid
+             # depends on nothing
+version: 'v0.0.3'
+license: 'MIT'
+
+#publisher: 'Clem Lorteau < spam at lorteau dot fr >'
+#author: 'PRAS Samin <https://github.com/PRASSamin>'
+summary: The All in One Development Toolkit for KDE Plasmoids
+description: |
+  While the core structure of KDE Plasma plasmoids is straightforward, the surrounding development workflow, including setup, building, testing, and deployment often involves repetitive manual steps. Prasmoid CLI is designed to abstract away these boring tasks. It's a powerful command-line tool, crafted with Go, that provides a seamless, integrated experience, allowing you to focus solely on writing your plasmoid's code.
+
+  Focus on your code, not the boilerplate. Prasmoid handles the heavy lifting, from project scaffolding and live previews to smart versioning and packaging, allowing you to concentrate on creating amazing plasmoids.
+
+  One of its most revolutionary features is a built-in, zero-dependency JavaScript runtime. This allows you to extend the CLI with your own custom commands, automating any workflow imaginable, directly within your project – no Node.js installation required!
+
+grade: stable # must be 'stable' to release into candidate/stable channels
+# confinement: devmode
+confinement: strict
+
+apps:
+  prasmoid:
+    command: prasmoid
+    plugs:
+      - home #allow r/w in the user's home dir
+             #remember this if people are having issues writing somewhere else
+             #install with snap install --devmode --dangerous to allow all the regular's
+             #user's access
+
+parts:
+  repo:
+    source: https://github.com/PRASSamin/prasmoid.git
+    source-tag: v0.0.3
+    plugin: dump #just copy files, nothing fancy
+
+  binary:
+    #todo: check sha256:72e4c2b772188ff7ac3ac1b210238a2b9aff1ef8a2844f11df999a44990dcc96
+    source: https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid
+    source-type: file #don't try to guess what to do with the source and do nothing but d/l files
+    plugin: dump
+    override-build: |
+      chmod +x prasmoid
+      craftctl default
+    prime:
+      - prasmoid # copies the file to the snap's root where the "command" tag above will pick it up
+

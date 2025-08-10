@@ -95,6 +95,20 @@ wget https://lorteau.fr/prasmoid/prasmoid_0.0.3-0_amd64.deb && sudo dpkg -i pras
 wget https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm && sudo dnf install prasmoid-0.0.3-1.fc42.x86_64.rpm
 ```
 
+#### Snap
+
+- **Best for**: Anywhere with snaps available.
+- ***Tested on***: 'Kubuntu 25.04'
+
+- [Official snap package](https://lorteau.fr/prasmoid/prasmoid-0.0.3-1.fc42.x86_64.rpm)
+
+```bash
+wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.0.3_amd64.snap && sudo snap install --dangerous prasmoid_v0.0.3_amd64.snap
+```
+
+> [!IMPORTANT]
+> Until the snap is listed in an official store the signature can't be checked. The --dangerous flag bypasses signature verification.
+
 #### Installation via Go
 
 - **Best for**: `Any system with Go installed`.
