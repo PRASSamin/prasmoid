@@ -109,6 +109,17 @@ wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.
 > [!IMPORTANT]
 > Until the snap is listed in an official store the signature can't be checked. The --dangerous flag bypasses signature verification.
 
+#### Flatpak
+
+- **Best for**: Anywhere with flatpaks available.
+- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-10)
+
+- [Official flatpak package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak)
+
+```bash
+wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak && flatpak install --user prasmoid-v0.0.3.flatpak
+```
+
 #### Installation via Go
 
 - **Best for**: `Any system with Go installed`.
