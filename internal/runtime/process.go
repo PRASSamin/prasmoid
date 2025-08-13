@@ -13,30 +13,33 @@ import (
 )
 
 func Process(vm *goja.Runtime, module *goja.Object) {
-	_proc := module.Get("exports").(*goja.Object)
-
+	_process := module.Get("exports").(*goja.Object)
 
 	// process.exit(code)
-	_proc.Set("exit", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("exit", func(call goja.FunctionCall) goja.Value {
 		code := 0
 		if len(call.Arguments) > 0 {
 			code = int(call.Arguments[0].ToInteger())
 		}
 		os.Exit(code)
 		return goja.Undefined()
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.exit: %v\n", err)
+	}
 
 	// process.cwd()
-	_proc.Set("cwd", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("cwd", func(call goja.FunctionCall) goja.Value {
 		dir, err := os.Getwd()
 		if err != nil {
 			return vm.ToValue(fmt.Sprintf("cwd error: %v", err))
 		}
 		return vm.ToValue(dir)
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.cwd: %v\n", err)
+	}
 
 	// process.chdir(path)
-	_proc.Set("chdir", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("chdir", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
 			return vm.ToValue("chdir: path is required")
 		}
@@ -46,28 +49,34 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("chdir error: %v", err))
 		}
 		return goja.Undefined()
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.chdir: %v\n", err)
+	}
 
 	// process.uptime()
-	_proc.Set("uptime", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("uptime", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(time.Since(startTime).Seconds())
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.uptime: %v\n", err)
+	}
 
 	// process.memoryUsage()
-	_proc.Set("memoryUsage", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("memoryUsage", func(call goja.FunctionCall) goja.Value {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 
 		obj := vm.NewObject()
-		obj.Set("rss", m.Sys)
-		obj.Set("heapTotal", m.HeapSys)
-		obj.Set("heapUsed", m.HeapAlloc)
-		obj.Set("external", m.StackSys)
+		SetObjProperty(obj, "rss", m.Sys)
+		SetObjProperty(obj, "heapTotal", m.HeapSys)
+		SetObjProperty(obj, "heapUsed", m.HeapAlloc)
+		SetObjProperty(obj, "external", m.StackSys)
 		return obj
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.memoryUsage: %v\n", err)
+	}
 
 	// process.kill(pid)
-	_proc.Set("kill", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("kill", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("kill: pid required")
 		}
@@ -77,56 +86,49 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("kill error: %v", err))
 		}
 		return goja.Undefined()
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.kill: %v\n", err)
+	}
 
 	// process.getuid()
-	_proc.Set("getuid", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("getuid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getuid())
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.getuid: %v\n", err)
+	}
 
 	// process.getgid()
-	_proc.Set("getgid", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("getgid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getgid())
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.getgid: %v\n", err)
+	}
 
 	// process.geteuid()
-	_proc.Set("geteuid", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("geteuid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Geteuid())
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.geteuid: %v\n", err)
+	}
 
 	// process.getegid()
-	_proc.Set("getegid", func(call goja.FunctionCall) goja.Value {
+	if err := _process.Set("getegid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getegid())
-	})
+	}); err != nil {
+		fmt.Printf("Error setting process.getegid: %v\n", err)
+	}
 
 	// process.env
 	type Process struct {
 		env map[string]string
 	}
-	
+
 	envs := LoadEnvWithPrefix()
 	p := &Process{env: envs}
 
-	_proc.Set("env", p.env)
-
-
-	// process.nextTick(fn)
-	_proc.Set("nextTick", func(call goja.FunctionCall) goja.Value {
-		if len(call.Arguments) == 0 {
-			return vm.ToValue("nextTick: missing function")
-		}
-		fn, ok := goja.AssertFunction(call.Arguments[0])
-		if !ok {
-			return vm.ToValue("nextTick: argument must be function")
-		}
-		go func() {
-			_, err := fn(goja.Undefined())
-			if err != nil {
-				fmt.Println("nextTick error:", err)
-			}
-		}()
-		return goja.Undefined()
-	})
+	if err := _process.Set("env", p.env); err != nil {
+		fmt.Printf("Error setting process.env: %v\n", err)
+	}
 
 	// === NOT IMPLEMENTED FUNCTIONS ===
 
@@ -137,7 +139,7 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	notImplList := []string{
-		"binding", "dlopen", "getActiveResourcesInfo", "reallyExit", "loadEnvFile",
+		"nextTick", "binding", "dlopen", "getActiveResourcesInfo", "reallyExit", "loadEnvFile",
 		"cpuUsage", "resourceUsage", "constrainedMemory", "availableMemory", "execve",
 		"ref", "unref", "hrtime", "openStdin", "getgroups", "assert",
 		"setUncaughtExceptionCaptureCallback", "hasUncaughtExceptionCaptureCallback",
@@ -146,12 +148,13 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	for _, name := range notImplList {
-		_proc.Set(name, notImplemented(name))
+		if err := _process.Set(name, notImplemented(name)); err != nil {
+			fmt.Printf("Error setting process.%s: %v\n", name, err)
+		}
 	}
 }
 
 var startTime = time.Now()
-
 
 func LoadEnvWithPrefix() map[string]string {
 	envs := make(map[string]string)
@@ -165,7 +168,6 @@ func LoadEnvWithPrefix() map[string]string {
 		".env.test",
 		".env",
 	}
-	
 
 	// Load from actual system env
 	for _, e := range os.Environ() {
@@ -179,22 +181,22 @@ func LoadEnvWithPrefix() map[string]string {
 			loadEnvFile(envs, path)
 		}
 	}
-	
+
 	return envs
 }
 
 func loadEnvFile(envMap map[string]string, filePath string) {
-    content, _ := os.ReadFile(filePath)
-    lines := strings.Split(string(content), "\n")
-    for _, line := range lines {
-        line = strings.TrimSpace(line)
-        if strings.HasPrefix(line, "PRASMOID_") {
-            parts := strings.SplitN(line, "=", 2)
-            if len(parts) == 2 {
-                key := parts[0]
-                val := strings.Trim(parts[1], `"`)
-                envMap[key] = val
-            }
-        }
-    }
+	content, _ := os.ReadFile(filePath)
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "PRASMOID_") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := parts[0]
+				val := strings.Trim(parts[1], `"`)
+				envMap[key] = val
+			}
+		}
+	}
 }

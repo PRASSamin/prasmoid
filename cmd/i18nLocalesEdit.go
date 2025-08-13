@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	
+
 	i18nLocalesCmd.AddCommand(I18nLocalesEditCmd)
 }
 
@@ -35,9 +35,12 @@ var I18nLocalesEditCmd = &cobra.Command{
 			ConfigRC.I18n.Locales = locales
 			content, _ := json.MarshalIndent(ConfigRC, "", "  ")
 			fmt.Println(string(content))
-			os.WriteFile("prasmoid.config.js", []byte(`/// <reference path="prasmoid.d.ts" />
+			if err := os.WriteFile("prasmoid.config.js", []byte(`/// <reference path="prasmoid.d.ts" />
 /** @type {PrasmoidConfig} */
-const config = ` + string(content)), 0644)
+const config = `+string(content)), 0644); err != nil {
+				color.Red("Error writing prasmoid.config.js: %v", err)
+				return
+			}
 		}
 	},
 }

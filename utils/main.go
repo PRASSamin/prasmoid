@@ -69,7 +69,6 @@ func GetDataFromMetadata(key string) (interface{}, error) {
 	return value, nil
 }
 
-
 // Check if plasmoid is installed
 func IsInstalled() (bool, string, error) {
 	id, err := GetDataFromMetadata("Id")
@@ -116,7 +115,7 @@ func UpdateMetadata(key string, value interface{}, sectionOpt ...string) error {
 	if len(sectionOpt) > 0 {
 		section = sectionOpt[0]
 	}
-	
+
 	const path = "metadata.json"
 
 	// Read the file
@@ -148,7 +147,13 @@ func UpdateMetadata(key string, value interface{}, sectionOpt ...string) error {
 	if err != nil {
 		return fmt.Errorf("failed to update metadata.json")
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Log the error, but don't return it as the function already returns nil
+			// or a specific error from encoder.Encode
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -162,9 +167,9 @@ func UpdateMetadata(key string, value interface{}, sectionOpt ...string) error {
 }
 
 var supportedPackageManagers = map[string]string{
-	"apt":    "apt",
-	"dnf":    "dnf",
-	"pacman": "pacman",
+	"apt":     "apt",
+	"dnf":     "dnf",
+	"pacman":  "pacman",
 	"nix-env": "nix",
 }
 
@@ -283,7 +288,7 @@ func InstallDependencies() error {
 	if err != nil {
 		return err
 	}
-	
+
 	if !IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
 		color.Yellow("Installing qmlformat...")
 		if err := InstallQmlformat(pm); err != nil {
@@ -298,7 +303,6 @@ func InstallDependencies() error {
 		}
 	}
 
-
 	if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
 		color.Yellow("Installing gettext...")
 		if err := InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
@@ -311,17 +315,16 @@ func InstallDependencies() error {
 		if err := InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
 			return err
 		}
-	}	
+	}
 
 	return nil
 }
 
-
 func IsValidPlasmoid() bool {
-	if _, err := os.Stat("metadata.json"); err != nil {
+	if _, err := os.Stat("metadata.json"); os.IsNotExist(err) {
 		return false
 	}
-	if _, err := os.Stat("contents"); err != nil {
+	if _, err := os.Stat("contents"); os.IsNotExist(err) {
 		return false
 	}
 	return true
@@ -338,57 +341,57 @@ func EnsureStringAndValid(name string, value interface{}, err error) (string, er
 	return str, nil
 }
 
-func LoadConfigRC() (types.Config) {
+func LoadConfigRC() types.Config {
 	if !IsValidPlasmoid() {
 		return types.Config{}
 	}
-    var configFileName string = "prasmoid.config.js"
+	var configFileName = "prasmoid.config.js"
 	defaultConfig := types.Config{
 		Commands: types.ConfigCommands{
 			Dir: ".prasmoid/commands",
 		},
 		I18n: types.ConfigI18n{
-			Dir: "translations",
+			Dir:     "translations",
 			Locales: []string{"en"},
 		},
 	}
 
-    data, err := os.ReadFile(configFileName)
-    if err != nil {
+	data, err := os.ReadFile(configFileName)
+	if err != nil {
 		color.Yellow("Configuration file (prasmoid.config.js) not found.\n" +
-		"Run 'prasmoid regen config'\n")
-        return defaultConfig
-    }
-    vm := runtime.NewRuntime()
-    _, err = vm.RunString(string(data))
-    if err != nil {
+			"Run 'prasmoid regen config'\n")
+		return defaultConfig
+	}
+	vm := runtime.NewRuntime()
+	_, err = vm.RunString(string(data))
+	if err != nil {
 		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-		"Run 'prasmoid regen config'\n")
-        return defaultConfig
-    }
-    config := vm.Get("config")
-    if config == nil {
+			"Run 'prasmoid regen config'\n")
+		return defaultConfig
+	}
+	config := vm.Get("config")
+	if config == nil {
 		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-		"Run 'prasmoid regen config'\n")
-        return defaultConfig
-    }
-    
-    // Convert to JSON bytes
-    configBytes, err := json.Marshal(config.Export())
-    if err != nil {
-		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +"Run 'prasmoid regen config'\n")
-        return defaultConfig
-    }
-    
-    // Unmarshal into Config struct
-    var result types.Config
-    if err := json.Unmarshal(configBytes, &result); err != nil {
+			"Run 'prasmoid regen config'\n")
+		return defaultConfig
+	}
+
+	// Convert to JSON bytes
+	configBytes, err := json.Marshal(config.Export())
+	if err != nil {
+		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" + "Run 'prasmoid regen config'\n")
+		return defaultConfig
+	}
+
+	// Unmarshal into Config struct
+	var result types.Config
+	if err := json.Unmarshal(configBytes, &result); err != nil {
 		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-		"Run 'prasmoid regen config'\n")
-        return defaultConfig
-    }
-    
-    return result
+			"Run 'prasmoid regen config'\n")
+		return defaultConfig
+	}
+
+	return result
 }
 
 func AskForLocales(defaultLocales ...[]string) []string {

@@ -66,11 +66,17 @@ func setupTestProject(t *testing.T) (string, func()) {
 
 	// Change to the temp directory for the duration of the test
 	originalWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory to %s: %v", tmpDir, err)
+	}
 
 	cleanup := func() {
-		os.Chdir(originalWd)
-		os.RemoveAll(tmpDir)
+		if err := os.Chdir(originalWd); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Errorf("Failed to remove temporary directory: %v", err)
+		}
 	}
 
 	return tmpDir, cleanup
@@ -112,7 +118,9 @@ func TestUpdateMetadata(t *testing.T) {
 
 		data, _ := os.ReadFile(metadataPath)
 		var meta map[string]map[string]interface{}
-		json.Unmarshal(data, &meta)
+		if err := json.Unmarshal(data, &meta); err != nil {
+			t.Fatalf("Failed to unmarshal metadata.json: %v", err)
+		}
 
 		if meta["KPlugin"]["Version"] != "1.1.0" {
 			t.Errorf("Expected version '1.1.0', but got '%s'", meta["KPlugin"]["Version"])
@@ -127,7 +135,9 @@ func TestUpdateMetadata(t *testing.T) {
 
 		data, _ := os.ReadFile(metadataPath)
 		var meta map[string]map[string]interface{}
-		json.Unmarshal(data, &meta)
+		if err := json.Unmarshal(data, &meta); err != nil {
+			t.Fatalf("Failed to unmarshal metadata.json: %v", err)
+		}
 
 		if meta["KPlugin"]["NewKey"] != "NewValue" {
 			t.Errorf("Expected NewKey 'NewValue', but got '%s'", meta["KPlugin"]["NewKey"])
@@ -146,16 +156,18 @@ func TestIsValidPlasmoid(t *testing.T) {
 	})
 
 	t.Run("missing metadata.json", func(t *testing.T) {
-		os.Remove(filepath.Join(tmpDir, "metadata.json"))
+		if err := os.Remove(filepath.Join(tmpDir, "metadata.json")); err != nil {
+			t.Errorf("Failed to remove metadata.json: %v", err)
+		}
 		if utils.IsValidPlasmoid() {
 			t.Error("Expected IsValidPlasmoid to be false, but it was true")
 		}
-		// Restore for next test
-		// setupTestProject(t) // This is not needed, cleanup will handle it
 	})
 
 	t.Run("missing contents dir", func(t *testing.T) {
-		os.RemoveAll(filepath.Join(tmpDir, "contents"))
+		if err := os.RemoveAll(filepath.Join(tmpDir, "contents")); err != nil {
+			t.Errorf("Failed to remove contents dir: %v", err)
+		}
 		if utils.IsValidPlasmoid() {
 			t.Error("Expected IsValidPlasmoid to be false, but it was true")
 		}

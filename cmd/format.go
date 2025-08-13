@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,12 +49,12 @@ var FormatCmd = &cobra.Command{
 			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-			
+
 			if confirm {
 				if err := utils.InstallQmlformat(pm); err != nil {
 					color.Red("Failed to install qmlformat.")
 					return
-				} 
+				}
 				color.Green("qmlformat installed successfully.")
 			} else {
 				color.Yellow("Operation cancelled.")
@@ -77,7 +78,11 @@ func prettifyOnWatch(path string) {
 		color.Red("Failed to start watcher:", err)
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			log.Printf("Error closing watcher: %v", err)
+		}
+	}()
 
 	done := make(chan bool)
 	debounceTimers := make(map[string]*time.Timer)
@@ -151,11 +156,10 @@ func prettifyOnWatch(path string) {
 	<-done
 }
 
-
 func prettify(path string) {
 	var files []string
 
-	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -166,13 +170,16 @@ func prettify(path string) {
 			files = append(files, path)
 		}
 		return nil
-	})
+	}); err != nil {
+		color.Red("Error walking directory for prettify: %v", err)
+		return
+	}
 
 	format(files)
 	color.Green("Formatted %d files.", len(files))
 }
 
-func format(files []string){
+func format(files []string) {
 	formatter := exec.Command("qmlformat", "-i")
 	formatter.Args = append(formatter.Args, files...)
 	formatter.Stdout = os.Stdout

@@ -9,16 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 func init() {
 	rootCmd.AddCommand(SetupCmd)
 }
 
 // SetupCmd represents the setup command
 var SetupCmd = &cobra.Command{
-		Use:   "setup",
-		Short: "Setup development environment",
-		Long:  "Install plasmoidviewer and other development dependencies.",
+	Use:   "setup",
+	Short: "Setup development environment",
+	Long:  "Install plasmoidviewer and other development dependencies.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := utils.InstallDependencies(); err != nil {
 			color.Red("Failed to install dependencies: %v", err)
@@ -26,4 +25,3 @@ var SetupCmd = &cobra.Command{
 		}
 	},
 }
-

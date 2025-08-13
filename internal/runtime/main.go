@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"fmt"
+
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/dop251/goja_nodejs/url"
@@ -8,7 +10,7 @@ import (
 
 func NewRuntime() *goja.Runtime {
 	vm := goja.New()
-	
+
 	registry := new(require.Registry)
 	registry.Enable(vm)
 	url.Enable(vm)
@@ -25,5 +27,9 @@ func NewRuntime() *goja.Runtime {
 
 func Register(vm *goja.Runtime, name string, module func(vm *goja.Runtime, module *goja.Object)) {
 	require.RegisterCoreModule(name, module)
-	vm.Set(name, require.Require(vm, name))
+	if err := vm.Set(name, require.Require(vm, name)); err != nil {
+		// In a core module registration, if this fails, it's a critical error.
+		// We can panic here as it indicates a fundamental issue with the runtime setup.
+		panic(fmt.Sprintf("Failed to set module %s: %v", name, err))
+	}
 }

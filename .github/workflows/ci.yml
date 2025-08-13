@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.22.x, 1.23.x, 1.24.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      # Check gofmt formatting
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "❌ Some files are not gofmt formatted:"
+            gofmt -d .
+            exit 1
+          fi
+
+      # Check go.mod and go.sum
+      - name: Check go.mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum || (
+            echo "❌ go.mod/go.sum is not tidy. Run 'go mod tidy' and commit changes."
+            exit 1
+          )
+
+      # Vet for common mistakes
+      - name: Vet
+        run: go vet ./...
+
+      # Run tests with coverage
+      - name: Run tests
+        run: go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+
+      # Enforce minimum coverage (80%)
+      - name: Check coverage
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | sed 's/%//')
+          echo "Total coverage: $total%"
+          min=80
+          if (( $(echo "$total < $min" | bc -l) )); then
+            echo "❌ Coverage is below $min%"
+            exit 1
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.x
+
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m

@@ -82,10 +82,14 @@ func InstallPlasmoid() error {
 		return err
 	}
 	if isInstalled {
-		os.RemoveAll(where) 
+		if err := os.RemoveAll(where); err != nil {
+			fmt.Printf("Warning: Failed to remove existing installation at %s: %v\n", where, err)
+		}
 	}
-	
-	os.MkdirAll(where, 0755)
+
+	if err := os.MkdirAll(where, 0755); err != nil {
+		return fmt.Errorf("failed to create installation directory %s: %w", where, err)
+	}
 
 	// Copy metadata.json
 	srcMeta := "metadata.json"

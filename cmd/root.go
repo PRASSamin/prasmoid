@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -45,7 +46,9 @@ var rootCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		cmd.Help()
+		if err := cmd.Help(); err != nil {
+			log.Printf("Error displaying help: %v", err)
+		}
 	},
 }
 
@@ -62,7 +65,6 @@ func Execute() {
 	}
 }
 
-
 // -------- UPDATE CHECKER --------
 
 func CheckForUpdates() {
@@ -72,17 +74,17 @@ func CheckForUpdates() {
 
 	cache, err := ReadUpdateCache()
 	if err == nil {
-        if lastCheckedStr, ok := cache["last_checked"].(string); ok {
-            lastCheckedTime, err := time.Parse(time.RFC3339, lastCheckedStr)
-            if err == nil && time.Since(lastCheckedTime) < checkInterval {
-                if latestTag, ok := cache["latest_tag"].(string); ok {
-                    if isUpdateAvailable(latestTag) {
-                        printUpdateMessage(latestTag)
-                    }
-                }
-                return
-            }
-        }
+		if lastCheckedStr, ok := cache["last_checked"].(string); ok {
+			lastCheckedTime, err := time.Parse(time.RFC3339, lastCheckedStr)
+			if err == nil && time.Since(lastCheckedTime) < checkInterval {
+				if latestTag, ok := cache["latest_tag"].(string); ok {
+					if isUpdateAvailable(latestTag) {
+						printUpdateMessage(latestTag)
+					}
+				}
+				return
+			}
+		}
 	}
 
 	// Establish TLS connection to GitHub
@@ -90,7 +92,11 @@ func CheckForUpdates() {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
+	}()
 
 	// Manually write the HTTP GET request
 	request := fmt.Sprintf(
@@ -116,7 +122,7 @@ func CheckForUpdates() {
 	headers := parts[0]
 	body := parts[1]
 
-	// Optional: parse status code from headers
+	// parse status code from headers
 	if !strings.Contains(headers, "200 OK") {
 		return
 	}
@@ -145,11 +151,11 @@ func getLatestTag(body []byte) string {
 	return strings.TrimPrefix(tag, "v")
 }
 
-
 // compareVersions returns:
 // -1 if current < latest
-//  0 if current == latest
-//  1 if current > latest
+//
+//	0 if current == latest
+//	1 if current > latest
 func compareVersions(current, latest string) int {
 	parse := func(v string) []int {
 		v = strings.TrimPrefix(v, "v")
@@ -189,17 +195,15 @@ func isUpdateAvailable(latestTag string) bool {
 	return compareVersions(current, latestTag) < 0
 }
 
-
 func printUpdateMessage(latest string) {
 	// Get terminal width
 	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
-		width = 70 // fallback 
+		width = 70
 	}
 
 	star := color.New(color.FgHiYellow, color.Bold).SprintFunc()
 
-	// Borders
 	bottom := strings.Repeat("─", width)
 
 	printLine := func(content string) string {

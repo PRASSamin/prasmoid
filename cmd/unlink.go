@@ -38,7 +38,7 @@ var UnlinkCmd = &cobra.Command{
 			color.Red(err.Error())
 			return
 		}
-	
+
 		// Remove if exists
 		_ = os.Remove(dest)
 		_ = os.RemoveAll(dest)

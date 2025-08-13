@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/fatih/color"
 )
 
@@ -26,7 +24,9 @@ func main() {
 
 	switch os.Args[1] {
 	case "build":
-		os.RemoveAll(DIST_DIR)
+		if err := os.RemoveAll(DIST_DIR); err != nil {
+			color.Red("Warning: Failed to remove distribution directory: %v", err)
+		}
 		color.Blue("Building cli...")
 		var builds = []bool{
 			false,
@@ -36,26 +36,12 @@ func main() {
 			BuildCli(build)
 		}
 
-        // generate checksums
-		checksumMap, err := generateChecksums()
+		// generate checksums
+		_, err := generateChecksums()
 		if err != nil {
 			color.Red("Failed to generate checksums: %v", err)
 			return
 		}
-
-		prasmoidChecksum := checksumMap[strings.ToLower(internal.AppMetaData.Name)]
-        // update package builds
-		if err := updatePackageBuilds(prasmoidChecksum); err != nil {
-			color.Red("Failed to update PKGBUILD files: %v", err)
-			return
-		}
-
-		// update rpm spec file
-		if err := updateSpecFile(); err != nil {
-			color.Red("Failed to update spec file: %v", err)
-			return
-		}
-
 	case "watch":
 		Watcher()
 	default:

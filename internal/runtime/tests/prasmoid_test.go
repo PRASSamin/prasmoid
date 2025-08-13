@@ -14,12 +14,22 @@ func TestPrasmoidModule(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Errorf("Failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Change to the temp directory for the duration of the test
 	originalWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory to %s: %v", tmpDir, err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
 	// Create a dummy metadata.json
 	metadataContent := `

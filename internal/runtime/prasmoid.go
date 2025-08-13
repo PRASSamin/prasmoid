@@ -10,7 +10,7 @@ import (
 
 // CommandConfig represents the configuration for a command
 type CommandConfig struct {
-	Run   goja.Callable `json:"-"` // Goja function, skip JSON export
+	Run   goja.Callable `json:"-"`
 	Short string        `json:"short"`
 	Long  string        `json:"long"`
 	Alias []string      `json:"alias"`
@@ -31,7 +31,7 @@ var CommandStorage CommandConfig
 func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 	exports := module.Get("exports").(*goja.Object)
 
-    exports.Set("getMetadata", func(call goja.FunctionCall) goja.Value {
+	if err := exports.Set("getMetadata", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
 			return vm.ToValue("prasmoid.getMetadata: missing key")
 		}
@@ -43,41 +43,43 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue("prasmoid.getMetadata: " + err.Error())
 		}
 		return vm.ToValue(data)
-	})
+	}); err != nil {
+		fmt.Printf("Error setting prasmoid.getMetadata: %v\n", err)
+	}
 
-	exports.Set("Command", func(call goja.FunctionCall) goja.Value {
+	if err := exports.Set("Command", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) != 1 {
 			panic("prasmoid.Command: exactly 1 argument required")
 		}
-	
+
 		// Check if it's an object
 		arg := call.Argument(0)
 		if arg == nil || goja.IsUndefined(arg) || goja.IsNull(arg) {
 			panic("prasmoid.Command: argument must be a JS object")
 		}
-	
+
 		_, ok := goja.AssertFunction(arg)
 		if ok {
 			panic("prasmoid.Command: expected object, got function")
 		}
-	
+
 		cmdObj := arg.ToObject(vm)
 		if cmdObj == nil {
 			panic("prasmoid.Command: failed to convert argument to object")
 		}
-	
+
 		runVal := cmdObj.Get("run")
 		if goja.IsUndefined(runVal) || runVal == nil {
 			panic("prasmoid.Command: missing 'run' function")
 		}
-	
+
 		runFunc, ok := goja.AssertFunction(runVal)
 		if !ok {
 			panic("prasmoid.Command: 'run' must be a function")
 		}
-	
+
 		config := CommandConfig{Run: runFunc}
-		
+
 		// Optional fields
 		if shortVal := cmdObj.Get("short"); !goja.IsUndefined(shortVal) && shortVal != nil {
 			config.Short = shortVal.String()
@@ -97,20 +99,19 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 			}
 		}
 
-
 		if flagsVal := cmdObj.Get("flags"); !goja.IsUndefined(flagsVal) && flagsVal != nil {
 			if flagArr, ok := flagsVal.Export().([]interface{}); ok {
 				for _, f := range flagArr {
 					if flagMap, ok := f.(map[string]interface{}); ok {
 						typ := asString(flagMap["type"])
-						  if typ == "bool" {
-							switch flagMap["value"].(type){
+						if typ == "bool" {
+							switch flagMap["value"].(type) {
 							case bool:
 							default:
 								panic("non-bool value not allowed in boolean flag")
 							}
-						  }
-						  if flagMap["value"] == nil {
+						}
+						if flagMap["value"] == nil {
 							switch typ {
 							case "bool":
 								flagMap["value"] = false
@@ -130,11 +131,12 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 				}
 			}
 		}
-	
+
 		CommandStorage = config
 		return nil
-	})
-	
+	}); err != nil {
+		fmt.Printf("Error setting prasmoid.Command: %v\n", err)
+	}
 }
 
 func asString(val interface{}) string {

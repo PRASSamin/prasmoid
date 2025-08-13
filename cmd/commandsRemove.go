@@ -26,27 +26,30 @@ var CommandsRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove a custom command",
 	Long:  "Remove a custom command to the project.",
-	Run: func(cmd *cobra.Command, args []string) {		
+	Run: func(cmd *cobra.Command, args []string) {
 		availableCmds := []string{}
-		filepath.Walk(ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
+		if err := filepath.Walk(ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
 				return nil
 			}
 			availableCmds = append(availableCmds, fmt.Sprintf("%s (%s)", strings.TrimSuffix(info.Name(), filepath.Ext(info.Name())), info.Name()))
 			return nil
-		})
-		
+		}); err != nil {
+			color.Red("Error walking commands directory: %v", err)
+			return
+		}
+
 		// Ask for runtime
 		if strings.TrimSpace(rmCommandName) == "" {
 
-				runtimePrompt := &survey.Select{
-					Message: "Select a command to remove:",
-					Options: availableCmds,
-				}
-				if err := survey.AskOne(runtimePrompt, &rmCommandName); err != nil {
-					return
-				}
-			
+			runtimePrompt := &survey.Select{
+				Message: "Select a command to remove:",
+				Options: availableCmds,
+			}
+			if err := survey.AskOne(runtimePrompt, &rmCommandName); err != nil {
+				return
+			}
+
 		}
 
 		// Extract filename using regex
@@ -60,7 +63,7 @@ var CommandsRemoveCmd = &cobra.Command{
 
 		// Remove the file
 		filePath := filepath.Join(ConfigRC.Commands.Dir, fileName)
-		
+
 		var confirm bool
 		confirmPrompt := &survey.Confirm{
 			Message: "Are you sure you want to remove this command?",

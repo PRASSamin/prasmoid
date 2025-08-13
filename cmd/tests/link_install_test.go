@@ -19,7 +19,9 @@ func setupTestEnvironment(t *testing.T) (projectDir, homeDir string, cleanup fun
 	}
 
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpHome)
+	if err := os.Setenv("HOME", tmpHome); err != nil {
+		t.Fatalf("Failed to set HOME environment variable: %v", err)
+	}
 
 	plasmoidsDir := filepath.Join(tmpHome, ".local/share/plasma/plasmoids")
 	if err := os.MkdirAll(plasmoidsDir, 0755); err != nil {
@@ -27,8 +29,12 @@ func setupTestEnvironment(t *testing.T) (projectDir, homeDir string, cleanup fun
 	}
 
 	cleanup = func() {
-		os.Setenv("HOME", originalHome)
-		os.RemoveAll(tmpHome)
+		if err := os.Setenv("HOME", originalHome); err != nil {
+			t.Errorf("Failed to restore HOME environment variable: %v", err)
+		}
+		if err := os.RemoveAll(tmpHome); err != nil {
+			t.Errorf("Failed to remove temporary home directory: %v", err)
+		}
 		projectCleanup()
 	}
 
