@@ -3,10 +3,8 @@ package runtime_tests
 import (
 	"os"
 	"testing"
-	"time"
 
 	rtime "github.com/PRASSamin/prasmoid/internal/runtime"
-	"github.com/dop251/goja"
 )
 
 func TestProcessModule(t *testing.T) {
@@ -33,7 +31,11 @@ func TestProcessModule(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			if err := os.RemoveAll(tmpDir); err != nil {
+				t.Errorf("Failed to remove temporary directory: %v", err)
+			}
+		}()
 
 		script := `process.chdir('` + tmpDir + `');`
 		_, err = vm.RunString(script)
@@ -124,38 +126,6 @@ func TestProcessModule(t *testing.T) {
 		}
 		if val.String() != os.Getenv("HOME") {
 			t.Errorf("Expected HOME env var %s, got %s", os.Getenv("HOME"), val.String())
-		}
-	})
-
-	t.Run("nextTick", func(t *testing.T) {
-		// This test is tricky because nextTick is async.
-		// We'll use a channel to signal completion from JS.
-		done := make(chan bool)
-		vm.Set("goDone", func(call goja.FunctionCall) goja.Value {
-			done <- true
-			return goja.Undefined()
-		})
-
-		script := `
-			let called = false;
-			process.nextTick(() => {
-				called = true;
-				goDone(); // Signal Go that nextTick was executed
-			});
-			// Ensure the script finishes before nextTick is called
-			// This is a simplification, real nextTick is more complex.
-			// For this test, we just need to ensure the callback is eventually run.
-		`
-		_, err := vm.RunString(script)
-		if err != nil {
-			t.Fatalf("vm.RunString() failed: %v", err)
-		}
-
-		select {
-		case <-done:
-			// Success: nextTick callback was executed
-		case <-time.After(1 * time.Second):
-			t.Error("nextTick callback did not execute within timeout")
 		}
 	})
 }

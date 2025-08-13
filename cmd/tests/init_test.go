@@ -15,19 +15,33 @@ func TestInitPlasmoid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(projectParentDir)
+	defer func() {
+		if err := os.RemoveAll(projectParentDir); err != nil {
+			t.Errorf("Failed to remove project dir: %v", err)
+		}
+	}()
 
 	// Create a temporary home directory for the symlink
 	tmpHome, err := os.MkdirTemp("", "init-test-home-")
 	if err != nil {
 		t.Fatalf("Failed to create temp home dir: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	defer func() {
+		if err := os.RemoveAll(tmpHome); err != nil {
+			t.Errorf("Failed to remove temp home dir: %v", err)
+		}
+	}()
 
 	// Set the HOME environment variable for the test
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpHome)
-	defer os.Setenv("HOME", originalHome)
+	if err := os.Setenv("HOME", tmpHome); err != nil {
+		t.Fatalf("Failed to set HOME environment variable: %v", err)
+	}
+	defer func() {
+		if err := os.Setenv("HOME", originalHome); err != nil {
+			t.Errorf("Failed to restore HOME environment variable: %v", err)
+		}
+	}()
 
 	// Create the plasmoids directory in the temp home
 	plasmoidsDir := filepath.Join(tmpHome, ".local/share/plasma/plasmoids")
@@ -49,8 +63,14 @@ func TestInitPlasmoid(t *testing.T) {
 
 	// Change to the project parent directory
 	originalWd, _ := os.Getwd()
-	os.Chdir(projectParentDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(projectParentDir); err != nil {
+		t.Fatalf("Failed to change directory to %s: %v", projectParentDir, err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
 	// Run initPlasmoid
 	if err := cmd.InitPlasmoid(); err != nil {

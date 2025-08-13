@@ -34,7 +34,7 @@ var CommandsAddCmd = &cobra.Command{
 	Long:  "Add a custom command to the project.",
 	Run: func(cmd *cobra.Command, args []string) {
 		invalidChars := regexp.MustCompile(`[\\/:*?"<>|\s@]`)
-		
+
 		// Ask for command name
 		if strings.TrimSpace(commandName) == "" || invalidChars.MatchString(commandName) {
 			namePrompt := &survey.Input{
@@ -45,11 +45,11 @@ var CommandsAddCmd = &cobra.Command{
 				if name == "" {
 					return errors.New("command name cannot be empty")
 				}
-				
+
 				if invalidChars.MatchString(name) {
 					return errors.New("invalid characters in command name")
 				}
-				
+
 				baseName := filepath.Join(ConfigRC.Commands.Dir, name)
 				if _, err := os.Stat(baseName + ".js"); err == nil {
 					return errors.New("command name already exists with extension .js")
@@ -63,7 +63,10 @@ var CommandsAddCmd = &cobra.Command{
 		template := commandTemplates["js"]
 
 		if _, err := os.Stat(ConfigRC.Commands.Dir); os.IsNotExist(err) {
-			os.MkdirAll(ConfigRC.Commands.Dir, 0755)
+			if err := os.MkdirAll(ConfigRC.Commands.Dir, 0755); err != nil {
+				color.Red("Failed to create commands directory: %v", err)
+				return
+			}
 		}
 
 		commandFile := commandName + ".js"
@@ -75,20 +78,24 @@ var CommandsAddCmd = &cobra.Command{
 			color.Red("Error creating file: %v", err)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				color.Red("Error closing file: %v", err)
+			}
+		}()
 
 		// Absolute path to command file
 		absCommandFilePath, _ := filepath.Abs(filePath)
 
 		cwd, _ := os.Getwd()
-		rootDir, _ := filepath.Abs(cwd) 
+		rootDir, _ := filepath.Abs(cwd)
 		prasmoidDef := filepath.Join(rootDir, "prasmoid.d.ts")
 
 		// Calculate relative path from command file to prasmoid.d.ts
 		relPath, err := filepath.Rel(filepath.Dir(absCommandFilePath), prasmoidDef)
 		if err != nil {
-		color.Red("Error calculating relative path: %v", err)
-		return
+			color.Red("Error calculating relative path: %v", err)
+			return
 		}
 
 		templateFilled := fmt.Sprintf(template, relPath, commandName)

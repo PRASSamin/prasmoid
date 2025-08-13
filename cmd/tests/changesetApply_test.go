@@ -13,13 +13,17 @@ func TestUpdateChangelog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Errorf("Failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	changelogPath := filepath.Join(tmpDir, "CHANGELOG.md")
 
 	// Test case 1: Create a new changelog
 	t.Run("create new changelog", func(t *testing.T) {
-		err := updateChangelogInPath(changelogPath, "1.0.0", "2025-01-01", "Initial release")
+		err := updateChangelogInPath(t, changelogPath, "1.0.0", "2025-01-01", "Initial release")
 		if err != nil {
 			t.Errorf("Expected no error, but got %v", err)
 		}
@@ -37,7 +41,7 @@ func TestUpdateChangelog(t *testing.T) {
 
 	// Test case 2: Append to an existing changelog
 	t.Run("append to existing changelog", func(t *testing.T) {
-		err := updateChangelogInPath(changelogPath, "1.1.0", "2025-01-02", "Added new feature")
+		err := updateChangelogInPath(t, changelogPath, "1.1.0", "2025-01-02", "Added new feature")
 		if err != nil {
 			t.Errorf("Expected no error, but got %v", err)
 		}
@@ -55,11 +59,18 @@ func TestUpdateChangelog(t *testing.T) {
 }
 
 // Wrapper to allow testing with a specific path
-func updateChangelogInPath(path, version, date, body string) error {
+func updateChangelogInPath(t *testing.T, path, version, date, body string) error {
 	// Temporarily change the working directory for the test
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(filepath.Dir(path))
+	defer func(t *testing.T) {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}(t)
+
+	if err := os.Chdir(filepath.Dir(path)); err != nil {
+		return err
+	}
 
 	return cmd.UpdateChangelog(version, date, body)
 }

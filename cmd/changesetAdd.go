@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,9 +14,9 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 var bump string
@@ -28,13 +29,11 @@ var validBumps = map[string]bool{
 	"major": true,
 }
 
-
 func init() {
 	ChangesetAddCmd.Flags().StringVarP(&bump, "bump", "b", "", "Version bump type (patch|minor|major)")
 	ChangesetAddCmd.Flags().StringVarP(&summary, "summary", "s", "", "Changelog summary (optional)")
 	ChangesetRootCmd.AddCommand(ChangesetAddCmd)
 }
-
 
 var ChangesetAddCmd = &cobra.Command{
 	Use:   "add",
@@ -43,7 +42,7 @@ var ChangesetAddCmd = &cobra.Command{
 		bump = strings.ToLower(bump)
 		version, _ := utils.GetDataFromMetadata("Version")
 		id, _ := utils.GetDataFromMetadata("Id")
-		var next string;
+		var next string
 
 		bumpLabels := make(map[string]string)
 		for _, bumpType := range []string{"patch", "minor", "major"} {
@@ -56,7 +55,7 @@ var ChangesetAddCmd = &cobra.Command{
 		}
 
 		options := []string{bumpLabels["patch"], bumpLabels["minor"], bumpLabels["major"]}
-		
+
 		// Handle bump: flag or prompt
 		if !validBumps[bump] {
 			var selected string
@@ -70,7 +69,7 @@ var ChangesetAddCmd = &cobra.Command{
 				color.Red("Failed to prompt for version bump: %v", err)
 				return
 			}
-		
+
 			// Split once and trim parens cleanly
 			parts := strings.SplitN(selected, " ", 2)
 			bump = parts[0]
@@ -85,8 +84,6 @@ var ChangesetAddCmd = &cobra.Command{
 				return
 			}
 		}
-		
-				
 
 		// Handle summary: flag or editor prompt
 		if summary == "" {
@@ -184,7 +181,6 @@ func GetNextVersion(version string, bump string) (string, error) {
 	return fmt.Sprintf("%d.%d.%d", major, minor, patch), nil
 }
 
-
 func openEditor() (string, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -195,13 +191,21 @@ func openEditor() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			log.Printf("Error removing temporary file: %v", err)
+		}
+	}()
 
-	tmpFile.WriteString(`# Write your changelog entry below.
+	if _, err := tmpFile.WriteString(`# Write your changelog entry below.
 # Lines starting with # will be ignored.
 # Example: Added system tray widget for memory usage.
-`)
-	tmpFile.Close()
+`); err != nil {
+		return "", err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return "", err
+	}
 
 	cmd := exec.Command(editor, tmpFile.Name())
 	cmd.Stdin = os.Stdin

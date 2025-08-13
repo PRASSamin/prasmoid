@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,7 +24,7 @@ import (
 )
 
 func init() {
-    PreviewCmd.Flags().BoolP("watch", "w", false, "Watch for changes and automatically restart the preview. Note: This uses hot restart instead of hot reload, which may be slower.")
+	PreviewCmd.Flags().BoolP("watch", "w", false, "Watch for changes and automatically restart the preview. Note: This uses hot restart instead of hot reload, which may be slower.")
 	rootCmd.AddCommand(PreviewCmd)
 }
 
@@ -49,10 +50,10 @@ var PreviewCmd = &cobra.Command{
 				Message: "Plasmoid is not linked. Do you want to link it first?",
 				Default: true,
 			}
-		    if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-			
+
 			if confirm {
 				dest, err := utils.GetDevDest()
 				if err != nil {
@@ -79,7 +80,7 @@ var PreviewCmd = &cobra.Command{
 			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-			
+
 			if confirm {
 				if err := utils.InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
 					color.Red("Failed to install plasmoidviewer:", err)
@@ -127,7 +128,11 @@ func watchOnChange(path string, id string) {
 		color.Red("Failed to start watcher:", err)
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			log.Printf("Error closing watcher: %v", err)
+		}
+	}()
 
 	done := make(chan bool)
 	debounceTimers := make(map[string]*time.Timer)
@@ -137,12 +142,16 @@ func watchOnChange(path string, id string) {
 	// Set up signal handling
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	
+
 	go func() {
 		<-quit
 		if currentViewer != nil {
-			currentViewer.Process.Kill()
-			currentViewer.Wait()
+			if err := currentViewer.Process.Kill(); err != nil {
+				log.Printf("Error killing current viewer process: %v", err)
+			}
+			if err := currentViewer.Wait(); err != nil {
+				log.Printf("Error waiting for current viewer process: %v", err)
+			}
 		}
 		close(done)
 	}()
@@ -182,8 +191,12 @@ func watchOnChange(path string, id string) {
 
 				debounceTimers[file] = time.AfterFunc(debounceDuration, func() {
 					if currentViewer != nil {
-						currentViewer.Process.Kill()
-						currentViewer.Wait()
+						if err := currentViewer.Process.Kill(); err != nil {
+							log.Printf("Error killing current viewer process: %v", err)
+						}
+						if err := currentViewer.Wait(); err != nil {
+							log.Printf("Error waiting for current viewer process: %v", err)
+						}
 					}
 
 					plasmoidViewer := exec.Command("plasmoidviewer", "-a", id)
@@ -197,7 +210,9 @@ func watchOnChange(path string, id string) {
 					currentViewer = plasmoidViewer
 
 					go func() {
-						plasmoidViewer.Wait()
+						if err := plasmoidViewer.Wait(); err != nil {
+							log.Printf("Error waiting for plasmoid viewer process: %v", err)
+						}
 						if currentViewer == plasmoidViewer {
 							currentViewer = nil
 						}

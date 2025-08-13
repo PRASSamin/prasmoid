@@ -4,6 +4,7 @@ Copyright 2025 PRAS
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -40,7 +41,9 @@ func UninstallPlasmoid() error {
 		return err
 	}
 	if isInstalled {
-		os.RemoveAll(where) 
+		if err := os.RemoveAll(where); err != nil {
+			return fmt.Errorf("failed to remove installation directory %s: %w", where, err)
+		}
 	}
 	return nil
 }

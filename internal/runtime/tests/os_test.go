@@ -140,21 +140,21 @@ func TestOSModule(t *testing.T) {
 
 	// Uptime is Linux-specific, so only test if on Linux
 	// if runtime.GOOS == "linux" {
-		t.Run("uptime", func(t *testing.T) {
-			script := `os.uptime();`
-			val, err := vm.RunString(script)
-			if err != nil {
-				t.Fatalf("vm.RunString() failed: %v", err)
-			}
-			if val.ToFloat() <= 0 {
-				t.Errorf("Expected uptime > 0, got %f", val.ToFloat())
-			}
-			raw, _ := os.ReadFile("/proc/uptime")
-			uptime, _ := strconv.ParseFloat(strings.Fields(string(raw))[0], 64)
-			if val.ToFloat() != uptime {
-				t.Errorf("Expected %f, got %f", uptime, val.ToFloat())
-			}
-		})
+	t.Run("uptime", func(t *testing.T) {
+		script := `os.uptime();`
+		val, err := vm.RunString(script)
+		if err != nil {
+			t.Fatalf("vm.RunString() failed: %v", err)
+		}
+		if val.ToFloat() <= 0 {
+			t.Errorf("Expected uptime > 0, got %f", val.ToFloat())
+		}
+		raw, _ := os.ReadFile("/proc/uptime")
+		uptime, _ := strconv.ParseFloat(strings.Fields(string(raw))[0], 64)
+		if val.ToFloat() != uptime {
+			t.Errorf("Expected %f, got %f", uptime, val.ToFloat())
+		}
+	})
 	// }
 
 	t.Run("freemem", func(t *testing.T) {
@@ -171,8 +171,8 @@ func TestOSModule(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to get memory info: %v", err)
 		}
-		if val.ToInteger() != int64(mem.Freeram * uint64(mem.Unit)) {
-			t.Errorf("Expected %d, got %d", mem.Freeram * uint64(mem.Unit), val.ToInteger())
+		if val.ToInteger() != int64(mem.Freeram*uint64(mem.Unit)) {
+			t.Errorf("Expected %d, got %d", mem.Freeram*uint64(mem.Unit), val.ToInteger())
 		}
 	})
 
@@ -190,8 +190,8 @@ func TestOSModule(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to get memory info: %v", err)
 		}
-		if val.ToInteger() != int64(mem.Totalram * uint64(mem.Unit)) {
-			t.Errorf("Expected %d, got %d", mem.Totalram * uint64(mem.Unit), val.ToInteger())
+		if val.ToInteger() != int64(mem.Totalram*uint64(mem.Unit)) {
+			t.Errorf("Expected %d, got %d", mem.Totalram*uint64(mem.Unit), val.ToInteger())
 		}
 	})
 

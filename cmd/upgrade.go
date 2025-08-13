@@ -42,7 +42,7 @@ var upgradeCmd = &cobra.Command{
 			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-			
+
 			if confirm {
 				if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
 					color.Red("Failed to install curl:", err)
@@ -55,7 +55,7 @@ var upgradeCmd = &cobra.Command{
 		}
 
 		scriptURL := "https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update"
-		
+
 		exePath, err := os.Executable()
 		if err != nil {
 			color.Red("Failed to get current executable path: %v", err)
@@ -72,7 +72,10 @@ var upgradeCmd = &cobra.Command{
 			color.Red("Update failed: %v", err)
 		}
 
-		if err := os.Remove(GetCacheFilePath()); err != nil {}
+		if err := os.Remove(GetCacheFilePath()); err != nil {
+			// Log the error, but don't fail the upgrade process
+			color.Yellow("Warning: Failed to remove update cache file: %v\n", err)
+		}
 	},
 }
 

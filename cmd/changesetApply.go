@@ -22,10 +22,10 @@ func init() {
 
 // ChangesetMeta represents the metadata for a changeset
 type ChangesetMeta struct {
-	ID     string `yaml:"id"`
-	Bump   string `yaml:"bump"`
-	Next   string `yaml:"next"`
-	Date   string `yaml:"date"`
+	ID   string `yaml:"id"`
+	Bump string `yaml:"bump"`
+	Next string `yaml:"next"`
+	Date string `yaml:"date"`
 }
 
 // changesetApplyCmd represents the changesetApply command
@@ -37,64 +37,62 @@ var ChangesetApplyCmd = &cobra.Command{
 	},
 }
 
-
-func ApplyChanges(){
+func ApplyChanges() {
 	changesetFiles := []string{}
-		err := filepath.Walk(".changes", func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-			if filepath.Ext(path) == ".mdx" {
-				changesetFiles = append(changesetFiles, path)
-			}
-			return nil
-		})
+	err := filepath.Walk(".changes", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			color.Red("Failed to walk changes directory: %v", err)
-			return
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ".mdx" {
+			changesetFiles = append(changesetFiles, path)
+		}
+		return nil
+	})
+	if err != nil {
+		color.Red("Failed to walk changes directory: %v", err)
+		return
+	}
+
+	if len(changesetFiles) == 0 {
+		color.Yellow("No changeset files found.")
+		color.Cyan("run `prasmoid changeset add` to create a changeset.")
+		return
+	}
+
+	for _, file := range changesetFiles {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			color.Red("Failed to read changeset file %s: %v", file, err)
+			continue
 		}
 
-		if len(changesetFiles) == 0 {
-			color.Yellow("No changeset files found.")
-			color.Cyan("run `prasmoid changeset add` to create a changeset.")
-			return
+		meta, body, err := matterParse(data)
+		if err != nil {
+			color.Red("Failed to parse %s: %v", file, err)
+			continue
 		}
 
-		for _, file := range changesetFiles {
-			data, err := os.ReadFile(file)
-			if err != nil {
-				color.Red("Failed to read changeset file %s: %v", file, err)
-				continue
-			}
-
-			meta, body, err := matterParse(data)
-			if err != nil {
-				color.Red("Failed to parse %s: %v", file, err)
-				continue
-			}
-
-			if err := utils.UpdateMetadata("Version", meta.Next); err != nil {
-				color.Red("Metadata update failed in %s: %v", file, err)
-				continue
-			}
-
-			if err := UpdateChangelog(meta.Next, meta.Date, body); err != nil {
-				color.Red("Changelog update failed in %s: %v", file, err)
-				continue
-			}
-
-			if err := os.Remove(file); err != nil {
-				color.Red("Failed to remove changeset file %s: %v", file, err)
-				continue
-			}
+		if err := utils.UpdateMetadata("Version", meta.Next); err != nil {
+			color.Red("Metadata update failed in %s: %v", file, err)
+			continue
 		}
 
-		color.Green("All changesets applied successfully!")
+		if err := UpdateChangelog(meta.Next, meta.Date, body); err != nil {
+			color.Red("Changelog update failed in %s: %v", file, err)
+			continue
+		}
+
+		if err := os.Remove(file); err != nil {
+			color.Red("Failed to remove changeset file %s: %v", file, err)
+			continue
+		}
+	}
+
+	color.Green("All changesets applied successfully!")
 }
-
 
 func matterParse(data []byte) (ChangesetMeta, string, error) {
 	var meta ChangesetMeta
@@ -139,9 +137,9 @@ func UpdateChangelog(version, date, body string) error {
 	}
 
 	// Rebuild
-    updated := header + "\n\n" + newEntry + strings.TrimPrefix(rest, "\n")
+	updated := header + "\n\n" + newEntry + strings.TrimPrefix(rest, "\n")
 
-    // Save it back
+	// Save it back
 	if err := os.WriteFile(changelogPath, []byte(updated), 0644); err != nil {
 		return fmt.Errorf("failed to write changelog: %w", err)
 	}

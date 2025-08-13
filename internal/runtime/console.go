@@ -39,79 +39,99 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 			return goja.Undefined()
 		}
 	}
-	
-// Helper: For red, green, yellow
-createColorLogger := func(colorFunc func(format string, a ...interface{})) func(goja.FunctionCall) goja.Value {
-	return func(call goja.FunctionCall) goja.Value {
-		var parts []string
-		for _, arg := range call.Arguments {
-			parts = append(parts, stringifyJS(arg.Export()))
+
+	// Helper: For red, green, yellow
+	createColorLogger := func(colorFunc func(format string, a ...interface{})) func(goja.FunctionCall) goja.Value {
+		return func(call goja.FunctionCall) goja.Value {
+			var parts []string
+			for _, arg := range call.Arguments {
+				parts = append(parts, stringifyJS(arg.Export()))
+			}
+			colorFunc(strings.Join(parts, " "))
+			return goja.Undefined()
 		}
-		colorFunc(strings.Join(parts, " "))
-		return goja.Undefined()
-	}
-}
-
-// Standard logs
-_console.Set("log", createPlainLogger(""))
-_console.Set("warn", createPlainLogger(""))
-_console.Set("error", createPlainLogger(""))
-_console.Set("debug", createPlainLogger(""))
-_console.Set("info", createPlainLogger(""))
-
-// Colored logs
-_console.Set("red", createColorLogger(color.Red))
-_console.Set("green", createColorLogger(color.Green))
-_console.Set("yellow", createColorLogger(color.Yellow))
-
-// Flexible color log: console.color("msg", "colorName")
-_console.Set("color", func(call goja.FunctionCall) goja.Value {
-	if len(call.Arguments) < 1 {
-		return goja.Undefined()
 	}
 
-	colorName := fmt.Sprintf("%v", call.Arguments[len(call.Arguments)-1].Export())
-	var parts []string
-	for _, arg := range call.Arguments[:len(call.Arguments)-1] {
-		parts = append(parts, fmt.Sprintf("%v", arg.Export()))
+	// Standard logs
+	if err := _console.Set("log", createPlainLogger("")); err != nil {
+		fmt.Printf("Error setting console.log: %v\n", err)
 	}
-	if len(call.Arguments) == 1 {
-		colorName = "white"
-		for _, arg := range call.Arguments {
+	if err := _console.Set("warn", createPlainLogger("")); err != nil {
+		fmt.Printf("Error setting console.warn: %v\n", err)
+	}
+	if err := _console.Set("error", createPlainLogger("")); err != nil {
+		fmt.Printf("Error setting console.error: %v\n", err)
+	}
+	if err := _console.Set("debug", createPlainLogger("")); err != nil {
+		fmt.Printf("Error setting console.debug: %v\n", err)
+	}
+	if err := _console.Set("info", createPlainLogger("")); err != nil {
+		fmt.Printf("Error setting console.info: %v\n", err)
+	}
+
+	// Colored logs
+	if err := _console.Set("red", createColorLogger(color.Red)); err != nil {
+		fmt.Printf("Error setting console.red: %v\n", err)
+	}
+	if err := _console.Set("green", createColorLogger(color.Green)); err != nil {
+		fmt.Printf("Error setting console.green: %v\n", err)
+	}
+	if err := _console.Set("yellow", createColorLogger(color.Yellow)); err != nil {
+		fmt.Printf("Error setting console.yellow: %v\n", err)
+	}
+
+	// Flexible color log: console.color("msg", "colorName")
+	if err := _console.Set("color", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+
+		colorName := fmt.Sprintf("%v", call.Arguments[len(call.Arguments)-1].Export())
+		var parts []string
+		for _, arg := range call.Arguments[:len(call.Arguments)-1] {
 			parts = append(parts, fmt.Sprintf("%v", arg.Export()))
 		}
+		if len(call.Arguments) == 1 {
+			colorName = "white"
+			for _, arg := range call.Arguments {
+				parts = append(parts, fmt.Sprintf("%v", arg.Export()))
+			}
+		}
+
+		if !isValidColor(colorName) {
+			parts = append(parts, fmt.Sprintf("%v", colorName))
+			colorName = "white"
+		}
+
+		text := strings.Join(parts, " ")
+		var c *color.Color
+
+		switch strings.ToLower(colorName) {
+		case "red":
+			c = color.New(color.FgHiRed)
+		case "green":
+			c = color.New(color.FgHiGreen)
+		case "yellow":
+			c = color.New(color.FgHiYellow)
+		case "blue":
+			c = color.New(color.FgHiBlue)
+		case "magenta":
+			c = color.New(color.FgHiMagenta)
+		case "cyan":
+			c = color.New(color.FgHiCyan)
+		case "black":
+			c = color.New(color.FgHiBlack)
+		default:
+			c = color.New(color.FgHiWhite)
+		}
+
+		if _, err := c.Println(text); err != nil {
+			fmt.Printf("Error printing colored text: %v\n", err)
+		}
+		return goja.Undefined()
+	}); err != nil {
+		fmt.Printf("Error setting console.color: %v\n", err)
 	}
-
-	if !isValidColor(colorName) {
-		parts = append(parts, fmt.Sprintf("%v", colorName))
-		colorName = "white"
-	}
-
-	text := strings.Join(parts, " ")
-	c := color.New(color.FgHiWhite)
-
-	switch strings.ToLower(colorName) {
-	case "red":
-		c = color.New(color.FgHiRed)
-	case "green":
-		c = color.New(color.FgHiGreen)
-	case "yellow":
-		c = color.New(color.FgHiYellow)
-	case "blue":
-		c = color.New(color.FgHiBlue)
-	case "magenta":
-		c = color.New(color.FgHiMagenta)
-	case "cyan":
-		c = color.New(color.FgHiCyan)
-	case "black":
-		c = color.New(color.FgHiBlack)
-	default:
-		c = color.New(color.FgHiWhite)
-	}
-
-	c.Println(text)
-	return goja.Undefined()
-})
 }
 
 func stringifyJS(v interface{}) string {
@@ -147,7 +167,6 @@ func stringifyJS(v interface{}) string {
 		return fmt.Sprintf("%v", val)
 	}
 }
-
 
 func isValidColor(colorName string) bool {
 	switch strings.ToLower(colorName) {

@@ -41,10 +41,10 @@ type KPlugin struct {
 }
 
 type Metadata struct {
-	KPackageStructure      string   `json:"KPackageStructure"`
-	KPlugin                KPlugin  `json:"KPlugin"`
+	KPackageStructure        string   `json:"KPackageStructure"`
+	KPlugin                  KPlugin  `json:"KPlugin"`
 	XPlasmaAPIMinimumVersion string   `json:"X-Plasma-API-Minimum-Version"`
-	XPlasmaProvides        []string `json:"X-Plasma-Provides"`
+	XPlasmaProvides          []string `json:"X-Plasma-Provides"`
 }
 
 type ProjectConfig struct {
@@ -62,11 +62,11 @@ type ProjectConfig struct {
 var Config ProjectConfig
 
 var FileTemplates = map[string]string{
-	"contents/ui/main.qml": consts.MAIN_QML,
-	"contents/config/main.xml": consts.MAIN_XML,
+	"contents/ui/main.qml":        consts.MAIN_QML,
+	"contents/config/main.xml":    consts.MAIN_XML,
 	"contents/icons/prasmoid.svg": consts.PRASMOID_SVG,
-	".gitignore": consts.GITIGNORE,
-	"prasmoid.d.ts": consts.PRASMOID_DTS,
+	".gitignore":                  consts.GITIGNORE,
+	"prasmoid.d.ts":               consts.PRASMOID_DTS,
 }
 
 func init() {
@@ -136,10 +136,10 @@ func gatherProjectConfig() error {
 	}
 
 	namePrompt := &survey.Input{
-			Message: "Project name:",
-			Default: "MyPlasmoid",
+		Message: "Project name:",
+		Default: "MyPlasmoid",
 	}
-	
+
 	invalidChars := regexp.MustCompile(`[\\/:*?"<>|\s@]`)
 	if strings.TrimSpace(Config.Name) == "" || invalidChars.MatchString(Config.Name) {
 		if err := survey.AskOne(namePrompt, &Config.Name, survey.WithValidator(validateProjectName)); err != nil {
@@ -156,9 +156,9 @@ func gatherProjectConfig() error {
 		AuthorEmailQuestion := &survey.Input{
 			Message: "Author email:",
 		}
-	 	if err := survey.AskOne(AuthorEmailQuestion, &Config.AuthorEmail); err != nil {
+		if err := survey.AskOne(AuthorEmailQuestion, &Config.AuthorEmail); err != nil {
 			return err
-		}	
+		}
 	}
 
 	// Set project path and ID based on name
@@ -167,7 +167,7 @@ func gatherProjectConfig() error {
 	} else {
 		Config.Path, _ = filepath.Abs(fmt.Sprintf("./%s", Config.Name))
 	}
-	Config.ID = fmt.Sprintf("org.kde.%s", strings.ToLower(strings.Split(Config.Path, string(os.PathSeparator))[len(strings.Split(Config.Path, string(os.PathSeparator))) - 1]))
+	Config.ID = fmt.Sprintf("org.kde.%s", strings.ToLower(strings.Split(Config.Path, string(os.PathSeparator))[len(strings.Split(Config.Path, string(os.PathSeparator)))-1]))
 
 	// Ask for ID confirmation
 	idQuestion := &survey.Input{
@@ -243,20 +243,22 @@ func InitPlasmoid() error {
 	// Create custom commands directory
 	_ = os.MkdirAll(filepath.Join(Config.Path, ".prasmoid/commands"), 0755)
 
-	dest := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", Config.ID) 
-	
+	dest := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", Config.ID)
+
 	// Remove if exists
 	_ = os.Remove(dest)
 	_ = os.RemoveAll(dest)
-	
+
 	// retrive current dir
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	
+
 	// Link
-	os.Symlink(filepath.Join(cwd, Config.Name), dest)
+	if err := os.Symlink(filepath.Join(cwd, Config.Name), dest); err != nil {
+		return fmt.Errorf("failed to create symlink: %w", err)
+	}
 	return nil
 }
 
@@ -283,11 +285,11 @@ func CreateConfigFile(locales []string) error {
 	fullPath := filepath.Join(Config.Path, "prasmoid.config.js")
 	RC := types.Config{
 		Commands: types.ConfigCommands{
-			Dir: ".prasmoid/commands",
+			Dir:    ".prasmoid/commands",
 			Ignore: []string{},
 		},
 		I18n: types.ConfigI18n{
-			Dir: "translations",
+			Dir:     "translations",
 			Locales: locales,
 		},
 	}
@@ -328,7 +330,7 @@ func createMetadataFile() error {
 			"Version":          "0.0.1",
 		},
 		"X-Plasma-API-Minimum-Version": "6.0",
-		"X-Plasma-Provides":          []string{},
+		"X-Plasma-Provides":            []string{},
 	}
 
 	// Add localized placeholders for Name and Description directly under KPlugin

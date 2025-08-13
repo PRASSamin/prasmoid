@@ -45,7 +45,9 @@ const config = {
 	flagStates := []string{"true", "false"}
 	for _, state := range flagStates {
 		// Initialize the command
-		cmd.I18nExtractCmd.Flags().Set("no-po", state)
+		if err := cmd.I18nExtractCmd.Flags().Set("no-po", state); err != nil {
+			t.Errorf("Error setting flag 'no-po': %v", err)
+		}
 
 		//  Execute the i18n extract command
 		cmd.I18nExtractCmd.Run(cmd.I18nExtractCmd, []string{})

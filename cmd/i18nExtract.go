@@ -9,6 +9,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +32,7 @@ func init() {
 var I18nExtractCmd = &cobra.Command{
 	Use:   "extract",
 	Short: "Extract translatable strings from source files",
-	Run: func(cmd *cobra.Command, args []string) {		
+	Run: func(cmd *cobra.Command, args []string) {
 		if !utils.IsValidPlasmoid() {
 			color.Red("Current directory is not a valid plasmoid.")
 			return
@@ -47,7 +48,7 @@ var I18nExtractCmd = &cobra.Command{
 			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
-			
+
 			if confirm {
 				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
 					color.Red("Failed to install gettext:", err)
@@ -167,7 +168,7 @@ func runXGettext(poDir string) error {
 		}
 		if strings.Contains(path, "node_modules") || strings.Contains(path, ".git") {
 			return nil
-		}		
+		}
 		if !info.IsDir() && (strings.HasSuffix(path, ".qml") || strings.HasSuffix(path, ".js")) {
 			srcFiles = append(srcFiles, path)
 		}
@@ -218,11 +219,13 @@ func runXGettext(poDir string) error {
 
 func postProcessPotFile(path string, name string, authors interface{}) {
 	input, err := os.ReadFile(path)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	var (
-		email string = "EMAIL@ADDRESS"
-		author string = "FIRST AUTHOR"
+		email  = "EMAIL@ADDRESS"
+		author = "FIRST AUTHOR"
 	)
 
 	if authors != nil {
@@ -249,14 +252,15 @@ func postProcessPotFile(path string, name string, authors interface{}) {
 	// Replace copyright year
 	output = bytes.Replace(output, []byte("Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER"), []byte(fmt.Sprintf("Copyright (C) %d %s", time.Now().Year(), author)), 1)
 	// Replace author
-    output = bytes.Replace(output, []byte("FIRST AUTHOR <EMAIL@ADDRESS>, YEAR."), []byte(fmt.Sprintf("%s <%s>, %d.", author, email, time.Now().Year())), 1)
+	output = bytes.Replace(output, []byte("FIRST AUTHOR <EMAIL@ADDRESS>, YEAR."), []byte(fmt.Sprintf("%s <%s>, %d.", author, email, time.Now().Year())), 1)
 
-
-	os.WriteFile(path, output, 0644)
+	if err := os.WriteFile(path, output, 0644); err != nil {
+		log.Printf("Error writing post-processed POT file: %v", err)
+	}
 }
 
 func handlePotFileUpdate(oldPath, newPath string) error {
-	// If old file doesn't exist, just rename the new one
+	// If old file doesn't exist, just rename
 	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
 		return os.Rename(newPath, oldPath)
 	}
@@ -276,11 +280,11 @@ func handlePotFileUpdate(oldPath, newPath string) error {
 }
 
 func runCommand(cmd *exec.Cmd) error {
-    var stderr bytes.Buffer
-    cmd.Stderr = &stderr
-    err := cmd.Run()
-    if err != nil {
-        return fmt.Errorf("command `%s` failed: %v\n%s", cmd.String(), err, stderr.String())
-    }
-    return nil
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("command `%s` failed: %v\n%s", cmd.String(), err, stderr.String())
+	}
+	return nil
 }

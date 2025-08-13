@@ -23,4 +23,3 @@ var regenConfigCmd = &cobra.Command{
 		color.Green("Config file regenerated successfully.")
 	},
 }
-

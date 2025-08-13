@@ -51,9 +51,9 @@ func LinkPlasmoid(dest string) error {
 
 	// retrive current dir
 	cwd, err := os.Getwd()
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	// Link
 	return os.Symlink(cwd, dest)
