@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	changesetCmd.AddCommand(ChangesetApplyCmd)
+	changesetCmd.AddCommand(changesetApplyCmd)
 }
 
 // ChangesetMeta represents the metadata for a changeset
@@ -29,7 +29,7 @@ type ChangesetMeta struct {
 }
 
 // changesetApplyCmd represents the changesetApply command
-var ChangesetApplyCmd = &cobra.Command{
+var changesetApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Apply all .mdx changesets from the .changes directory",
 	Run: func(cmd *cobra.Command, args []string) {

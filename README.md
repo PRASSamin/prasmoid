@@ -65,7 +65,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Arch Linux (AUR)
 
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
-- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-05)
+- **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-05)
 
 - Official AUR package
 
@@ -76,7 +76,7 @@ yay -S prasmoid
 #### Debian (.deb)
 
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
-- ***Tested on***: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
+- **_Tested on_**: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
 
 - [Official Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-0_amd64.deb)
 
@@ -87,7 +87,7 @@ wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0
 #### Fedora (.rpm)
 
 - **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
-- ***Tested on***: 'Fedora 42'
+- **_Tested on_**: 'Fedora 42'
 
 - [Official Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-1.fc42.x86_64.rpm)
 
@@ -98,9 +98,9 @@ wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0
 #### Snap
 
 - **Best for**: Anywhere with snaps available.
-- ***Tested on***: 'Kubuntu 25.04'
+- **_Tested on_**: 'Kubuntu 25.04'
 
-- [Official snap package](https://snapcraft.io/prasmoid/listing)
+- [Official snap package](https://snapcraft.io/prasmoid)
 
 ```bash
 snap install prasmoid
@@ -109,7 +109,7 @@ snap install prasmoid
 #### Flatpak
 
 - **Best for**: Anywhere with flatpaks available.
-- ***Tested on***: 'Arch Linux' (fully up-to-date as of 2025-08-10)
+- **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-10)
 
 - [Official flatpak package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak)
 
