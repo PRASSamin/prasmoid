@@ -8,7 +8,6 @@
 *.dll
 
 # Go build cache
-build/
 out/
 bin/
 obj/
@@ -38,6 +37,7 @@ metadata.json
 # Logs and temporary files
 *.log
 *.tmp
+*.out
 *.bak
 
 # Environment files
@@ -64,3 +64,6 @@ testdata/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# demo project
+MyPlasmoid

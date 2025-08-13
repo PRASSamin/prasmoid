@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PRASSamin/prasmoid/cmd/extendcli"
 	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -28,15 +29,15 @@ var ConfigRC types.Config
 
 func init() {
 	ConfigRC = utils.LoadConfigRC()
-	rootCmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
-	rootCmd.AddGroup(&cobra.Group{
+	RootCmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
+	RootCmd.AddGroup(&cobra.Group{
 		ID:    "custom",
 		Title: "Custom Commands:",
 	})
 }
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "prasmoid",
 	Short: "Manage plasmoid projects",
 	Long:  "CLI for building, packaging, and managing KDE plasmoid projects efficiently.",
@@ -55,11 +56,11 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	DiscoverAndRegisterCustomCommands(rootCmd)
+	extendcli.DiscoverAndRegisterCustomCommands(RootCmd, ConfigRC)
 
 	CheckForUpdates()
 
-	err := rootCmd.Execute()
+	err := RootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}

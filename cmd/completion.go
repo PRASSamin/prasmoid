@@ -21,6 +21,6 @@ func init() {
 	completion := completionCommand()
 
 	completion.Hidden = true
-	rootCmd.AddCommand(completion)
+	RootCmd.AddCommand(completion)
 
 }

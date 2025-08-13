@@ -19,7 +19,7 @@ var CliConfig struct {
 }
 
 func init() {
-	rootCmd.AddCommand(VersionCmd)
+	RootCmd.AddCommand(VersionCmd)
 }
 
 var VersionCmd = &cobra.Command{

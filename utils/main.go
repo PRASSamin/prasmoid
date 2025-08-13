@@ -448,3 +448,7 @@ func AskForLocales(defaultLocales ...[]string) []string {
 
 	return locales
 }
+
+func IsQmlFile(filename string) bool {
+	return strings.HasSuffix(filename, ".qml")
+}

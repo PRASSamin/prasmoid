@@ -15,7 +15,7 @@ depends=(
 # IMPORTANT: Maintain this exact order for both source and sha256sums arrays:
 # 1. Main binary
 # 2. License file
-# 3. README file
+# 3. README filet
 # @prassamin
 source=(
 	"https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid"
