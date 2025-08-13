@@ -100,14 +100,11 @@ wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0
 - **Best for**: Anywhere with snaps available.
 - ***Tested on***: 'Kubuntu 25.04'
 
-- [Official snap package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.0.3_amd64.snap)
+- [Official snap package](https://snapcraft.io/prasmoid/listing)
 
 ```bash
-wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_v0.0.3_amd64.snap && sudo snap install --dangerous prasmoid_v0.0.3_amd64.snap
+snap install prasmoid
 ```
-
-> [!IMPORTANT]
-> Until the snap is listed in an official store the signature can't be checked. The --dangerous flag bypasses signature verification.
 
 #### Flatpak
 
