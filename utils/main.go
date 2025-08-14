@@ -342,9 +342,6 @@ func EnsureStringAndValid(name string, value interface{}, err error) (string, er
 }
 
 func LoadConfigRC() types.Config {
-	if !IsValidPlasmoid() {
-		return types.Config{}
-	}
 	var configFileName = "prasmoid.config.js"
 	defaultConfig := types.Config{
 		Commands: types.ConfigCommands{

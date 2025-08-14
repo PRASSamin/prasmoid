@@ -445,18 +445,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
-		// Simulate an error from survey.AskOne by closing stdin immediately
-		oldStdin := os.Stdin
-		r, w, err := os.Pipe()
-		if err != nil {
-			t.Fatalf("Failed to create pipe: %v", err)
-		}
-		os.Stdin = r
-		_ = w.Close() // Close writer immediately to simulate EOF/error
-
-		defer func() { os.Stdin = oldStdin }()
-
-		err = AddChangeset("", "Summary for failed prompt", false)
+		err := AddChangeset("", "Summary for failed prompt", false)
 		if err == nil {
 			t.Error("AddChangeset() expected an error for failed prompt, but got nil")
 		}
