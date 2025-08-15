@@ -6,6 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
+	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
 	github.com/adrg/frontmatter v0.2.0
 	github.com/bmatcuk/doublestar/v4 v4.9.0
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
@@ -19,6 +20,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/creack/pty v1.1.17 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect

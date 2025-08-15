@@ -17,10 +17,9 @@ import (
 	root "github.com/PRASSamin/prasmoid/cmd"
 )
 
-var rmCommandName string
-
 func init() {
-	commandsRemoveCmd.Flags().StringVarP(&rmCommandName, "name", "n", "", "Command name")
+	commandsRemoveCmd.Flags().StringP("name", "n", "", "Command name")
+	commandsRemoveCmd.Flags().BoolP("force", "f", false, "Force removal without confirmation")
 	commandsCmd.AddCommand(commandsRemoveCmd)
 }
 
@@ -29,60 +28,92 @@ var commandsRemoveCmd = &cobra.Command{
 	Short: "Remove a custom command",
 	Long:  "Remove a custom command to the project.",
 	Run: func(cmd *cobra.Command, args []string) {
-		availableCmds := []string{}
-		if err := filepath.Walk(root.ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() {
-				return nil
-			}
-			availableCmds = append(availableCmds, fmt.Sprintf("%s (%s)", strings.TrimSuffix(info.Name(), filepath.Ext(info.Name())), info.Name()))
+		commandName, _ := cmd.Flags().GetString("name")
+		force, _ := cmd.Flags().GetBool("force")
+		_ = RemoveCommand(commandName, force)
+	},
+}
+
+func RemoveCommand(commandName string, force bool) error {
+	availableCmds := []string{}
+	if err := filepath.Walk(root.ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
+		if info == nil || info.IsDir() {
 			return nil
-		}); err != nil {
-			color.Red("Error walking commands directory: %v", err)
-			return
 		}
+		base := info.Name()
+		nameWithoutExt := strings.TrimSuffix(base, filepath.Ext(base))
+		availableCmds = append(availableCmds, fmt.Sprintf("%s (%s)", nameWithoutExt, base))
+		return nil
+	}); err != nil {
+		color.Red("Error walking commands directory: %v", err)
+		return fmt.Errorf("error walking commands directory: %v", err)
+	}
 
-		// Ask for runtime
-		if strings.TrimSpace(rmCommandName) == "" {
+	if len(availableCmds) == 0 {
+		color.Red("No commands found in the commands directory.")
+		return fmt.Errorf("no commands found in the commands directory")
+	}
 
-			runtimePrompt := &survey.Select{
-				Message: "Select a command to remove:",
-				Options: availableCmds,
-			}
-			if err := survey.AskOne(runtimePrompt, &rmCommandName); err != nil {
-				return
-			}
-
+	// If not provided, prompt
+	if strings.TrimSpace(commandName) == "" {
+		commandNamePrompt := &survey.Select{
+			Message: "Select a command to remove:",
+			Options: availableCmds,
 		}
-
-		// Extract filename using regex
-		filenameRegex := regexp.MustCompile(`\(([^)]+)\)$`)
-		matches := filenameRegex.FindStringSubmatch(rmCommandName)
-		if len(matches) != 2 {
-			color.Red("Invalid command format")
-			return
+		if err := survey.AskOne(commandNamePrompt, &commandName); err != nil {
+			return fmt.Errorf("error asking for command name: %v", err)
 		}
-		fileName := matches[1]
+	}
 
-		// Remove the file
-		filePath := filepath.Join(root.ConfigRC.Commands.Dir, fileName)
+	// Normalize input
+	commandName = strings.TrimSpace(commandName)
 
-		var confirm bool
+	var fileName string
+	if strings.Contains(commandName, "(") && strings.Contains(commandName, ")") {
+		// If user passed the select-menu style value
+		re := regexp.MustCompile(`\(([^)]+)\)$`)
+		matches := re.FindStringSubmatch(commandName)
+		if len(matches) == 2 {
+			fileName = matches[1]
+		}
+	} else {
+		// If user passed plain name or file name
+		if !strings.Contains(filepath.Ext(commandName), ".") {
+			// No extension -> add .js (or your default ext)
+			fileName = commandName + ".js"
+		} else {
+			fileName = commandName
+		}
+	}
+
+	// Verify it exists
+	filePath := filepath.Join(root.ConfigRC.Commands.Dir, fileName)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		color.Red("Command file does not exist: %s", fileName)
+		return fmt.Errorf("command file does not exist: %s", fileName)
+	}
+
+	// Confirmation
+	var confirm = force
+	if !force {
 		confirmPrompt := &survey.Confirm{
-			Message: "Are you sure you want to remove this command?",
+			Message: fmt.Sprintf("Are you sure you want to remove %s?", fileName),
 			Default: true,
 		}
 		if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
-			return
+			return fmt.Errorf("error asking for confirmation: %v", err)
 		}
-		if !confirm {
-			return
-		}
+	}
+	if !confirm {
+		color.Yellow("Operation cancelled.")
+		return fmt.Errorf("command removal cancelled")
+	}
 
-		err := os.Remove(filePath)
-		if err != nil {
-			color.Red("Error removing file: %v", err)
-			return
-		}
-		color.Green("Successfully removed command: %s", fileName)
-	},
+	// Remove
+	if err := os.Remove(filePath); err != nil {
+		color.Red("Error removing file: %v", err)
+		return fmt.Errorf("error removing file: %v", err)
+	}
+	color.Green("Successfully removed command: %s", fileName)
+	return nil
 }
