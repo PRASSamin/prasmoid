@@ -29,7 +29,7 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 		return func(call goja.FunctionCall) goja.Value {
 			var output []string
 			for _, arg := range call.Arguments {
-				output = append(output, stringifyJS(arg.Export()))
+				output = append(output, stringifyJS(arg.Export(), false))
 			}
 			if prefix != "" {
 				fmt.Println(prefix, strings.Join(output, " "))
@@ -45,7 +45,7 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 		return func(call goja.FunctionCall) goja.Value {
 			var parts []string
 			for _, arg := range call.Arguments {
-				parts = append(parts, stringifyJS(arg.Export()))
+				parts = append(parts, stringifyJS(arg.Export(), false))
 			}
 			colorFunc(strings.Join(parts, " "))
 			return goja.Undefined()
@@ -94,7 +94,7 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 		if len(call.Arguments) == 1 {
 			colorName = "white"
 			for _, arg := range call.Arguments {
-				parts = append(parts, fmt.Sprintf("%v", arg.Export()))
+				parts = append(parts, stringifyJS(arg.Export(), false))
 			}
 		}
 
@@ -134,28 +134,39 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 	}
 }
 
-func stringifyJS(v interface{}) string {
+func stringifyJS(v interface{}, inContainer bool) string {
 	switch val := v.(type) {
 	case nil:
 		return "null"
 	case string:
-		return fmt.Sprintf("\"%s\"", val)
+		if inContainer {
+			// In array/object → keep quotes
+			return fmt.Sprintf("\"%s\"", val)
+		}
+		// Top-level string → no quotes
+		return val
+	case []string:
+		var parts []string
+		for _, item := range val {
+			parts = append(parts, stringifyJS(item, true))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
 	case []interface{}:
 		var parts []string
 		for _, item := range val {
-			parts = append(parts, stringifyJS(item))
+			parts = append(parts, stringifyJS(item, true))
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 	case map[string]interface{}:
 		var parts []string
 		for k, v := range val {
-			parts = append(parts, fmt.Sprintf("%s: %s", k, stringifyJS(v)))
+			parts = append(parts, fmt.Sprintf("%s: %s", k, stringifyJS(v, true)))
 		}
 		return "{ " + strings.Join(parts, ", ") + " }"
 	case map[interface{}]interface{}:
 		var parts []string
 		for k, v := range val {
-			parts = append(parts, fmt.Sprintf("%v: %s", k, stringifyJS(v)))
+			parts = append(parts, fmt.Sprintf("%v: %s", k, stringifyJS(v, true)))
 		}
 		return "{ " + strings.Join(parts, ", ") + " }"
 	case func(goja.FunctionCall) goja.Value:

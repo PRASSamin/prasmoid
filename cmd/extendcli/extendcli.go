@@ -5,7 +5,6 @@ package extendcli
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,8 +29,8 @@ func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command, ConfigRC types.Co
 
 	files, err := os.ReadDir(commandsDir)
 	if err != nil {
-		color.Red("Error reading commands directory: %v", err)
-		return
+		fmt.Fprintln(os.Stderr, color.RedString("Error reading commands directory: %v", err))
+		return 
 	}
 
 	// Filter out ignored files
@@ -48,7 +47,7 @@ func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command, ConfigRC types.Co
 
 	// Register commands
 	for _, file := range filteredFiles {
-		registerJSCommand(rootCmd, filepath.Join(commandsDir, file.Name()))
+		_ = registerJSCommand(rootCmd, filepath.Join(commandsDir, file.Name()))
 	}
 }
 
@@ -75,12 +74,12 @@ type flagValues struct {
 	Bools   map[string]*bool
 }
 
-func registerJSCommand(rootCmd *cobra.Command, path string) {
+func registerJSCommand(rootCmd *cobra.Command, path string) error {
 	// Read the JS file
 	src, err := os.ReadFile(path)
 	if err != nil {
-		color.Red("Failed to read JS script %s: %v", path, err)
-		return
+		fmt.Println(color.RedString("Failed to read JS script %s: %v", path, err))
+		return fmt.Errorf("failed to read JS script %s: %v", path, err)
 	}
 
 	// Create new runtime instance
@@ -88,7 +87,8 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 
 	_, err = vm.RunString(string(src))
 	if err != nil {
-		color.Red("Error running script:", err)
+		fmt.Println(color.RedString("Error running script: %v", err))
+		return fmt.Errorf("error running script: %v", err)
 	}
 
 	cmd := &cobra.Command{}
@@ -110,12 +110,12 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 
 	for _, flag := range command.Flags {
 		if flag.Name == "" {
-			color.Yellow("Flag name is required")
-			return
+			fmt.Println(color.YellowString("Flag name is required"))
+			return fmt.Errorf("flag name is required")
 		}
 		if flag.Type == "" {
-			color.Yellow("Flag type is required")
-			return
+			fmt.Println(color.YellowString("Flag type is required"))
+			return fmt.Errorf("flag type is required")
 		}
 
 		switch flag.Type {
@@ -136,8 +136,8 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 				cmd.Flags().BoolVarP(flagVals.Bools[flag.Name], flag.Name, flag.Shorthand, flag.Value.(bool), flag.Description)
 			}
 		default:
-			color.Yellow("Unsupported flag type: %s", flag.Type)
-			return
+			fmt.Fprintln(os.Stderr, color.RedString("Unsupported flag type: %s", flag.Type))
+			return fmt.Errorf("unsupported flag type: %s", flag.Type)
 		}
 	}
 
@@ -146,29 +146,23 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 		ctxObj := vm.NewObject()
 
 		// Add Args method
-		if err := ctxObj.Set("Args", func(call goja.FunctionCall) goja.Value {
+		_ = ctxObj.Set("Args", func(call goja.FunctionCall) goja.Value {
 			return vm.ToValue(args)
-		}); err != nil {
-			log.Printf("Error setting Args on ctxObj: %v", err)
-		}
+		})
 
 		// Create flags object
 		flagsObj := vm.NewObject()
 
 		// Add raw flag values as properties
 		for k, v := range flagVals.Strings {
-			if err := flagsObj.Set(k, vm.ToValue(*v)); err != nil {
-				log.Printf("Error setting flag %s on flagsObj: %v", k, err)
-			}
+			_ = flagsObj.Set(k, vm.ToValue(*v))
 		}
 		for k, v := range flagVals.Bools {
-			if err := flagsObj.Set(k, vm.ToValue(*v)); err != nil {
-				log.Printf("Error setting flag %s on flagsObj: %v", k, err)
-			}
+			_ = flagsObj.Set(k, vm.ToValue(*v))
 		}
 
 		// Add getFlag method
-		if err := flagsObj.Set("get", func(call goja.FunctionCall) goja.Value {
+		_ = flagsObj.Set("get", func(call goja.FunctionCall) goja.Value {
 			name := call.Argument(0).String()
 			if val, ok := flagVals.Strings[name]; ok {
 				return vm.ToValue(*val)
@@ -176,25 +170,22 @@ func registerJSCommand(rootCmd *cobra.Command, path string) {
 				return vm.ToValue(*val)
 			}
 			return goja.Undefined()
-		}); err != nil {
-			log.Printf("Error setting 'get' method on flagsObj: %v", err)
-		}
+		})
 
 		// Add Flags method
-		if err := ctxObj.Set("Flags", func(call goja.FunctionCall) goja.Value {
+		_ = ctxObj.Set("Flags", func(call goja.FunctionCall) goja.Value {
 			return flagsObj
-		}); err != nil {
-			log.Printf("Error setting Flags on ctxObj: %v", err)
-		}
+		})
 
 		// Pass the context to the JS function
 		_, err := command.Run(goja.Undefined(), ctxObj)
 		if err != nil {
-			color.Red("JS command error (%s): %v", path, err)
+			fmt.Fprintln(os.Stderr, color.RedString("JS command error (%s): %v", path, err))
 		}
 		runtime.EventLoop.Wait()
 	}
 
 	cmd.GroupID = "custom"
 	rootCmd.AddCommand(cmd)
+	return nil
 }

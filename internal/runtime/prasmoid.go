@@ -20,7 +20,7 @@ type CommandConfig struct {
 type CommandFlag struct {
 	Name        string      `json:"name"`
 	Type        string      `json:"type"`
-	Value       interface{} `json:"usage"`
+	Value       interface{} `json:"value"`
 	Shorthand   string      `json:"shorthand"`
 	Description string      `json:"description"`
 }
@@ -123,7 +123,7 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 						config.Flags = append(config.Flags, CommandFlag{
 							Name:        asString(flagMap["name"]),
 							Type:        typ,
-							Value:       flagMap["default"],
+							Value:       flagMap["value"],
 							Shorthand:   asString(flagMap["shorthand"]),
 							Description: asString(flagMap["description"]),
 						})
