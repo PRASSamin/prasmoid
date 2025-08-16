@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "** Build failed, bringing up shell"
+apt-get install -y vim less bash
+/bin/bash < /dev/tty > /dev/tty 2> /dev/tty

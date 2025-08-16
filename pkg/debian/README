@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Builds source and binary debian packages by compiling from source in a base chroot
+
+# Replace plucky with target distro 
+DIST=plucky
+
+# optionally mount the cache dir as tmpfs for speed at the cost of a lot of RAM
+#sudo cat "tmpfs /var/cache/pbuilder tmpfs defaults,size=4000M 0 0" > /etc/fstab
+#sudo mount /var/cache/pbuilder
+#sudo mkdir /var/cache/pbuilder/aptcache
+
+# Create build environment that will be chroot'ed into during packaging
+#sudo apt install pbuilder cowbuilder
+#sudo cowbuilder --create --distribution $DIST
+#sudo mv /var/cache/pbuilder/base.cow /var/cache/pbuilder/base-$DIST.cow
+
+# Install build deps
+# sudo apt install debhelper-compat dh-sequence-golang golang-github-alecaivazis-survey-dev \
+#   golang-github-bmatcuk-doublestar-dev golang-github-dop251-goja-dev golang-github-fatih-color-dev \
+#   golang-github-fsnotify-fsnotify-dev golang-github-spf13-cobra-dev golang-golang-x-sys-dev \
+#   golang-golang-x-term-dev qt6-declarative-dev-tools golang-github-go-sourcemap-sourcemap-dev \
+#   golang-github-google-pprof-dev
+
+# build
+echo "HOOKDIR=\"$(pwd)/debian/pbuilderhook.d\"" > $HOME/.pbuilderrc
+gbp buildpackage --git-pbuilder --git-dist=$DIST
+
+# check result
+lintian *source.changes
+
+# sign
+# debsign *source.changes
+
+# upload
+# dput ppa:northern-lights/prasmoid *source.changes

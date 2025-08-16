@@ -1,0 +1,59 @@
+Source: prasmoid
+Section: golang
+Priority: optional
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: Clem Lorteau <clem@lorteau.fr>,
+Rules-Requires-Root: no
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-golang,
+               golang-any,
+               golang-github-alecaivazis-survey-dev,
+               golang-github-bmatcuk-doublestar-dev,
+               golang-github-dop251-goja-dev,
+               golang-github-fatih-color-dev,
+               golang-github-fsnotify-fsnotify-dev,
+               golang-github-spf13-cobra-dev,
+               golang-golang-x-sys-dev,
+               golang-golang-x-term-dev,
+               golang-github-google-pprof-dev,
+               golang-github-go-sourcemap-sourcemap-dev,
+               plasma-sdk,
+               qt6-declarative-dev-tools,
+               curl,
+               git
+Testsuite: autopkgtest-pkg-go
+Standards-Version: 4.7.0
+Vcs-Browser: https://salsa.debian.org/go-team/packages/prasmoid
+Vcs-Git: https://salsa.debian.org/go-team/packages/prasmoid.git
+Homepage: https://github.com/PRASSamin/prasmoid
+XS-Go-Import-Path: github.com/PRASSamin/prasmoid
+
+Package: prasmoid
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+Static-Built-Using: ${misc:Static-Built-Using}
+Description: The All in One Development Toolkit for KDE Plasmoids. (program)
+ Prasmoid CLI
+ .
+ ------------------------------------------------------------------------
+ .
+ Why Prasmoid?
+ .
+ While the core structure of KDE Plasma plasmoids is straightforward, the
+ surrounding development workflow, including setup, building, testing,
+ and deployment often involves repetitive manual steps. **Prasmoid CLI**
+ is designed to abstract away these boring tasks. It's a powerful command-
+ line tool, crafted with Go, that provides a seamless, integrated
+ experience, allowing you to **focus solely on writing your plasmoid's
+ code**.
+ .
+ **Focus on your code, not the boilerplate.** Prasmoid handles the heavy
+ lifting, from project scaffolding and live previews to smart versioning
+ and packaging, allowing you to concentrate on creating amazing
+ plasmoids.
+ .
+ One of its most revolutionary features is a **built-in, zero-dependency
+ JavaScript runtime**. This allows you to extend the CLI with your own
+ custom commands, automating any workflow imaginable, directly within
+ your project – no Node.js installation required!
