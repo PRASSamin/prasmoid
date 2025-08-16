@@ -16,30 +16,26 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 	_process := module.Get("exports").(*goja.Object)
 
 	// process.exit(code)
-	if err := _process.Set("exit", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("exit", func(call goja.FunctionCall) goja.Value {
 		code := 0
 		if len(call.Arguments) > 0 {
 			code = int(call.Arguments[0].ToInteger())
 		}
 		os.Exit(code)
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting process.exit: %v\n", err)
-	}
+	})
 
 	// process.cwd()
-	if err := _process.Set("cwd", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("cwd", func(call goja.FunctionCall) goja.Value {
 		dir, err := os.Getwd()
 		if err != nil {
 			return vm.ToValue(fmt.Sprintf("cwd error: %v", err))
 		}
 		return vm.ToValue(dir)
-	}); err != nil {
-		fmt.Printf("Error setting process.cwd: %v\n", err)
-	}
+	})
 
 	// process.chdir(path)
-	if err := _process.Set("chdir", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("chdir", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
 			return vm.ToValue("chdir: path is required")
 		}
@@ -49,19 +45,15 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("chdir error: %v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting process.chdir: %v\n", err)
-	}
+	})
 
 	// process.uptime()
-	if err := _process.Set("uptime", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("uptime", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(time.Since(startTime).Seconds())
-	}); err != nil {
-		fmt.Printf("Error setting process.uptime: %v\n", err)
-	}
+	})
 
 	// process.memoryUsage()
-	if err := _process.Set("memoryUsage", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("memoryUsage", func(call goja.FunctionCall) goja.Value {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 
@@ -71,12 +63,10 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 		SetObjProperty(obj, "heapUsed", m.HeapAlloc)
 		SetObjProperty(obj, "external", m.StackSys)
 		return obj
-	}); err != nil {
-		fmt.Printf("Error setting process.memoryUsage: %v\n", err)
-	}
+	})
 
 	// process.kill(pid)
-	if err := _process.Set("kill", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("kill", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("kill: pid required")
 		}
@@ -86,37 +76,27 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("kill error: %v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting process.kill: %v\n", err)
-	}
+	})
 
 	// process.getuid()
-	if err := _process.Set("getuid", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("getuid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getuid())
-	}); err != nil {
-		fmt.Printf("Error setting process.getuid: %v\n", err)
-	}
+	})
 
 	// process.getgid()
-	if err := _process.Set("getgid", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("getgid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getgid())
-	}); err != nil {
-		fmt.Printf("Error setting process.getgid: %v\n", err)
-	}
+	})
 
 	// process.geteuid()
-	if err := _process.Set("geteuid", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("geteuid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Geteuid())
-	}); err != nil {
-		fmt.Printf("Error setting process.geteuid: %v\n", err)
-	}
+	})
 
 	// process.getegid()
-	if err := _process.Set("getegid", func(call goja.FunctionCall) goja.Value {
+	_ = _process.Set("getegid", func(call goja.FunctionCall) goja.Value {
 		return vm.ToValue(os.Getegid())
-	}); err != nil {
-		fmt.Printf("Error setting process.getegid: %v\n", err)
-	}
+	})
 
 	// process.env
 	type Process struct {
@@ -126,9 +106,7 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 	envs := LoadEnvWithPrefix()
 	p := &Process{env: envs}
 
-	if err := _process.Set("env", p.env); err != nil {
-		fmt.Printf("Error setting process.env: %v\n", err)
-	}
+	_ = _process.Set("env", p.env)
 
 	// === NOT IMPLEMENTED FUNCTIONS ===
 
@@ -148,9 +126,7 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	for _, name := range notImplList {
-		if err := _process.Set(name, notImplemented(name)); err != nil {
-			fmt.Printf("Error setting process.%s: %v\n", name, err)
-		}
+		_ = _process.Set(name, notImplemented(name))
 	}
 }
 

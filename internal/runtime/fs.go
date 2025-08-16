@@ -49,7 +49,7 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	// readFileSync(path: string) => string
-	if err := _fs.Set("readFileSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("readFileSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.readFileSync: missing path")
 		}
@@ -59,12 +59,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return vm.ToValue(string(data))
-	}); err != nil {
-		fmt.Printf("Error setting fs.readFileSync: %v\n", err)
-	}
+	})
 
 	// writeFileSync(path: string, content: string)
-	if err := _fs.Set("writeFileSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("writeFileSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			return vm.ToValue("fs.writeFileSync: missing path or content")
 		}
@@ -76,12 +74,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.writeFileSync: %v\n", err)
-	}
+	})
 
 	// appendFileSync(path: string, content: string)
-	if err := _fs.Set("appendFileSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("appendFileSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			return vm.ToValue("fs.appendFileSync: missing path or content")
 		}
@@ -102,12 +98,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.appendFileSync: %v\n", err)
-	}
+	})
 
 	// existsSync(path: string) => boolean
-	if err := _fs.Set("existsSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("existsSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.existsSync: missing path")
 		}
@@ -115,12 +109,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		_, err := os.Stat(path)
 		exists := !os.IsNotExist(err)
 		return vm.ToValue(exists)
-	}); err != nil {
-		fmt.Printf("Error setting fs.existsSync: %v\n", err)
-	}
+	})
 
 	// readdirSync(path: string) => string[]
-	if err := _fs.Set("readdirSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("readdirSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.readdirSync: missing path")
 		}
@@ -139,12 +131,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			index++
 		}
 		return result
-	}); err != nil {
-		fmt.Printf("Error setting fs.readdirSync: %v\n", err)
-	}
+	})
 
 	// mkdirSync(path: string)
-	if err := _fs.Set("mkdirSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("mkdirSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.mkdirSync: missing path")
 		}
@@ -154,9 +144,7 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.mkdirSync: %v\n", err)
-	}
+	})
 
 	rm := func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
@@ -186,15 +174,11 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	// rmdirSync(path: string, options?: { recursive?: boolean })
-	if err := _fs.Set("rmdirSync", rm); err != nil {
-		fmt.Printf("Error setting fs.rmdirSync: %v\n", err)
-	}
-	if err := _fs.Set("rmSync", rm); err != nil {
-		fmt.Printf("Error setting fs.rmSync: %v\n", err)
-	}
+	_ = _fs.Set("rmdirSync", rm)
+	_ = _fs.Set("rmSync", rm)
 
 	// copyFileSync(src: string, dest: string)
-	if err := _fs.Set("copyFileSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("copyFileSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			return vm.ToValue("fs.copyFileSync: missing src or dest")
 		}
@@ -230,12 +214,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.copyFileSync: %v\n", err)
-	}
+	})
 
 	// renameSync(oldPath: string, newPath: string)
-	if err := _fs.Set("renameSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("renameSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			return vm.ToValue("fs.renameSync: missing oldPath or newPath")
 		}
@@ -246,12 +228,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.renameSync: %v\n", err)
-	}
+	})
 
 	// unlinkSync(path: string)
-	if err := _fs.Set("unlinkSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("unlinkSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.unlinkSync: missing path")
 		}
@@ -261,11 +241,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.unlinkSync: %v\n", err)
-	}
+	})
 
-	if err := _fs.Set("realpathSync", func(call goja.FunctionCall) goja.Value {
+	// realpathSync(path: string) => string
+	_ = _fs.Set("realpathSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.realpathSync: missing path")
 		}
@@ -275,11 +254,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return vm.ToValue(realPath)
-	}); err != nil {
-		fmt.Printf("Error setting fs.realpathSync: %v\n", err)
-	}
+	})
 
-	if err := _fs.Set("readlinkSync", func(call goja.FunctionCall) goja.Value {
+	// readlinkSync(path: string) => string
+	_ = _fs.Set("readlinkSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.readlinkSync: missing path")
 		}
@@ -289,12 +267,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return vm.ToValue(link)
-	}); err != nil {
-		fmt.Printf("Error setting fs.readlinkSync: %v\n", err)
-	}
+	})
 
 	// cpSync(src: string, dest: string) :::::::::::::::::::: copy entire directory
-	if err := _fs.Set("cpSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("cpSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			return vm.ToValue("fs.cpSync: missing src or dest")
 		}
@@ -351,12 +327,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.cpSync: %v\n", err)
-	}
+	})
 
 	// globSync(pattern: string) => string[]
-	if err := _fs.Set("globSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("globSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.globSync: missing pattern")
 		}
@@ -367,12 +341,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("glob error: %v", err))
 		}
 		return vm.ToValue(matches)
-	}); err != nil {
-		fmt.Printf("Error setting fs.globSync: %v\n", err)
-	}
+	})
 
 	// mkdtempSync(prefix: string) => string
-	if err := _fs.Set("mkdtempSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("mkdtempSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("fs.mkdtempSync: missing prefix")
 		}
@@ -382,12 +354,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
 		return vm.ToValue(dir)
-	}); err != nil {
-		fmt.Printf("Error setting fs.mkdtempSync: %v\n", err)
-	}
+	})
 
 	// symlinkSync(target: string, link: string)
-	if err := _fs.Set("symlinkSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("symlinkSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			panic(vm.ToValue("fs.symlinkSync requires 2 arguments: target and path"))
 		}
@@ -412,12 +382,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.symlinkSync: %v\n", err)
-	}
+	})
 
 	// statSync(path: string) => Stats
-	if err := _fs.Set("statSync", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("statSync", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			panic(vm.ToValue("fs.statSync: missing path"))
 		}
@@ -429,17 +397,13 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return toJsStats(info, vm, statsCtor)
-	}); err != nil {
-		fmt.Printf("Error setting fs.statSync: %v\n", err)
-	}
+	})
 
 	// Stats Class
-	if err := _fs.Set("Stats", statsCtor); err != nil {
-		fmt.Printf("Error setting fs.Stats: %v\n", err)
-	}
+	_ = _fs.Set("Stats", statsCtor)
 
 	// watch
-	if err := _fs.Set("watch", func(call goja.FunctionCall) goja.Value {
+	_ = _fs.Set("watch", func(call goja.FunctionCall) goja.Value {
 		path := call.Argument(0).String()
 		var listener goja.Callable
 		var options map[string]interface{}
@@ -549,11 +513,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return watcherObj
-	}); err != nil {
-		fmt.Printf("Error setting fs.watch: %v\n", err)
-	}
+	})
 
-	if err := _fs.Set("watchFile", func(call goja.FunctionCall) goja.Value {
+	// watchFile
+	_ = _fs.Set("watchFile", func(call goja.FunctionCall) goja.Value {
 		path := call.Argument(0).String()
 		var interval = time.Second
 		var listener goja.Callable
@@ -620,11 +583,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.watchFile: %v\n", err)
-	}
+	})
 
-	if err := _fs.Set("unwatchFile", func(call goja.FunctionCall) goja.Value {
+	// unwatchFile
+	_ = _fs.Set("unwatchFile", func(call goja.FunctionCall) goja.Value {
 		path := call.Argument(0).String()
 		var listener goja.Callable
 
@@ -652,9 +614,7 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 		}
 
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting fs.unwatchFile: %v\n", err)
-	}
+	})
 
 	// ============== Not implemented ================
 	asyncNotImplemented := func(name string) func(goja.FunctionCall) goja.Value {
@@ -675,14 +635,10 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 	notImplList := []string{"access", "accessSync", "chown", "chownSync", "chmod", "chmodSync", "close", "closeSync", "createReadStream", "createWriteStream", "fchown", "fchownSync", "fchmod", "fchmodSync", "fdatasync", "fdatasyncSync", "fstat", "fstatSync", "fsync", "fsyncSync", "ftruncate", "ftruncateSync", "futimes", "futimesSync", "lchown", "lchownSync", "lstat", "lstatSync", "lutimes", "lutimesSync", "open", "openSync", "openAsBlob", "read", "readSync", "readv", "readvSync", "statfs", "statfsSync", "truncate", "truncateSync", "utimes", "utimesSync", "write", "writeSync", "writev", "writevSync", "Dirent", "ReadStream", "WriteStream", "FileReadStream", "FileWriteStream", "Dir", "opendir", "opendirSync"}
 
 	for _, name := range asyncNotImplList {
-		if err := _fs.Set(name, asyncNotImplemented(name)); err != nil {
-			fmt.Printf("Error setting fs.%s: %v\n", name, err)
-		}
+		_ = _fs.Set(name, asyncNotImplemented(name))
 	}
 	for _, name := range notImplList {
-		if err := _fs.Set(name, notImplemented(name)); err != nil {
-			fmt.Printf("Error setting fs.%s: %v\n", name, err)
-		}
+		_ = _fs.Set(name, notImplemented(name))
 	}
 }
 

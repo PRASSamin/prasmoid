@@ -30,12 +30,8 @@ func ChildProcess(vm *goja.Runtime, module *goja.Object) {
 		return vm.ToValue("child_process.exec is not implemented in this runtime, use execSync instead")
 	}
 
-	if err := _cp.Set("execSync", execSync); err != nil {
-		fmt.Printf("Error setting execSync: %v\n", err)
-	}
-	if err := _cp.Set("exec", execAsync); err != nil {
-		fmt.Printf("Error setting exec: %v\n", err)
-	}
+	_ = _cp.Set("execSync", execSync)
+	_ = _cp.Set("exec", execAsync)
 
 	// === NOT IMPLEMENTED FUNCTIONS ===
 	notImplemented := func(name string) func(goja.FunctionCall) goja.Value {
@@ -47,8 +43,6 @@ func ChildProcess(vm *goja.Runtime, module *goja.Object) {
 	for _, name := range []string{
 		"execFileSync", "execFile", "spawn", "spawnSync",
 	} {
-		if err := _cp.Set(name, notImplemented(name)); err != nil {
-			fmt.Printf("Error setting %s: %v\n", name, err)
-		}
+		_ = _cp.Set(name, notImplemented(name))
 	}
 }

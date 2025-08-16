@@ -31,7 +31,7 @@ var CommandStorage CommandConfig
 func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 	exports := module.Get("exports").(*goja.Object)
 
-	if err := exports.Set("getMetadata", func(call goja.FunctionCall) goja.Value {
+	_ = exports.Set("getMetadata", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
 			return vm.ToValue("prasmoid.getMetadata: missing key")
 		}
@@ -43,11 +43,9 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue("prasmoid.getMetadata: " + err.Error())
 		}
 		return vm.ToValue(data)
-	}); err != nil {
-		fmt.Printf("Error setting prasmoid.getMetadata: %v\n", err)
-	}
+	})
 
-	if err := exports.Set("Command", func(call goja.FunctionCall) goja.Value {
+	_ = exports.Set("Command", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) != 1 {
 			panic("prasmoid.Command: exactly 1 argument required")
 		}
@@ -134,9 +132,7 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 
 		CommandStorage = config
 		return nil
-	}); err != nil {
-		fmt.Printf("Error setting prasmoid.Command: %v\n", err)
-	}
+	})
 }
 
 func asString(val interface{}) string {

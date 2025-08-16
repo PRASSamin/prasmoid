@@ -10,8 +10,9 @@
 - The build script now automatically updates package files (`PKGBUILD`) with the correct version and file checksums to help packager.
 - The installation script now shows clearer and more helpful messages.
 - The project layout was changed to make sure `go install` works correctly. This involved moving command files to a root `cmd/` folder and moving the build script into a `dev/` folder.
-- Fixed: Custom command flags now properly handle default values
-- Enhanced: Console module with improved string formatting and better handling of complex data types in logs
+- Fixed Custom command flags now properly handle default values
+- Enhanced Console module with improved string formatting and better handling of complex data types in logs
+- Removed unnecessary error handling in runtime environment setup
 
 ## [v0.0.3] - 2025-07-29
 

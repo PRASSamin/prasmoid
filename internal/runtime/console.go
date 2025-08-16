@@ -53,35 +53,19 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	// Standard logs
-	if err := _console.Set("log", createPlainLogger("")); err != nil {
-		fmt.Printf("Error setting console.log: %v\n", err)
-	}
-	if err := _console.Set("warn", createPlainLogger("")); err != nil {
-		fmt.Printf("Error setting console.warn: %v\n", err)
-	}
-	if err := _console.Set("error", createPlainLogger("")); err != nil {
-		fmt.Printf("Error setting console.error: %v\n", err)
-	}
-	if err := _console.Set("debug", createPlainLogger("")); err != nil {
-		fmt.Printf("Error setting console.debug: %v\n", err)
-	}
-	if err := _console.Set("info", createPlainLogger("")); err != nil {
-		fmt.Printf("Error setting console.info: %v\n", err)
-	}
+	_ = _console.Set("log", createPlainLogger(""))
+	_ = _console.Set("warn", createPlainLogger(""))
+	_ = _console.Set("error", createPlainLogger(""))
+	_ = _console.Set("debug", createPlainLogger(""))
+	_ = _console.Set("info", createPlainLogger(""))
 
 	// Colored logs
-	if err := _console.Set("red", createColorLogger(color.Red)); err != nil {
-		fmt.Printf("Error setting console.red: %v\n", err)
-	}
-	if err := _console.Set("green", createColorLogger(color.Green)); err != nil {
-		fmt.Printf("Error setting console.green: %v\n", err)
-	}
-	if err := _console.Set("yellow", createColorLogger(color.Yellow)); err != nil {
-		fmt.Printf("Error setting console.yellow: %v\n", err)
-	}
+	_ = _console.Set("red", createColorLogger(color.Red))
+	_ = _console.Set("green", createColorLogger(color.Green))
+	_ = _console.Set("yellow", createColorLogger(color.Yellow))
 
 	// Flexible color log: console.color("msg", "colorName")
-	if err := _console.Set("color", func(call goja.FunctionCall) goja.Value {
+	_ = _console.Set("color", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return goja.Undefined()
 		}
@@ -129,9 +113,7 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 			fmt.Printf("Error printing colored text: %v\n", err)
 		}
 		return goja.Undefined()
-	}); err != nil {
-		fmt.Printf("Error setting console.color: %v\n", err)
-	}
+	})
 }
 
 func stringifyJS(v interface{}, inContainer bool) string {
