@@ -64,36 +64,26 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 
 #### Packages
 #### Arch Linux (AUR)
-
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
 - **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-05)
-
 	```bash
 	yay -S prasmoid
 	```
-
 #### Debian/Ubuntu (.deb)
-
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
 - **_Tested on_**: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
 - [Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb)
 - [PPA repository](https://launchpad.net/~northern-lights/+archive/ubuntu/prasmoid)
-
 	- Pre-requisite - add repo:
-	
 	```bash
 	sudo add-apt-repository ppa:northern-lights/prasmoid
 	sudo apt update
 	```
-	
 	- Install:
-	
 	```bash
 	sudo apt install prasmoid
 	```
-	
 #### Fedora (.rpm)
-
 - **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
 - **_Tested on_**: 'Fedora 42'
 - [x86_64 Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.x86_64.rpm) | [source Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.src.rpm)
@@ -109,9 +99,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Snap
 - **Best for**: Anywhere with snaps available.
 - **_Tested on_**: 'Kubuntu 25.04'
-
 - [Snap package](https://snapcraft.io/prasmoid)
-
 	```bash
 	snap install prasmoid
 	```
