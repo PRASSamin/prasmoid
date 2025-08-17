@@ -16,8 +16,8 @@ func TestRemoveCommand(t *testing.T) {
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
-		commandsRemoveCmd.Flags().Set("name", "test-cmd (test-cmd.js)")
-		commandsRemoveCmd.Flags().Set("force", "true")
+		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd (test-cmd.js)")
+		_ = commandsRemoveCmd.Flags().Set("force", "true")
 
 		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
 
@@ -31,8 +31,8 @@ func TestRemoveCommand(t *testing.T) {
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
-		commandsRemoveCmd.Flags().Set("name", "test-cmd")
-		commandsRemoveCmd.Flags().Set("force", "true")
+		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd")
+		_ = commandsRemoveCmd.Flags().Set("force", "true")
 
 		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
 
@@ -46,8 +46,8 @@ func TestRemoveCommand(t *testing.T) {
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
-		commandsRemoveCmd.Flags().Set("name", "test-cmd.js")
-		commandsRemoveCmd.Flags().Set("force", "true")
+		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd.js")
+		_ = commandsRemoveCmd.Flags().Set("force", "true")
 
 		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
 

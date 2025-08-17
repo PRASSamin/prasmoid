@@ -72,10 +72,10 @@ prasmoid.Command({
 
 	t.Run("valid js command", func(t *testing.T) {
 		tmpfile := createTempJSFile(t, "valid_cmd", validJS)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 
 		runtime.CommandStorage = runtime.CommandConfig{}
-		registerJSCommand(rootCmd, tmpfile)
+		_ = registerJSCommand(rootCmd, tmpfile)
 
 		cmdName := strings.TrimSuffix(filepath.Base(tmpfile), ".js")
 		cmdName = strings.ReplaceAll(cmdName, " ", "")
@@ -115,7 +115,7 @@ prasmoid.Command({
 
 	t.Run("invalid js syntax", func(t *testing.T) {
 		tmpfile := createTempJSFile(t, "invalid_syntax", "const a =;")
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err == nil {
 			t.Errorf("expected error for invalid JS syntax")
@@ -139,7 +139,7 @@ prasmoid.Command({
 	flags: [{ type: "string" }] })
 		`
 		tmpfile := createTempJSFile(t, "flag_no_name", js)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err == nil {
 			t.Errorf("expected error for flag with no name")
@@ -152,7 +152,7 @@ prasmoid.Command({
 	t.Run("flag with no type", func(t *testing.T) {
 		js := `prasmoid.Command({run:()=>{}, flags: [{ name: "myflag" }] })`
 		tmpfile := createTempJSFile(t, "flag_no_type", js)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err == nil {
 			t.Errorf("expected error for flag with no type")
@@ -165,7 +165,7 @@ prasmoid.Command({
 	t.Run("unsupported flag type", func(t *testing.T) {
 		js := `prasmoid.Command({run:()=>{}, flags: [{ name: "myflag", type: "invalid" }] })`
 		tmpfile := createTempJSFile(t, "flag_unsupported_type", js)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err == nil {
 			t.Errorf("expected error for unsupported flag type")
@@ -200,7 +200,7 @@ prasmoid.Command({
     ],
 });`
 		tmpfile := createTempJSFile(t, "run_cmd", jsContent)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err != nil {
@@ -225,16 +225,16 @@ prasmoid.Command({
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		registeredCmd.Flags().Set("name", "test-name")
-		registeredCmd.Flags().Set("verbose", "true")
+		_ = registeredCmd.Flags().Set("name", "test-name")
+		_ = registeredCmd.Flags().Set("verbose", "true")
 		// Execute the command
 		registeredCmd.Run(registeredCmd, []string{"arg1", "arg2"})
 
 		// Restore stdout and read captured output
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStdout
 		var buf strings.Builder
-		io.Copy(&buf, r)
+		_,_ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Assertions
@@ -266,7 +266,7 @@ prasmoid.Command({
     short: "test run error",
 });`
 		tmpfile := createTempJSFile(t, "run_error_cmd", jsContent)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 
 		err := registerJSCommand(rootCmd, tmpfile)
 		if err != nil {
@@ -286,19 +286,19 @@ prasmoid.Command({
 			t.Fatalf("command '%s' not registered", cmdName)
 		}
 
-			// Capture stdout
-			oldStderr := os.Stderr
-			r, w, _ := os.Pipe()
-			os.Stderr = w
+		// Capture stdout
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
 			
 		// Execute the command
 		registeredCmd.Run(registeredCmd, []string{})
 		
 		// Restore stdout and read captured output
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStderr
 		var buf strings.Builder
-		io.Copy(&buf, r)
+		_,_ = io.Copy(&buf, r)
 		output := buf.String()
 
 		if !strings.Contains(output, "JS command error") || !strings.Contains(output, "JS runtime error") {
@@ -316,7 +316,7 @@ prasmoid.Command({
         ],
     })`
 		tmpfile := createTempJSFile(t, "flag_variations", js)
-		defer os.Remove(tmpfile)
+		defer func() { _ = os.Remove(tmpfile) }()
 
 		runtime.CommandStorage = runtime.CommandConfig{}
 		err := registerJSCommand(rootCmd, tmpfile)
@@ -361,10 +361,10 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 		jsCmd2 := `if (typeof prasmoid !== 'undefined') { prasmoid.command = { Short: "cmd2" } }`
 		ignoredFile := `if (typeof prasmoid !== 'undefined') { prasmoid.command = { Short: "ignored" } }`
 
-		os.WriteFile(filepath.Join(commandsDir, "cmd1.js"), []byte(jsCmd1), 0644)
-		os.WriteFile(filepath.Join(commandsDir, "cmd2.js"), []byte(jsCmd2), 0644)
-		os.WriteFile(filepath.Join(commandsDir, "ignored.js"), []byte(ignoredFile), 0644)
-		os.Mkdir(filepath.Join(commandsDir, "subdir"), 0755)
+		_ = os.WriteFile(filepath.Join(commandsDir, "cmd1.js"), []byte(jsCmd1), 0644)
+		_ = os.WriteFile(filepath.Join(commandsDir, "cmd2.js"), []byte(jsCmd2), 0644)
+		_ = os.WriteFile(filepath.Join(commandsDir, "ignored.js"), []byte(ignoredFile), 0644)
+		_ = os.Mkdir(filepath.Join(commandsDir, "subdir"), 0755)
 
 		config := types.Config{
 			Commands: types.ConfigCommands{
@@ -413,7 +413,7 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 		if err := os.Chmod(commandsDir, 0300); err != nil {
 			t.Skipf("Skipping test: could not chmod: %v", err)
 		}
-		defer os.Chmod(commandsDir, 0755) // clean up
+		defer func() { _ = os.Chmod(commandsDir, 0755) }() // clean up
 
 		config := types.Config{
 			Commands: types.ConfigCommands{
@@ -428,10 +428,10 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 
 		DiscoverAndRegisterCustomCommands(rootCmd, config)
 
-		w.Close()
+		_ = w.Close()
 		os.Stderr = oldStderr
 		var buf strings.Builder
-		io.Copy(&buf, r)
+		_,_ = io.Copy(&buf, r)
 		output := buf.String()
 
 		if len(rootCmd.Commands()) != 0 {

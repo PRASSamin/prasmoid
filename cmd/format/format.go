@@ -20,6 +20,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	utilsIsPackageInstalled = utils.IsPackageInstalled
+	utilsDetectPackageManager = utils.DetectPackageManager
+	surveyAskOne              = survey.AskOne
+	utilsInstallQmlformat     = utils.InstallQmlformat
+	execCommand               = exec.Command
+)
+
 var watch bool
 var dir string
 
@@ -36,28 +44,28 @@ var FormatCmd = &cobra.Command{
 	Long:  "Automatically format QML source files to ensure consistent style and readability.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if !utils.IsValidPlasmoid() {
-			color.Red("Current directory is not a valid plasmoid.")
+			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
 		}
-		if !utils.IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
-			pm, _ := utils.DetectPackageManager()
+		if !utilsIsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
+			pm, _ := utilsDetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "qmlformat is not installed. Do you want to install it?",
 				Default: true,
 			}
-			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+			if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
 				return
 			}
 
 			if confirm {
-				if err := utils.InstallQmlformat(pm); err != nil {
-					color.Red("Failed to install qmlformat.")
+				if err := utilsInstallQmlformat(pm); err != nil {
+					fmt.Println(color.RedString("Failed to install qmlformat."))
 					return
 				}
-				color.Green("qmlformat installed successfully.")
+				fmt.Println(color.GreenString("qmlformat installed successfully."))
 			} else {
-				color.Yellow("Operation cancelled.")
+				fmt.Println(color.YellowString("Operation cancelled."))
 				return
 			}
 		}
@@ -75,7 +83,7 @@ var FormatCmd = &cobra.Command{
 func prettifyOnWatch(path string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		color.Red("Failed to start watcher:", err)
+		fmt.Println(color.RedString("Failed to start watcher: %v", err))
 		return
 	}
 	defer func() {
@@ -117,10 +125,9 @@ func prettifyOnWatch(path string) {
 
 				// Set new debounce
 				debounceTimers[file] = time.AfterFunc(debounceDuration, func() {
-					cmd := exec.Command("qmlformat", "-i", file)
+					cmd := execCommand("qmlformat", "-i", file)
 					if err := cmd.Run(); err != nil {
-						color.Red("Format failed: %v", err)
-						return
+						fmt.Println(color.RedString("Format failed: %v.", err))
 					} else {
 						fmt.Printf("Formatted: %s\n", filepath.Base(file))
 					}
@@ -131,7 +138,7 @@ func prettifyOnWatch(path string) {
 				if !ok {
 					return
 				}
-				color.Red("Watcher error: %v", err)
+				fmt.Println(color.RedString("Watcher error: %v", err))
 				return
 			}
 		}
@@ -148,11 +155,11 @@ func prettifyOnWatch(path string) {
 		return nil
 	})
 	if err != nil {
-		color.Red("Failed to watch directory:", err)
+		fmt.Println(color.RedString("Failed to watch directory: %v", err))
 		return
 	}
 
-	fmt.Printf("Formatter running in watch mode ...\n")
+	fmt.Println("Formatter running in watch mode ...")
 	<-done
 }
 
@@ -171,20 +178,20 @@ func prettify(path string) {
 		}
 		return nil
 	}); err != nil {
-		color.Red("Error walking directory for prettify: %v", err)
+		fmt.Println(color.RedString("Error walking directory for prettify: %v", err))
 		return
 	}
 
 	format(files)
-	color.Green("Formatted %d files.", len(files))
+	fmt.Println(color.GreenString("Formatted %d files.", len(files)))
 }
 
 func format(files []string) {
-	formatter := exec.Command("qmlformat", "-i")
+	formatter := execCommand("qmlformat", "-i")
 	formatter.Args = append(formatter.Args, files...)
 	formatter.Stdout = os.Stdout
 	formatter.Stderr = os.Stderr
 	if err := formatter.Run(); err != nil {
-		fmt.Println("Failed to format qml files:", err)
+		fmt.Println(color.RedString("Failed to format qml files: %v", err))
 	}
 }

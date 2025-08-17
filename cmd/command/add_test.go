@@ -135,7 +135,7 @@ func TestAddCommand(t *testing.T) {
 		defer cleanup()
 
 		commandName := "cobra-command"
-		commandsAddCmd.Flags().Set("name", commandName)
+		_ = commandsAddCmd.Flags().Set("name", commandName)
 
 		commandsAddCmd.Run(commandsAddCmd, []string{})
 
@@ -144,7 +144,7 @@ func TestAddCommand(t *testing.T) {
 			t.Errorf("Command file was not created at %s by cobra command", commandFile)
 		}
 
-		commandsAddCmd.Flags().Set("name", "")
+		_ = commandsAddCmd.Flags().Set("name", "")
 	})
 
 	t.Run("empty commands dir in config", func(t *testing.T) {
