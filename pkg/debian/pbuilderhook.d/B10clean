@@ -1,4 +1,0 @@
-#!/bin/sh
-echo "** Cleaning up"
-rm /usr/bin/qmlformat
-rm -rf /usr/share/go-1.24/src/github.com
