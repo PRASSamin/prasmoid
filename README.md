@@ -79,7 +79,7 @@ yay -S prasmoid
 - [Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb)
 
 ```bash
-wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb && sudo dpkg -i prasmoid_0.0.3-0_amd64.deb
+wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb && sudo dpkg -i prasmoid_0.0.3-1_amd64.deb
 ```
 
 #### Fedora (.rpm)
