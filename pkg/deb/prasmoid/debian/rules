@@ -4,7 +4,6 @@
 	dh $@ --builddirectory=_build --buildsystem=golang
 
 override_dh_auto_install:
-	# dh_auto_install --  --no-source
 	dh_auto_install
 	rm debian/prasmoid/usr/bin/prasmoid
 	mv debian/prasmoid/usr/bin/src debian/prasmoid/usr/bin/prasmoid

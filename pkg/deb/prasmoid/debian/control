@@ -34,7 +34,7 @@ Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
 Static-Built-Using: ${misc:Static-Built-Using}
-Description: The All in One Development Toolkit for KDE Plasmoids. (program)
+Description: The All in One Development Toolkit for KDE Plasmoids.
  Prasmoid CLI
  .
  ------------------------------------------------------------------------

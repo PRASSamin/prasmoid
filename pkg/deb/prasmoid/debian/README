@@ -37,7 +37,3 @@ sudo cowbuilder build --distribution $DIST --hookdir $(pwd)/debian/pbuilderhook.
 # dput ppa:northern-lights/prasmoid ../*source.changes
 
 popd
-
-# cannot find package "github.com/adrg/frontmatter" in any of:
-#         /usr/lib/go-1.24/src/github.com/adrg/frontmatter (from $GOROOT)
-#         /build/prasmoid-0.0.3/_build/src/github.com/adrg/frontmatter (from $GOPATH)
