@@ -63,8 +63,6 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 ```
 
 #### Packages
-
-
 #### Arch Linux (AUR)
 
 - **Best for**: `Arch`, `Manjaro`, and other Arch-based distros.
@@ -78,13 +76,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
 - **_Tested on_**: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
-
 - [Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb)
-
-	```bash
-	wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb && sudo dpkg -i prasmoid_0.0.3-1_amd64.deb
-	```
-
 - [PPA repository](https://launchpad.net/~northern-lights/+archive/ubuntu/prasmoid)
 
 	- Pre-requisite - add repo:
@@ -104,25 +96,17 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 
 - **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
 - **_Tested on_**: 'Fedora 42'
-
 - [x86_64 Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.x86_64.rpm) | [source Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.src.rpm)
-
 - [COPR repository](https://copr.fedorainfracloud.org/coprs/northernlights/prasmoid/)
-
 	- Pre-requisite - add repo:
-	
 	```bash
 	sudo dnf enable northernlights/prasmoid
 	```
-	
 	- Install:
-	
 	```bash
 	sudo dnf install prasmoid
 	```
-
 #### Snap
-
 - **Best for**: Anywhere with snaps available.
 - **_Tested on_**: 'Kubuntu 25.04'
 
@@ -131,14 +115,10 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 	```bash
 	snap install prasmoid
 	```
-
 #### Flatpak
-
 - **Best for**: Anywhere with flatpaks available.
 - **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-10)
-
 - [Flatpak package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak)
-
 ```bash
 wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak && flatpak install --user prasmoid-v0.0.3.flatpak
 ```
