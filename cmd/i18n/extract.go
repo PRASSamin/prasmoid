@@ -11,19 +11,19 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
-	root "github.com/PRASSamin/prasmoid/cmd"
 	"github.com/AlecAivazis/survey/v2"
+	root "github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
+
+var confirmInstall bool
 
 func init() {
 	I18nExtractCmd.Flags().Bool("no-po", false, "Skip .po file generation")
@@ -41,16 +41,17 @@ var I18nExtractCmd = &cobra.Command{
 
 		if !utils.IsPackageInstalled(consts.GettextPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
-			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "gettext is not installed. Do you want to install it first?",
 				Default: true,
 			}
-			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
-				return
+			if !confirmInstall {
+				if err := survey.AskOne(confirmPrompt, &confirmInstall); err != nil {
+					return
+				}
 			}
 
-			if confirm {
+			if confirmInstall {
 				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
 					color.Red("Failed to install gettext:", err)
 					return
@@ -65,7 +66,7 @@ var I18nExtractCmd = &cobra.Command{
 
 		// Create translations directory if it doesn't exist
 		translationsDir := root.ConfigRC.I18n.Dir
-		_ = os.MkdirAll(translationsDir, 0755)
+		_ = osMkdirAll(translationsDir, 0755)
 
 		// Run xgettext to extract strings
 		if err := runXGettext(translationsDir); err != nil {
@@ -97,21 +98,21 @@ func generatePoFiles(poDir string) error {
 	for _, lang := range root.ConfigRC.I18n.Locales {
 		poFile := filepath.Join(poDir, lang+".po")
 
-		if _, err := os.Stat(poFile); os.IsNotExist(err) {
+		if _, err := osStat(poFile); os.IsNotExist(err) {
 			// .po file doesn't exist, create it from the template
 			color.Cyan("Creating %s...", poFile)
-			cmd := exec.Command("msginit", "--no-translator", "-i", potFile, "-o", poFile, "-l", lang)
+			cmd := execCommand("msginit", "--no-translator", "-i", potFile, "-o", poFile, "-l", lang)
 			if err := runCommand(cmd); err != nil {
 				return fmt.Errorf("failed to create %s: %w", poFile, err)
 			}
 
-			content, _ := os.ReadFile(poFile)
+			content, _ := osReadFile(poFile)
 			content = bytes.Replace(content, []byte("$__LANGUAGE__$"), []byte(lang), 1)
-			_ = os.WriteFile(poFile, content, 0644)
+			_ = osWriteFile(poFile, content, 0644)
 		} else {
 			// .po file exists, update it
 			color.Cyan("Updating %s...", poFile)
-			cmd := exec.Command("msgmerge", "--update", "--no-fuzzy-matching", poFile, potFile)
+			cmd := execCommand("msgmerge", "--update", "--no-fuzzy-matching", poFile, potFile)
 			if err := runCommand(cmd); err != nil {
 				return fmt.Errorf("failed to merge %s: %w", poFile, err)
 			}
@@ -123,13 +124,13 @@ func generatePoFiles(poDir string) error {
 
 func cleanupBackupFiles(poDir string) error {
 	poDir, _ = filepath.Abs(poDir)
-	backupFiles, err := doublestar.Glob(os.DirFS(poDir), "*.{po~,pot~,bak}")
+	backupFiles, err := doublestarGlob(os.DirFS(poDir), "*.{po~,pot~,bak}")
 	if err != nil {
 		return fmt.Errorf("failed to find backup files: %w", err)
 	}
 
 	for _, file := range backupFiles {
-		if err := os.Remove(filepath.Join(poDir, file)); err != nil {
+		if err := osRemove(filepath.Join(poDir, file)); err != nil {
 			// Don't fail the whole process, just log a warning
 			color.Yellow("Warning: failed to remove backup file %s: %v", file, err)
 		}
@@ -138,37 +139,37 @@ func cleanupBackupFiles(poDir string) error {
 }
 
 func runXGettext(poDir string) error {
-	pName, err := utils.GetDataFromMetadata("Name")
+	pName, err := GetDataFromMetadata("Name")
 	plasmoidName, err := utils.EnsureStringAndValid("Name", pName, err)
 	if err != nil {
 		return err
 	}
 
-	v, err := utils.GetDataFromMetadata("Version")
+	v, err := GetDataFromMetadata("Version")
 	version, err := utils.EnsureStringAndValid("Version", v, err)
 	if err != nil {
 		return err
 	}
 
-	bAddress, err := utils.GetDataFromMetadata("BugReportUrl")
+	bAddress, err := GetDataFromMetadata("BugReportUrl")
 	bugAddress, err := utils.EnsureStringAndValid("BugReportUrl", bAddress, err)
 	if err != nil {
 		bugAddress = ""
 	}
 
-	authors, _ := utils.GetDataFromMetadata("Authors")
+	authors, _ := GetDataFromMetadata("Authors")
 
 	potFileNew := filepath.Join(poDir, "template.pot.new")
 	potFile := filepath.Join(poDir, "template.pot")
 
 	// Find all translatable source files
 	var srcFiles []string
-	err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	err = filepathWalk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.Contains(path, "node_modules") || strings.Contains(path, ".git") {
-			return nil
+		if info.IsDir() && (strings.Contains(path, "node_modules") || strings.Contains(path, ".git")) {
+			return filepath.SkipDir
 		}
 		if !info.IsDir() && (strings.HasSuffix(path, ".qml") || strings.HasSuffix(path, ".js")) {
 			srcFiles = append(srcFiles, path)
@@ -185,7 +186,7 @@ func runXGettext(poDir string) error {
 	}
 
 	// Extract from source files
-	xgettextSrcCmd := exec.Command("xgettext",
+	xgettextSrcCmd := execCommand("xgettext",
 		"--from-code=UTF-8", "--width=200", "--add-location=file",
 		"-C", "-kde", "-ci18n",
 		"-ki18n:1", "-ki18nc:1c,2", "-ki18np:1,2", "-ki18ncp:1c,2,3",
@@ -207,7 +208,7 @@ func runXGettext(poDir string) error {
 		return fmt.Errorf("xgettext for source files failed: %w", err)
 	}
 
-	if _, err := os.Stat(potFileNew); os.IsNotExist(err) {
+	if _, err := osStat(potFileNew); os.IsNotExist(err) {
 		return fmt.Errorf("no translatable strings found in source files")
 	}
 
@@ -219,7 +220,7 @@ func runXGettext(poDir string) error {
 }
 
 func postProcessPotFile(path string, name string, authors interface{}) {
-	input, err := os.ReadFile(path)
+	input, err := osReadFile(path)
 	if err != nil {
 		return
 	}
@@ -255,37 +256,42 @@ func postProcessPotFile(path string, name string, authors interface{}) {
 	// Replace author
 	output = bytes.Replace(output, []byte("FIRST AUTHOR <EMAIL@ADDRESS>, YEAR."), []byte(fmt.Sprintf("%s <%s>, %d.", author, email, time.Now().Year())), 1)
 
-	if err := os.WriteFile(path, output, 0644); err != nil {
+	if err := osWriteFile(path, output, 0644); err != nil {
 		log.Printf("Error writing post-processed POT file: %v", err)
 	}
 }
 
+// stripCreationDate removes the POT-Creation-Date line from pot file content
+func stripCreationDate(data []byte) []byte {
+	lines := bytes.Split(data, []byte("\n"))
+	var result [][]byte
+	for _, line := range lines {
+		if !bytes.HasPrefix(line, []byte(`"POT-Creation-Date:`)) {
+			result = append(result, line)
+		}
+	}
+	return bytes.Join(result, []byte("\n"))
+}
+
 func handlePotFileUpdate(oldPath, newPath string) error {
 	// If old file doesn't exist, just rename
-	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
-		return os.Rename(newPath, oldPath)
+	if _, err := osStat(oldPath); os.IsNotExist(err) {
+		return osRename(newPath, oldPath)
 	}
 
 	// Compare files
-	oldData, _ := os.ReadFile(oldPath)
-	newData, _ := os.ReadFile(newPath)
+	oldData, _ := osReadFile(oldPath)
+	newData, _ := osReadFile(newPath)
 
-	// Simple byte comparison, ignoring POT-Creation-Date for now
-	if bytes.Equal(oldData, newData) {
-		fmt.Println("No changes in translatable strings.")
-		return os.Remove(newPath)
+	// Compare content ignoring the creation date
+	if bytes.Equal(stripCreationDate(oldData), stripCreationDate(newData)) {
+		color.Yellow("No changes in translatable strings.")
+		return osRemove(newPath)
 	} else {
-		fmt.Println("Translatable strings updated.")
-		return os.Rename(newPath, oldPath)
+		color.Green("Translatable strings updated.")
+		return osRename(newPath, oldPath)
 	}
 }
 
-func runCommand(cmd *exec.Cmd) error {
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("command `%s` failed: %v\n%s", cmd.String(), err, stderr.String())
-	}
-	return nil
-}
+
+

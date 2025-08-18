@@ -13,6 +13,7 @@
 - Fixed Custom command flags now properly handle default values
 - Enhanced Console module with improved string formatting and better handling of complex data types in logs
 - Removed unnecessary error handling in runtime environment setup
+- Refactored i18n commands to use mockable functions for testing
 
 ## [v0.0.3] - 2025-07-29
 

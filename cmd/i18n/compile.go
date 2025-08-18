@@ -8,8 +8,6 @@ package i18n
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -20,14 +18,6 @@ import (
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-)
-
-// Mockable functions for testing
-var (
-	osMkdirAll   = os.MkdirAll
-	filepathGlob = filepath.Glob
-	execCommand  = exec.Command
-	execLookPath = exec.LookPath
 )
 
 var silent bool
