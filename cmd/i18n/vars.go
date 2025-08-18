@@ -37,6 +37,7 @@ var (
 
 	// utils functions
 	GetDataFromMetadata = utils.GetDataFromMetadata
+	IsPackageInstalled = utils.IsPackageInstalled
 
 	// command runner
 	runCommand = func(cmd *exec.Cmd) error {

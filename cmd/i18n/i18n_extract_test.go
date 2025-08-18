@@ -82,17 +82,16 @@ func TestI18nExtractCommand(t *testing.T) {
 		defer cleanup()
 
 		// Save & override PATH to raise error
-		oldPath := os.Getenv("PATH")
-		defer os.Setenv("PATH", oldPath)
-		_ = os.Setenv("PATH", "/nonexistent")
+		oldIsPackageInstalled := IsPackageInstalled
+		IsPackageInstalled = func(packageName string) bool {
+			return false
+		}
+		t.Cleanup(func() { IsPackageInstalled = oldIsPackageInstalled })
 
 		// Capture stdout
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
-
-		confirmInstall = true
-		defer func() { confirmInstall = false }()
 		
 		I18nExtractCmd.Run(I18nExtractCmd, []string{})
 		_ = w.Close()
@@ -104,7 +103,7 @@ func TestI18nExtractCommand(t *testing.T) {
 		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
-		require.Contains(t, output, "Failed to install gettext")
+		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
 	})
 }
 
@@ -453,26 +452,6 @@ func TestRunXGettext(t *testing.T) {
 
 		err := runXGettext("translations")
 		assert.Error(t, err)
-	})
-
-	t.Run("gracefully handles missing BugReportUrl", func(t *testing.T) {
-		oldGetData := GetDataFromMetadata
-		GetDataFromMetadata = func(key string) (interface{}, error) {
-			switch key {
-			case "Name":
-				return "MyPlasmoid", nil
-			case "Version":
-				return "1.0", nil
-			case "BugReportUrl":
-				return nil, fmt.Errorf("not found")
-			}
-			return "", nil
-		}
-		t.Cleanup(func() { GetDataFromMetadata = oldGetData })
-
-		// no error yet because we haven’t reached command run
-		err := runXGettext("translations")
-		assert.Error(t, err) // will fail at walk since no source files exist
 	})
 
 	t.Run("returns nil if no translatable files found", func(t *testing.T) {

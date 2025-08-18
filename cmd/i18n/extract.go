@@ -23,8 +23,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var confirmInstall bool
-
 func init() {
 	I18nExtractCmd.Flags().Bool("no-po", false, "Skip .po file generation")
 	I18nCmd.AddCommand(I18nExtractCmd)
@@ -39,19 +37,20 @@ var I18nExtractCmd = &cobra.Command{
 			return
 		}
 
-		if !utils.IsPackageInstalled(consts.GettextPackageName["binary"]) {
+		if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
+			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "gettext is not installed. Do you want to install it first?",
 				Default: true,
 			}
-			if !confirmInstall {
-				if err := survey.AskOne(confirmPrompt, &confirmInstall); err != nil {
+			if !confirm {
+				if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
 					return
 				}
 			}
 
-			if confirmInstall {
+			if confirm {
 				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
 					color.Red("Failed to install gettext:", err)
 					return

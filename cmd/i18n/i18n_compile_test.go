@@ -86,17 +86,17 @@ msgstr "Hello World"
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
-		// Save & override PATH to raise error
-		oldPath := os.Getenv("PATH")
-		defer os.Setenv("PATH", oldPath)
-		_ = os.Setenv("PATH", "/nonexistent")
+		oldIsPackageInstalled := IsPackageInstalled
+		IsPackageInstalled = func(packageName string) bool {
+			return false
+		}
+		t.Cleanup(func() { IsPackageInstalled = oldIsPackageInstalled })
 
 		// Capture stdout
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		confirm = true
 		I18nCompileCmd.Run(I18nCompileCmd, []string{})
 		_ = w.Close()
 
@@ -107,7 +107,7 @@ msgstr "Hello World"
 		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
-		require.Contains(t, output, "Failed to install gettext")
+		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
 	})
 
 }

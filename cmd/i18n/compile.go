@@ -21,7 +21,6 @@ import (
 )
 
 var silent bool
-var confirm bool
 
 func init() {
 	I18nCompileCmd.Flags().Bool("restart", false, "Restart plasmashell after compiling")
@@ -39,8 +38,9 @@ var I18nCompileCmd = &cobra.Command{
 			return
 		}
 
-		if !utils.IsPackageInstalled(consts.GettextPackageName["binary"]) {
+		if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
 			pm, _ := utils.DetectPackageManager()
+			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "gettext is not installed. Do you want to install it first?",
 				Default: true,
