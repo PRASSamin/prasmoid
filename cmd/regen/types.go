@@ -1,7 +1,6 @@
 package regen
 
 import (
-	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -15,7 +14,7 @@ var regenTypesCmd = &cobra.Command{
 	Use:   "types",
 	Short: "Regenerate prasmoid.d.ts",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := initCmd.CreateFileFromTemplate("prasmoid.d.ts", consts.PRASMOID_DTS); err != nil {
+		if err := initCmdCreateFileFromTemplate("prasmoid.d.ts", consts.PRASMOID_DTS); err != nil {
 			color.Red("Failed to regenerate prasmoid.d.ts:", err)
 			return
 		}

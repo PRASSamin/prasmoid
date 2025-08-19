@@ -5,7 +5,6 @@ package setup
 
 import (
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +19,7 @@ var SetupCmd = &cobra.Command{
 	Short: "Setup development environment",
 	Long:  "Install plasmoidviewer and other development dependencies.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := utils.InstallDependencies(); err != nil {
+		if err := utilsInstallDependencies(); err != nil {
 			color.Red("Failed to install dependencies: %v", err)
 			return
 		}

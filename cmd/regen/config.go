@@ -1,8 +1,6 @@
 package regen
 
 import (
-	"github.com/PRASSamin/prasmoid/utils"
-	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -15,9 +13,9 @@ var regenConfigCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Regenerate prasmoid.config.js",
 	Run: func(cmd *cobra.Command, args []string) {
-		locales := utils.AskForLocales()
+		locales := utilsAskForLocales()
 
-		if err := initCmd.CreateConfigFile(locales); err != nil {
+		if err := initCmdCreateConfigFile(locales); err != nil {
 			color.Red("Failed to regenerate config file:", err)
 			return
 		}
