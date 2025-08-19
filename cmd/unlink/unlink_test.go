@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/tests"
+	"github.com/PRASSamin/prasmoid/cmd/install"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func TestLinkAndUnlink(t *testing.T) {
-	_, _, cleanup := tests.SetupTestEnvironment(t)
+	_, _, cleanup := install.SetupTestEnvironment(t)
 	defer cleanup()
 
 	dest, err := utils.GetDevDest()

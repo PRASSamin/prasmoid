@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/tests"
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +36,7 @@ func mockExecCommand(t *testing.T, failingCmd string) {
 func TestI18nExtractCommand(t *testing.T) {
 	t.Run("successfully extracts and creates .po files", func(t *testing.T) {
 		// Arrange
-		projectDir, cleanup := tests.SetupTestProject(t)
+		projectDir, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		cmd.ConfigRC = utils.LoadConfigRC()
 		qmlDir := filepath.Join(projectDir, "contents", "ui")
@@ -58,7 +58,7 @@ func TestI18nExtractCommand(t *testing.T) {
 
 	t.Run("skips .po generation with --no-po flag", func(t *testing.T) {
 		// Arrange
-		projectDir, cleanup := tests.SetupTestProject(t)
+		projectDir, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		cmd.ConfigRC = utils.LoadConfigRC()
 		qmlDir := filepath.Join(projectDir, "contents", "ui")
@@ -78,7 +78,7 @@ func TestI18nExtractCommand(t *testing.T) {
 
 
 	t.Run("error on gettext missing", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		// Save & override PATH to raise error
@@ -110,7 +110,7 @@ func TestI18nExtractCommand(t *testing.T) {
 func TestGeneratePoFiles(t *testing.T) {
 	t.Run("updates existing .po file", func(t *testing.T) {
 		// Arrange
-		projectDir, cleanup := tests.SetupTestProject(t)
+		projectDir, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		cmd.ConfigRC = utils.LoadConfigRC()
 		translationsDir := filepath.Join(projectDir, "translations")
@@ -145,7 +145,7 @@ msgstr "Bonjour"`
 
 	t.Run("handles msginit failure", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		cmd.ConfigRC = utils.LoadConfigRC()
 		translationsDir := "translations"
@@ -163,7 +163,7 @@ msgstr "Bonjour"`
 
 	t.Run("handles msgmerge failure", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		cmd.ConfigRC = utils.LoadConfigRC()
 		translationsDir := "translations"
@@ -184,7 +184,7 @@ msgstr "Bonjour"`
 func TestCleanupBackupFiles(t *testing.T) {
 	t.Run("removes backup files", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		translationsDir := "translations"
 		_ = os.MkdirAll(translationsDir, 0755)
@@ -216,7 +216,7 @@ func TestCleanupBackupFiles(t *testing.T) {
 
 	t.Run("handles remove error", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		translationsDir := "translations"
 		_ = os.MkdirAll(translationsDir, 0755)
@@ -234,7 +234,7 @@ func TestCleanupBackupFiles(t *testing.T) {
 func TestHandlePotFileUpdate(t *testing.T) {
 	t.Run("renames new file if old does not exist", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		oldPath := "test.pot"
 		newPath := "test.pot.new"
@@ -251,7 +251,7 @@ func TestHandlePotFileUpdate(t *testing.T) {
 
 	t.Run("removes new file if content is identical", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		content := []byte(`
 "POT-Creation-Date: 2023-01-01 10:00+0000\n"
@@ -274,7 +274,7 @@ msgstr ""
 
 	t.Run("renames new file if content differs", func(t *testing.T) {
 		// Arrange
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		oldPath := "test.pot"
 		newPath := "test.pot.new"
@@ -332,7 +332,7 @@ func TestPostProcessPotFile(t *testing.T) {
 	})
 
 	t.Run("default author/email used when authors is nil", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		path := "test.pot"
@@ -353,7 +353,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 	})
 
 	t.Run("author and email replaced when provided", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		path := "test.pot"
@@ -378,7 +378,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 	})
 
 	t.Run("ignores non-list authors value", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		path := "test.pot"
@@ -397,7 +397,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 	})
 
 	t.Run("handles partial author info (only name)", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		path := "test.pot"
@@ -455,7 +455,7 @@ func TestRunXGettext(t *testing.T) {
 	})
 
 	t.Run("returns nil if no translatable files found", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		oldWalk := filepathWalk
@@ -482,7 +482,7 @@ func TestRunXGettext(t *testing.T) {
 	})
 
 	t.Run("fails when xgettext command errors", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		// Create dummy source file so it doesn’t exit early
@@ -510,7 +510,7 @@ func TestRunXGettext(t *testing.T) {
 	})
 
 	t.Run("fails when potFileNew not created", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = os.WriteFile("main.qml", []byte(`Text { text: i18n("Hello") }`), 0644)
@@ -538,7 +538,7 @@ func TestRunXGettext(t *testing.T) {
 	})
 
 	t.Run("happy path creates pot file and processes it", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		translations := "translations"

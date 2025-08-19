@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/tests"
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 )
 
 func TestRemoveCommand(t *testing.T) {
 	t.Run("successfully removes a command with force flag", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
@@ -27,7 +27,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 	
 	t.Run("successfully removes a command with command name", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
@@ -42,7 +42,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 	
 	t.Run("successfully removes a command with command file name", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
@@ -57,7 +57,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 
 	t.Run("fails to remove command", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 	
 		_ = AddCommand("test-cmd")
@@ -84,7 +84,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 
 	t.Run("fails to remove non-existent command with force flag", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		err := RemoveCommand("non-existent (non-existent.js)", true)
@@ -97,7 +97,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 
 	t.Run("filepath.Walk fails for non-existent dir", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		// Point to a non-existent directory
@@ -114,7 +114,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 
 	t.Run("select prompt fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")
@@ -130,7 +130,7 @@ func TestRemoveCommand(t *testing.T) {
 	})
 
 	t.Run("confirm prompt fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		_ = AddCommand("test-cmd")

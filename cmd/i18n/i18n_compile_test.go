@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/tests"
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
@@ -21,7 +21,7 @@ import (
 func TestI18nCompileCommand(t *testing.T) {
 	// Set up a temporary project
 	t.Run("successfully compiles .po files", func(t *testing.T) {
-		projectDir, cleanup := tests.SetupTestProject(t)
+		projectDir, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		// Create a dummy config
@@ -63,7 +63,7 @@ msgstr "Hello World"
 	})
 
 	t.Run("invalid plasmoid", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		_ = os.Remove("metadata.json")
 
@@ -83,7 +83,7 @@ msgstr "Hello World"
 	})
 
 	t.Run("error on gettext missing", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		oldIsPackageInstalled := IsPackageInstalled
@@ -114,7 +114,7 @@ msgstr "Hello World"
 
 func TestCompileI18n(t *testing.T) {
 	t.Run("no po files found", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		config := types.Config{
@@ -129,7 +129,7 @@ func TestCompileI18n(t *testing.T) {
 	})
 
 	t.Run("error getting plasmoid id", func(t *testing.T) {
-		tmpDir, cleanup := tests.SetupTestProject(t)
+		tmpDir, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		metadataPath := filepath.Join(tmpDir, "metadata.json")
@@ -142,7 +142,7 @@ func TestCompileI18n(t *testing.T) {
 	})
 
 	t.Run("glob returns error", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		oldFilepathGlob := filepathGlob
@@ -157,7 +157,7 @@ func TestCompileI18n(t *testing.T) {
 	})
 
 	t.Run("skip po file not in config", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		config := types.Config{
@@ -176,7 +176,7 @@ func TestCompileI18n(t *testing.T) {
 	})
 
 	t.Run("mkdirall returns error", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		config := types.Config{
@@ -201,7 +201,7 @@ func TestCompileI18n(t *testing.T) {
 	})
 
 	t.Run("msgfmt command fails", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		config := types.Config{

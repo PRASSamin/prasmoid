@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/tests"
 
 	"github.com/PRASSamin/prasmoid/utils"
 )
@@ -38,7 +38,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "successful build",
 			setup: func(t *testing.T) (string, func()) {
-				return tests.SetupTestProject(t)
+				return initCmd.SetupTestProject(t)
 			},
 			
 			expectError: "",
@@ -85,7 +85,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "build without valid plasmoid",
 			setup: func(t *testing.T) (string, func()) {
-				tmpDir, cleanup := tests.SetupTestProject(t)
+				tmpDir, cleanup := initCmd.SetupTestProject(t)
 				_ = os.Remove(filepath.Join(tmpDir, "metadata.json"))
 				_ = os.RemoveAll(filepath.Join(tmpDir, "contents"))
 				return tmpDir, cleanup
@@ -103,7 +103,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "build without id and version",
 			setup: func(t *testing.T) (string, func()) {
-				tmpDir, cleanup := tests.SetupTestProject(t)
+				tmpDir, cleanup := initCmd.SetupTestProject(t)
 				metadataPath := filepath.Join(tmpDir, "metadata.json")
 				_ = os.Remove(metadataPath)
 				metadata := map[string]interface{}{
@@ -130,7 +130,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "build with failing translation compilation",
 			setup: func(t *testing.T) (string, func()) {
-				tmpDir, cleanup := tests.SetupTestProject(t)
+				tmpDir, cleanup := initCmd.SetupTestProject(t)
 				localesDir := filepath.Join(tmpDir, "locales")
 				if err := os.Mkdir(localesDir, 0755); err != nil {
 					t.Fatalf("Failed to create locales dir: %v", err)
@@ -168,7 +168,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "failed to clear existing build dir",
 			setup: func(t *testing.T) (string, func()) {
-				tmpDir, cleanup := tests.SetupTestProject(t)
+				tmpDir, cleanup := initCmd.SetupTestProject(t)
 				buildDir := filepath.Join(tmpDir, "build")
 				if err := os.Mkdir(buildDir, 0755); err != nil {
 					t.Fatalf("Failed to create build dir: %v", err)
@@ -199,7 +199,7 @@ func TestBuildCommand(t *testing.T) {
 		{
 			name: "failed to create build dir",
 			setup: func(t *testing.T) (string, func()) {
-				tmpDir, cleanup := tests.SetupTestProject(t)
+				tmpDir, cleanup := initCmd.SetupTestProject(t)
 				_ = os.Chmod(tmpDir, 0555)
 				return tmpDir, cleanup
 			},

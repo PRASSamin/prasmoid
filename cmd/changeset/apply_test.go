@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/tests"
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -111,7 +111,7 @@ func TestUpdateChangelog(t *testing.T) {
 func TestApplyChanges(t *testing.T) {
 	t.Run("successful apply", func(t *testing.T) {
 		// Setup
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		changesDir := ".changes"
@@ -156,7 +156,7 @@ func TestApplyChanges(t *testing.T) {
 	})
 
 	t.Run("no changeset files", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 		_ = os.Mkdir(".changes", 0755)
 
@@ -170,7 +170,7 @@ func TestApplyChanges(t *testing.T) {
 	})
 
 	t.Run("changeset dir not found", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		err := ApplyChanges()
@@ -183,7 +183,7 @@ func TestApplyChanges(t *testing.T) {
 	})
 
 	t.Run("continue on parsing error", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		defer cleanup()
 
 		changesDir := ".changes"
@@ -230,7 +230,7 @@ func TestApplyChanges(t *testing.T) {
 	}
 
 	t.Run("continue on metadata update failure", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		_ = os.Chmod("metadata.json", 0444)
 		defer func() { _ = os.Chmod("metadata.json", 0644) }()
 		defer cleanup()
@@ -239,7 +239,7 @@ func TestApplyChanges(t *testing.T) {
 	})
 	
 	t.Run("continue on changelog update failure", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
+		_, cleanup := initCmd.SetupTestProject(t)
 		if err := os.WriteFile("CHANGELOG.md", []byte(""), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}

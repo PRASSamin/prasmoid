@@ -5,13 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
-
 func TestInstallAndUninstall(t *testing.T) {
-	_, _, cleanup := tests.SetupTestEnvironment(t)
+	_, _, cleanup := SetupTestEnvironment(t)
 	defer cleanup()
 
 	dest, err := utils.GetDevDest()
