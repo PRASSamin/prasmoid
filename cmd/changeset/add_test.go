@@ -7,7 +7,7 @@ import (
 	"testing"
 	time "time"
 
-	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
+	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/utils"
 )
 
@@ -237,7 +237,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 }
 
 	t.Run("successful changeset creation with prompts and apply", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		summary := "This is a test summary."
@@ -268,7 +268,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("successful changeset creation with flags", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		_ = changesetAddCmd.Flags().Set("bump", "patch")
@@ -298,7 +298,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 	
 	t.Run("invalid plasmoid", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		_ = os.Remove(filepath.Join(tmpDir, "metadata.json"))
 		defer cleanup()
 
@@ -313,7 +313,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("empty changelog after editor and flag", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		err := AddChangeset("patch", "", false)
@@ -326,7 +326,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("failed to create changes directory", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Make the temp directory read-only to simulate MkdirAll failure
@@ -345,7 +345,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("failed to write changeset file", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Create .changes folder and make it read-only
@@ -368,7 +368,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("invalid metadata file", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Corrupt metadata.json to fail
@@ -392,7 +392,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 	
 	t.Run("failed to compute next version with empty dump", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Corrupt metadata.json to make GetNextVersion fail
@@ -417,7 +417,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 	
 	t.Run("failed to compute next version with dump", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Corrupt metadata.json to make GetNextVersion fail
@@ -442,7 +442,7 @@ date: ` + time.Now().Format("2006-01-02") + `
 	})
 
 	t.Run("failed to prompt for version bump", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		err := AddChangeset("", "Summary for failed prompt", false)

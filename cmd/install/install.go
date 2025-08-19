@@ -5,14 +5,12 @@ package install
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func init() {
@@ -25,7 +23,7 @@ var InstallCmd = &cobra.Command{
 	Short: "Install plasmoid system-wide",
 	Long:  "Install the plasmoid to the system directories for production use.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
+		if !utilsIsValidPlasmoid() {
 			color.Red("Current directory is not a valid plasmoid.")
 			return
 		}
@@ -34,7 +32,7 @@ var InstallCmd = &cobra.Command{
 			return
 		}
 
-		dest, _ := utils.GetDevDest()
+		dest, _ := utilsGetDevDest()
 		color.Green("Plasmoid installed successfully in %s", color.BlueString(dest))
 		color.Cyan("\n- Please restart plasmashell to apply changes.")
 	},
@@ -42,12 +40,12 @@ var InstallCmd = &cobra.Command{
 
 // Helper function to copy directories
 func copyDir(src, dest string) error {
-	err := os.MkdirAll(dest, 0755)
+	err := osMkdirAll(dest, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create directory %s: %v", dest, err)
 	}
 
-	entries, err := os.ReadDir(src)
+	entries, err := osReadDir(src)
 	if err != nil {
 		return fmt.Errorf("failed to read directory %s: %v", src, err)
 	}
@@ -62,12 +60,12 @@ func copyDir(src, dest string) error {
 				return err
 			}
 		} else {
-			data, err := os.ReadFile(srcPath)
+			data, err := osReadFile(srcPath)
 			if err != nil {
 				return fmt.Errorf("failed to read file %s: %v", srcPath, err)
 			}
 
-			err = os.WriteFile(destPath, data, 0644)
+			err = osWriteFile(destPath, data, 0644)
 			if err != nil {
 				return fmt.Errorf("failed to write file %s: %v", destPath, err)
 			}
@@ -77,29 +75,29 @@ func copyDir(src, dest string) error {
 	return nil
 }
 
-func InstallPlasmoid() error {
-	isInstalled, where, err := utils.IsInstalled()
+var InstallPlasmoid = func() error {
+	isInstalled, where, err := utilsIsInstalled()
 	if err != nil {
 		return err
 	}
 	if isInstalled {
-		if err := os.RemoveAll(where); err != nil {
+		if err := osRemoveAll(where); err != nil {
 			fmt.Printf("Warning: Failed to remove existing installation at %s: %v\n", where, err)
 		}
 	}
 
-	if err := os.MkdirAll(where, 0755); err != nil {
+	if err := osMkdirAll(where, 0755); err != nil {
 		return fmt.Errorf("failed to create installation directory %s: %w", where, err)
 	}
 
 	// Copy metadata.json
 	srcMeta := "metadata.json"
 	destMeta := filepath.Join(where, "metadata.json")
-	metaData, err := os.ReadFile(srcMeta)
+	metaData, err := osReadFile(srcMeta)
 	if err != nil {
 		return fmt.Errorf("failed to read metadata.json: %v", err)
 	}
-	err = os.WriteFile(destMeta, metaData, 0644)
+	err = osWriteFile(destMeta, metaData, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write metadata.json: %v", err)
 	}

@@ -14,6 +14,7 @@
 - Enhanced Console module with improved string formatting and better handling of complex data types in logs
 - Removed unnecessary error handling in runtime environment setup
 - Refactored i18n commands to use mockable functions for testing
+- Improved init command functionality.
 
 ## [v0.0.3] - 2025-07-29
 

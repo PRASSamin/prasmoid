@@ -1,4 +1,4 @@
-package init
+package tests
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"text/template"
+
+	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 )
 
 // SetupTestProject creates a temporary directory with a dummy metadata.json file.
@@ -36,7 +38,7 @@ func SetupTestProject(t *testing.T) (string, func()) {
 		t.Fatalf("Failed to create contents dir: %v", err)
 	}
 
-	for relPath, content := range FileTemplates {
+	for relPath, content := range initCmd.FileTemplates {
 		fullPath := filepath.Join(tmpDir, relPath)
 		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 			t.Errorf("failed to create directory %s: %v", filepath.Dir(fullPath), err)
@@ -52,7 +54,7 @@ func SetupTestProject(t *testing.T) (string, func()) {
 		}
 
 		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, Config); err != nil {
+		if err := tmpl.Execute(&buf, initCmd.Config); err != nil {
 			t.Errorf("failed to execute template for %s: %v", relPath, err)
 		}
 
@@ -77,4 +79,37 @@ func SetupTestProject(t *testing.T) (string, func()) {
 	}
 
 	return tmpDir, cleanup
+}
+
+
+// setupTestEnvironment creates a temporary project and a temporary home directory.
+func SetupTestEnvironment(t *testing.T) (projectDir, homeDir string, cleanup func()) {
+	projectDir, projectCleanup := SetupTestProject(t)
+
+	tmpHome, err := os.MkdirTemp("", "test-home-")
+	if err != nil {
+		t.Fatalf("Failed to create temp home dir: %v", err)
+	}
+
+	originalHome := os.Getenv("HOME")
+	if err := os.Setenv("HOME", tmpHome); err != nil {
+		t.Fatalf("Failed to set HOME environment variable: %v", err)
+	}
+
+	plasmoidsDir := filepath.Join(tmpHome, ".local/share/plasma/plasmoids")
+	if err := os.MkdirAll(plasmoidsDir, 0755); err != nil {
+		t.Fatalf("Failed to create plasmoids dir: %v", err)
+	}
+
+	cleanup = func() {
+		if err := os.Setenv("HOME", originalHome); err != nil {
+			t.Errorf("Failed to restore HOME environment variable: %v", err)
+		}
+		if err := os.RemoveAll(tmpHome); err != nil {
+			t.Errorf("Failed to remove temporary home directory: %v", err)
+		}
+		projectCleanup()
+	}
+
+	return projectDir, tmpHome, cleanup
 }

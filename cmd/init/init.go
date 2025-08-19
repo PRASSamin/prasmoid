@@ -19,7 +19,6 @@ import (
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 type Author struct {
@@ -177,7 +176,7 @@ var gatherProjectConfig = func() error {
 	Config.Locales = utilsAskForLocales()
 
 	// Check for git and ask to initialize
-	if utils.IsPackageInstalled("git") {
+	if utilsIsPackageInstalled("git") {
 		gitQuestion := &survey.Confirm{
 			Message: "Initialize a git repository?",
 			Default: true,

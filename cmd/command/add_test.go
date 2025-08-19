@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	root "github.com/PRASSamin/prasmoid/cmd"
-	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/PRASSamin/prasmoid/consts"
+	"github.com/PRASSamin/prasmoid/tests"
 )
 
 func TestAddCommand(t *testing.T) {
 	t.Run("successful command creation", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		commandName := "my-test-command"
@@ -45,7 +45,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("command already exists", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		commandName := "existing-command"
@@ -65,7 +65,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("empty command name fails in non-interactive", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		err := AddCommand("")
@@ -78,7 +78,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("invalid command name fails in non-interactive", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		err := AddCommand("invalid@name")
@@ -91,7 +91,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("failed to create commands directory", func(t *testing.T) {
-		tmpDir, cleanup := initCmd.SetupTestProject(t)
+		tmpDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		if err := os.Chmod(tmpDir, 0555); err != nil {
@@ -109,7 +109,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("failed to create command file", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		commandsDir := root.ConfigRC.Commands.Dir
@@ -131,7 +131,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("cobra command execution", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		commandName := "cobra-command"
@@ -148,7 +148,7 @@ func TestAddCommand(t *testing.T) {
 	})
 
 	t.Run("empty commands dir in config", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		originalDir := root.ConfigRC.Commands.Dir

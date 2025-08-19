@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPrettify(t *testing.T) {
-	_, cleanup := initCmd.SetupTestProject(t)
+	_, cleanup := tests.SetupTestProject(t)
 	defer cleanup()
 
 	oldStdout := os.Stdout
@@ -67,7 +67,7 @@ func TestFormatCmdRun(t *testing.T) {
 	})
 
 	t.Run("Run format successfully", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Capture stdout
@@ -87,7 +87,7 @@ func TestFormatCmdRun(t *testing.T) {
 	})
 
 	t.Run("qmlformat not installed, user confirms installation", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Mock functions
@@ -116,7 +116,7 @@ func TestFormatCmdRun(t *testing.T) {
 	})
 
 	t.Run("qmlformat not installed, user cancels installation", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Mock functions
@@ -144,7 +144,7 @@ func TestFormatCmdRun(t *testing.T) {
 	})
 
 	t.Run("qmlformat not installed, installation fails", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Mock functions
@@ -173,7 +173,7 @@ func TestFormatCmdRun(t *testing.T) {
 	})
 
 	t.Run("survey returns error", func(t *testing.T) {
-		_, cleanup := initCmd.SetupTestProject(t)
+		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Mock functions
@@ -202,7 +202,7 @@ func TestFormatCmdRun(t *testing.T) {
 }
 
 func TestPrettifyOnWatch(t *testing.T) {
-	tmpDir, cleanup := initCmd.SetupTestProject(t)
+	tmpDir, cleanup := tests.SetupTestProject(t)
 	defer cleanup()
 
 	contentsPath := filepath.Join(tmpDir, "contents")
