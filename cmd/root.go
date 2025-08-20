@@ -4,31 +4,23 @@ Copyright 2025 PRAS
 package cmd
 
 import (
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/PRASSamin/prasmoid/cmd/extendcli"
-	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/PRASSamin/prasmoid/types"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 // project wise prasmoid config
 var ConfigRC types.Config
 
 func init() {
-	ConfigRC = utils.LoadConfigRC()
+	ConfigRC = utilsLoadConfigRC()
 	RootCmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
 	RootCmd.AddGroup(&cobra.Group{
 		ID:    "custom",
@@ -43,12 +35,12 @@ var RootCmd = &cobra.Command{
 	Long:  "CLI for building, packaging, and managing KDE plasmoid projects efficiently.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if cmd.Flag("version").Changed {
-			fmt.Println(internal.AppMetaData.Version)
-			os.Exit(0)
+			fmt.Println(internalAppMetaDataVersion)
+			osExit(0)
 		}
 
 		if err := cmd.Help(); err != nil {
-			log.Printf("Error displaying help: %v", err)
+			logPrintf("Error displaying help: %v", err)
 		}
 	},
 }
@@ -56,28 +48,28 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	extendcli.DiscoverAndRegisterCustomCommands(RootCmd, ConfigRC)
+	extendcliDiscoverAndRegisterCustomCommands(RootCmd, ConfigRC)
 
 	CheckForUpdates()
 
-	err := RootCmd.Execute()
+	err := rootCmdExecute()
 	if err != nil {
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
 // -------- UPDATE CHECKER --------
 
-func CheckForUpdates() {
+var CheckForUpdates = func() {
 	const host = "api.github.com"
 	const path = "/repos/PRASSamin/prasmoid/releases/latest"
 	const checkInterval = 24 * time.Hour
 
-	cache, err := ReadUpdateCache()
+	cache, err := readUpdateCache()
 	if err == nil {
 		if lastCheckedStr, ok := cache["last_checked"].(string); ok {
-			lastCheckedTime, err := time.Parse(time.RFC3339, lastCheckedStr)
-			if err == nil && time.Since(lastCheckedTime) < checkInterval {
+			lastCheckedTime, err := timeParse(time.RFC3339, lastCheckedStr)
+			if err == nil && timeSince(lastCheckedTime) < checkInterval {
 				if latestTag, ok := cache["latest_tag"].(string); ok {
 					if isUpdateAvailable(latestTag) {
 						printUpdateMessage(latestTag)
@@ -89,13 +81,13 @@ func CheckForUpdates() {
 	}
 
 	// Establish TLS connection to GitHub
-	conn, err := tls.Dial("tcp", host+":443", nil)
+	conn, err := tlsDial("tcp", host+":443", nil)
 	if err != nil {
 		return
 	}
 	defer func() {
-		if err := conn.Close(); err != nil {
-			log.Printf("Error closing connection: %v", err)
+		if err := connClose(conn); err != nil {
+			logPrintf("Error closing connection: %v", err)
 		}
 	}()
 
@@ -104,13 +96,13 @@ func CheckForUpdates() {
 		"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: Prasmoid-Updater\r\nConnection: close\r\n\r\n",
 		path, host,
 	)
-	_, err = conn.Write([]byte(request))
+	_, err = connWrite(conn, []byte(request))
 	if err != nil {
 		return
 	}
 
 	// Read the raw HTTP response
-	raw, err := io.ReadAll(conn)
+	raw, err := ioReadAll(conn)
 	if err != nil {
 		return
 	}
@@ -136,14 +128,14 @@ func CheckForUpdates() {
 	}
 }
 
-func getLatestTag(body []byte) string {
+var getLatestTag = func(body []byte) string {
 	var tagData map[string]interface{}
 
-	err := json.Unmarshal(body, &tagData)
+	err := jsonUnmarshal(body, &tagData)
 	if err != nil {
 		return ""
 	}
-
+	
 	tag, ok := tagData["tag_name"].(string)
 	if !ok {
 		return ""
@@ -154,10 +146,9 @@ func getLatestTag(body []byte) string {
 
 // compareVersions returns:
 // -1 if current < latest
-//
-//	0 if current == latest
-//	1 if current > latest
-func compareVersions(current, latest string) int {
+// 0 if current == latest
+// 1 if current > latest
+var compareVersions = func(current, latest string) int {
 	parse := func(v string) []int {
 		v = strings.TrimPrefix(v, "v")
 		parts := strings.Split(v, ".")
@@ -187,18 +178,18 @@ func compareVersions(current, latest string) int {
 	return 0
 }
 
-func isUpdateAvailable(latestTag string) bool {
+var isUpdateAvailable = func(latestTag string) bool {
 	if latestTag == "" {
 		return false
 	}
 
-	current := internal.AppMetaData.Version
+	current := internalAppMetaDataVersion
 	return compareVersions(current, latestTag) < 0
 }
 
-func printUpdateMessage(latest string) {
+var printUpdateMessage = func(latest string) {
 	// Get terminal width
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	width, _, err := termGetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 70
 	}
@@ -212,41 +203,41 @@ func printUpdateMessage(latest string) {
 	}
 
 	fmt.Println(star(bottom))
-	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internal.AppMetaData.Version, latest))))
+	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internalAppMetaDataVersion, latest))))
 	fmt.Println(star(printLine("Run `prasmoid upgrade` to update")))
 	fmt.Println(star(bottom))
 	fmt.Println()
 }
 
-func GetCacheFilePath() string {
-	dir, err := os.UserCacheDir()
+var GetCacheFilePath = func() string {
+	dir, err := osUserCacheDir()
 	if err != nil {
-		dir = os.TempDir()
+		dir = osTempDir()
 	}
 	return filepath.Join(dir, "prasmoid_update.json")
 }
 
-func ReadUpdateCache() (map[string]interface{}, error) {
+var readUpdateCache = func() (map[string]interface{}, error) {
 	path := GetCacheFilePath()
-	data, err := os.ReadFile(path)
+	data, err := osReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	var cache map[string]interface{}
-	err = json.Unmarshal(data, &cache)
+	err = jsonUnmarshal(data, &cache)
 	return cache, err
 }
 
-func writeUpdateCache(tag string, body []byte) {
+var writeUpdateCache = func(tag string, body []byte) {
 	var releaseData map[string]interface{}
-	_ = json.Unmarshal(body, &releaseData)
+	_ = jsonUnmarshal(body, &releaseData)
 
 	cache := map[string]interface{}{
-		"last_checked": time.Now().Format(time.RFC3339),
+		"last_checked": timeNow().Format(time.RFC3339),
 		"latest_tag":   tag,
 		"data":         releaseData,
 	}
-	data, _ := json.Marshal(cache)
-	_ = os.WriteFile(GetCacheFilePath(), data, 0o644)
+	data, _ := jsonMarshal(cache)
+	_ = osWriteFile(GetCacheFilePath(), data, 0o644)
 }

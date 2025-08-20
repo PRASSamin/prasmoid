@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ var CliConfig struct {
 }
 
 func init() {
-	RootCmd.AddCommand(VersionCmd)
+	cmd.RootCmd.AddCommand(VersionCmd)
 }
 
 var VersionCmd = &cobra.Command{
