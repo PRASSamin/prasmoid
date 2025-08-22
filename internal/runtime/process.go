@@ -70,8 +70,12 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 		if len(call.Arguments) < 1 {
 			return vm.ToValue("kill: pid required")
 		}
-		pid := int(call.Arguments[0].ToInteger())
-		err := syscall.Kill(pid, syscall.SIGTERM)
+		pid := call.Arguments[0].ToInteger()
+		if pid <= 0 {
+			// Prevent calling syscall.Kill with dangerous PIDs like -1 or 0
+			return vm.ToValue(fmt.Sprintf("kill error: invalid pid %d", pid))
+		}
+		err := syscall.Kill(int(pid), syscall.SIGTERM) // Or whatever signal is passed
 		if err != nil {
 			return vm.ToValue(fmt.Sprintf("kill error: %v", err))
 		}
@@ -103,7 +107,13 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 		env map[string]string
 	}
 
-	envs := LoadEnvWithPrefix()
+	// Get current working directory for loading env files
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting current working directory for env files: %v\n", err)
+		wd = "" // Fallback to empty string if error
+	}
+	envs := LoadEnvWithPrefix(wd)
 	p := &Process{env: envs}
 
 	_ = _process.Set("env", p.env)
@@ -132,7 +142,7 @@ func Process(vm *goja.Runtime, module *goja.Object) {
 
 var startTime = time.Now()
 
-func LoadEnvWithPrefix() map[string]string {
+func LoadEnvWithPrefix(baseDir string) map[string]string {
 	envs := make(map[string]string)
 	envFiles := []string{
 		".env.development.local",
@@ -152,7 +162,7 @@ func LoadEnvWithPrefix() map[string]string {
 	}
 
 	for _, file := range envFiles {
-		path := filepath.Join(".", file)
+		path := filepath.Join(baseDir, file)
 		if _, err := os.Stat(path); err == nil {
 			loadEnvFile(envs, path)
 		}

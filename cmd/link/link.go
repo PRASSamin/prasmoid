@@ -50,13 +50,10 @@ var LinkPlasmoid = func(dest string) error {
 	// Remove if exists
 	_ = osRemoveAll(dest)
 
-	// retrive current dir
-
-cwd, err := osGetwd()
+	cwd, err := osGetwd()
 	if err != nil {
 		return err
 	}
 
-	// Link
 	return osSymlink(cwd, dest)
 }

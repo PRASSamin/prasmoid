@@ -249,11 +249,15 @@ func FS(vm *goja.Runtime, module *goja.Object) {
 			return vm.ToValue("fs.realpathSync: missing path")
 		}
 		path := call.Arguments[0].String()
-		realPath, err := filepath.EvalSymlinks(path)
+		resolvedPath, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			return vm.ToValue(fmt.Sprintf("%v", err))
 		}
-		return vm.ToValue(realPath)
+		absPath, err := filepath.Abs(resolvedPath)
+		if err != nil {
+			return vm.ToValue(fmt.Sprintf("%v", err))
+		}
+		return vm.ToValue(absPath)
 	})
 
 	// readlinkSync(path: string) => string

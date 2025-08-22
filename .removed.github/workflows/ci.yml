@@ -50,7 +50,7 @@ jobs:
 
       # Run tests with coverage
       - name: Run tests
-        run: go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./cmd/...,./internal/...,./utils/... ./...
 
       # Enforce minimum coverage (80%)
       - name: Check coverage

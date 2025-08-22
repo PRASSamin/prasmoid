@@ -7,18 +7,29 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/fatih/color"
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 )
 
+var previewTestMutex sync.Mutex
+
 func TestPreviewCmdRun(t *testing.T) {
+	previewTestMutex.Lock()
+	defer previewTestMutex.Unlock()
+
+	originalPreviewPlasmoid := previewPlasmoid
+	defer func() {
+		previewPlasmoid = originalPreviewPlasmoid
+	}()
+
 	// setup happy path mocks
 	setupMocks := func() {
 		utilsIsValidPlasmoid = func() bool { return true }
@@ -60,9 +71,9 @@ func TestPreviewCmdRun(t *testing.T) {
 		orgUtilsIsLinked := utilsIsLinked
 		orgUtilsInstallPackage := utilsInstallPackage
 		orgSurveyAskOne := surveyAskOne
-		
-		utilsIsPackageInstalled = func(name string) bool {return false}
-		utilsIsLinked = func() bool {return true}
+
+		utilsIsPackageInstalled = func(name string) bool { return false }
+		utilsIsLinked = func() bool { return true }
 		utilsInstallPackage = func(pm, pkg string, names map[string]string) error { return errors.New("install error") }
 		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error { return nil }
 		defer func() { utilsIsPackageInstalled = orgUtilsIsPackageInstalled }()
@@ -93,8 +104,8 @@ func TestPreviewCmdRun(t *testing.T) {
 		orgUtilsIsLinked := utilsIsLinked
 		orgSurveyAskOne := surveyAskOne
 		orgLinkLinkPlasmoid := linkLinkPlasmoid
-		
-		utilsIsLinked = func() bool {return false}
+
+		utilsIsLinked = func() bool { return false }
 		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error { return nil }
 		linkLinkPlasmoid = func(dest string) error { return errors.New("link error") }
 		defer func() { utilsIsLinked = orgUtilsIsLinked }()
@@ -215,119 +226,315 @@ func TestPreviewCmdRun(t *testing.T) {
 	})
 }
 
+// MockFileInfo is a mock implementation of os.FileInfo
+type MockFileInfo struct {
+	isDir bool
+}
+
+func (m *MockFileInfo) Name() string       { return "mock" }
+func (m *MockFileInfo) Size() int64        { return 0 }
+func (m *MockFileInfo) Mode() os.FileMode  { return 0 }
+func (m *MockFileInfo) ModTime() time.Time { return time.Now() }
+func (m *MockFileInfo) IsDir() bool        { return m.isDir }
+func (m *MockFileInfo) Sys() interface{}   { return nil }
+
+// mockWatcher is a mock implementation of the iWatcher interface for testing.
+type mockWatcher struct {
+	EventChan   chan fsnotify.Event
+	ErrorChan   chan error
+	addPaths    []string
+	closeCalled bool
+	mu          sync.Mutex
+}
+
+func newMockWatcher() *mockWatcher {
+	return &mockWatcher{
+		EventChan: make(chan fsnotify.Event),
+		ErrorChan: make(chan error),
+	}
+}
+
+func (m *mockWatcher) Add(path string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.addPaths = append(m.addPaths, path)
+	return nil
+}
+
+func (m *mockWatcher) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.closeCalled = true
+	close(m.EventChan)
+	close(m.ErrorChan)
+	return nil
+}
+
+func (m *mockWatcher) Events() chan fsnotify.Event {
+	return m.EventChan
+}
+
+func (m *mockWatcher) Errors() chan error {
+	return m.ErrorChan
+}
+
 func TestWatchOnChange(t *testing.T) {
-	// --- Mocks & Originals ---
+	previewTestMutex.Lock()
+	defer previewTestMutex.Unlock()
+
+	// Backup and restore
+	originalFsnotifyNewWatcher := fsnotifyNewWatcher
+	originalFilepathWalk := filepathWalk
 	originalExecCommand := execCommand
 	originalTimeAfterFunc := timeAfterFunc
-	originalSignalNotify := signalNotify
 	originalUtilsIsQmlFile := utilsIsQmlFile
-
-	var commands []*exec.Cmd
-	var mu sync.Mutex
-
-	t.Cleanup(func() {
+	originalSignalNotify := signalNotify
+	defer func() {
+		fsnotifyNewWatcher = originalFsnotifyNewWatcher
+		filepathWalk = originalFilepathWalk
 		execCommand = originalExecCommand
 		timeAfterFunc = originalTimeAfterFunc
-		signalNotify = originalSignalNotify
 		utilsIsQmlFile = originalUtilsIsQmlFile
-	})
+		signalNotify = originalSignalNotify
+	}()
 
-	// --- Mock Setup ---
-	execCommand = func(name string, arg ...string) *exec.Cmd {
-		mu.Lock()
-		defer mu.Unlock()
-		// Use a command that can be started and killed.
-		cmd := exec.Command("sleep", "1")
-		commands = append(commands, cmd)
-		return cmd
-	}
+	// Redirect output
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+	color.Output = w
 
-	timerChan := make(chan func(), 1)
-	timeAfterFunc = func(d time.Duration, f func()) *time.Timer {
-		timerChan <- f
-		// Return a dummy timer that will not fire during the test.
-		return time.NewTimer(1 * time.Hour)
-	}
-
-	signalChan := make(chan os.Signal, 1)
-	signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
-		// Forward signal from our test channel to the channel used by the function.
-		go func() {
-			s := <-signalChan
-			c <- s
-		}()
-	}
-
-	utilsIsQmlFile = func(path string) bool { return true }
-
-	// --- Test Setup ---
-	tempDir := t.TempDir()
-	// The watcher needs a directory to watch.
-	// The code walks the directory and adds subdirectories.
-	// Let's create a subdirectory to make sure that works.
-	subDir := filepath.Join(tempDir, "ui")
-	err := os.Mkdir(subDir, 0755)
-	assert.NoError(t, err)
-
-	qmlFile := filepath.Join(subDir, "test.qml")
-	err = os.WriteFile(qmlFile, []byte("initial content"), 0644)
-	assert.NoError(t, err)
-
+	var buf bytes.Buffer
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchOnChange(tempDir, "my-id")
+		_,_ = io.Copy(&buf, r)
 	}()
 
-	// Allow some time for the initial command to start and watcher to be set up
-	time.Sleep(200 * time.Millisecond)
+	t.Run("success: restarts on change", func(t *testing.T) {
+		// Arrange
+		mw := newMockWatcher()
+		fsnotifyNewWatcher = func() (iWatcher, error) {
+			return mw, nil
+		}
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return walkFn(root, &MockFileInfo{isDir: true}, nil)
+		}
+		utilsIsQmlFile = func(file string) bool {
+			return strings.HasSuffix(file, ".qml")
+		}
 
-	// --- Assertions ---
-	mu.Lock()
-	assert.Equal(t, 1, len(commands), "initial command should have started")
-	initialCmd := commands[0]
-	mu.Unlock()
-	assert.NotNil(t, initialCmd.Process, "initial process should be running")
+		var execCount int
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			execCount++
+			cmd := exec.Command("sleep", "0.1")
+			return cmd
+		}
 
-	// Simulate file modification
-	err = os.WriteFile(qmlFile, []byte("new content"), 0644)
-	assert.NoError(t, err)
+		timeAfterFunc = func(d time.Duration, f func()) *time.Timer {
+			f() // immediate execution
+			return time.NewTimer(d)
+		}
 
-	// Get the debounced function
-	var debouncedFunc func()
-	select {
-	case debouncedFunc = <-timerChan:
-		// great
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for debouncer")
-	}
+		quitChan := make(chan os.Signal, 1)
+		signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+			// Redirect signals to our channel
+			go func() {
+				for s := range quitChan {
+					c <- s
+				}
+			}()
+		}
 
-	// Execute the debounced function
-	debouncedFunc()
+		// Act
+		done := make(chan bool)
+		go func() {
+			watchOnChange("/fake/path", "my-plasmoid")
+			close(done)
+		}()
 
-	// Allow some time for the new command to start
-	time.Sleep(200 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond) // allow initial start
+		mw.EventChan <- fsnotify.Event{Name: "test.qml", Op: fsnotify.Write}
+		time.Sleep(100 * time.Millisecond) // allow restart
 
-	mu.Lock()
-	assert.Equal(t, 2, len(commands), "a new command should have started")
-	newCmd := commands[1]
-	mu.Unlock()
-	assert.NotNil(t, newCmd.Process, "new process should be running")
+		quitChan <- os.Interrupt
+		<-done
 
-	// Check if the initial process was killed.
-	// Sending signal 0 to a process checks if it exists. An error means it doesn't.
-	err = initialCmd.Process.Signal(syscall.Signal(0))
-	assert.Error(t, err, "initial process should have been killed")
+		// Assert
+		assert.Equal(t, 2, execCount, "execCommand should be called twice")
+	})
 
-	// --- Cleanup ---
-	// Terminate the watcher loop
-	signalChan <- os.Interrupt
+	t.Run("error: newWatcher fails", func(t *testing.T) {
+		fsnotifyNewWatcher = func() (iWatcher, error) {
+			return nil, errors.New("watcher failed")
+		}
+		watchOnChange("/fake/path", "id")
+	})
+
+	t.Run("error: filepathWalk fails", func(t *testing.T) {
+		mw := newMockWatcher()
+		fsnotifyNewWatcher = func() (iWatcher, error) {
+			return mw, nil
+		}
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return errors.New("walk failed")
+		}
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			return exec.Command("true")
+		}
+
+		quitChan := make(chan os.Signal, 1)
+		signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+			go func() {
+				for s := range quitChan {
+					c <- s
+				}
+			}()
+		}
+		done := make(chan bool)
+		go func() {
+			watchOnChange("/fake/path", "id")
+			close(done)
+		}()
+		quitChan <- os.Interrupt
+		<-done
+	})
+
+	t.Run("error: watcher.Errors() receives an error", func(t *testing.T) {
+		// Arrange
+		mw := newMockWatcher()
+		fsnotifyNewWatcher = func() (iWatcher, error) {
+			return mw, nil
+		}
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return nil
+		}
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			return exec.Command("true")
+		}
+
+		quitChan := make(chan os.Signal, 1)
+		signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+			go func() {
+				for s := range quitChan {
+					c <- s
+				}
+			}()
+		}
+
+		// Act
+		done := make(chan bool)
+		go func() {
+			watchOnChange("/fake/path", "id")
+			close(done)
+		}()
+
+		expectedError := errors.New("simulated watcher error")
+		mw.ErrorChan <- expectedError
+
+		time.Sleep(50 * time.Millisecond)
+
+		quitChan <- os.Interrupt
+		<-done
+	})
+
+	// Cleanup
+	_ = w.Close()
 	wg.Wait()
+	os.Stdout = oldStdout
 
-	// Kill the last running process to be clean
-	if newCmd.Process != nil {
-		_ = newCmd.Process.Kill()
-		_ = newCmd.Wait()
-	}
+	output := buf.String()
+	assert.Contains(t, output, "Previewer running in watch mode")
+	assert.Contains(t, output, "Failed to start watcher: watcher failed")
+	assert.Contains(t, output, "Failed to watch directory: walk failed")
+	assert.Contains(t, output, "Watcher error: simulated watcher error")
+}
+
+func TestPreviewPlasmoid(t *testing.T) {
+	previewTestMutex.Lock()
+	defer previewTestMutex.Unlock()
+
+	// Backup and restore
+	originalUtilsGetDataFromMetadata := utilsGetDataFromMetadata
+	originalExecCommand := execCommand
+	originalWatchOnChange := watchOnChange
+	defer func() {
+		utilsGetDataFromMetadata = originalUtilsGetDataFromMetadata
+		execCommand = originalExecCommand
+		watchOnChange = originalWatchOnChange
+	}()
+
+	t.Run("success: runs plasmoidviewer without watch", func(t *testing.T) {
+		// Arrange
+		utilsGetDataFromMetadata = func(key string) (interface{}, error) {
+			return "my-plasmoid", nil
+		}
+		var execCalled bool
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			execCalled = true
+			assert.Equal(t, "plasmoidviewer", name)
+			assert.Equal(t, []string{"-a", "my-plasmoid"}, arg)
+			cmd := exec.Command("true") // command that does nothing and succeeds
+			return cmd
+		}
+
+		// Act
+		err := previewPlasmoid(false)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.True(t, execCalled)
+	})
+
+	t.Run("success: calls watchOnChange with watch flag", func(t *testing.T) {
+		// Arrange
+		utilsGetDataFromMetadata = func(key string) (interface{}, error) {
+			return "my-plasmoid", nil
+		}
+		var watchCalled bool
+		watchOnChange = func(path string, id string) {
+			watchCalled = true
+			assert.Equal(t, "./contents", path)
+			assert.Equal(t, "my-plasmoid", id)
+		}
+
+		// Act
+		err := previewPlasmoid(true)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.True(t, watchCalled)
+	})
+
+	t.Run("error: GetDataFromMetadata fails", func(t *testing.T) {
+		// Arrange
+		expectedErr := errors.New("metadata error")
+		utilsGetDataFromMetadata = func(key string) (interface{}, error) {
+			return nil, expectedErr
+		}
+
+		// Act
+		err := previewPlasmoid(false)
+
+		// Assert
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("error: exec.Command fails", func(t *testing.T) {
+		// Arrange
+		utilsGetDataFromMetadata = func(key string) (interface{}, error) {
+			return "my-plasmoid", nil
+		}
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			return exec.Command("non-existent-command")
+		}
+
+		// Act
+		err := previewPlasmoid(false)
+
+		// Assert
+		assert.Error(t, err)
+	})
 }

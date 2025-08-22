@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -20,12 +21,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type iWatcher interface {
+	Add(string) error
+	Close() error
+	Events() chan fsnotify.Event
+	Errors() chan error
+}
+
+type watcherWrapper struct {
+	*fsnotify.Watcher
+}
+
+func (w *watcherWrapper) Events() chan fsnotify.Event {
+	return w.Watcher.Events
+}
+
+func (w *watcherWrapper) Errors() chan error {
+	return w.Watcher.Errors
+}
+
 var (
-	utilsIsPackageInstalled = utils.IsPackageInstalled
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
 	utilsDetectPackageManager = utils.DetectPackageManager
 	surveyAskOne              = survey.AskOne
-	utilsInstallQmlformat     = utils.InstallQmlformat
+	utilsIsQmlFile            = utils.IsQmlFile
+	utilsInstallPackage       = utils.InstallPackage
 	execCommand               = exec.Command
+	// for testing
+	filepathWalk  = filepath.Walk
+	timeAfterFunc = time.AfterFunc
+	newWatcher    = func() (iWatcher, error) {
+		w, err := fsnotify.NewWatcher()
+		if err != nil {
+			return nil, err
+		}
+		return &watcherWrapper{w}, nil
+	}
 )
 
 var watch bool
@@ -59,7 +90,7 @@ var FormatCmd = &cobra.Command{
 			}
 
 			if confirm {
-				if err := utilsInstallQmlformat(pm); err != nil {
+				if err := utilsInstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName); err != nil {
 					fmt.Println(color.RedString("Failed to install qmlformat."))
 					return
 				}
@@ -73,15 +104,15 @@ var FormatCmd = &cobra.Command{
 		crrPath, _ := os.Getwd()
 		relPath := filepath.Join(crrPath, dir)
 		if watch {
-			prettifyOnWatch(relPath)
+			prettifyOnWatch(relPath, make(chan bool))
 		} else {
 			prettify(relPath)
 		}
 	},
 }
 
-func prettifyOnWatch(path string) {
-	watcher, err := fsnotify.NewWatcher()
+func prettifyOnWatch(path string, done chan bool) {
+	watcher, err := newWatcher()
 	if err != nil {
 		fmt.Println(color.RedString("Failed to start watcher: %v", err))
 		return
@@ -92,26 +123,28 @@ func prettifyOnWatch(path string) {
 		}
 	}()
 
-	done := make(chan bool)
 	debounceTimers := make(map[string]*time.Timer)
 	cooldownInProgress := make(map[string]bool)
 	debounceDuration := 300 * time.Millisecond
+	var mu sync.Mutex
 
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-watcher.Events():
 				if !ok {
 					return
 				}
 
 				file := event.Name
-				if !utils.IsQmlFile(file) || event.Op&fsnotify.Write != fsnotify.Write {
+				if !utilsIsQmlFile(file) || event.Op&fsnotify.Write != fsnotify.Write {
 					continue
 				}
 
+				mu.Lock()
 				// If cooldown already in progress, skip it
 				if cooldownInProgress[file] {
+					mu.Unlock()
 					continue
 				}
 
@@ -124,17 +157,20 @@ func prettifyOnWatch(path string) {
 				}
 
 				// Set new debounce
-				debounceTimers[file] = time.AfterFunc(debounceDuration, func() {
+				debounceTimers[file] = timeAfterFunc(debounceDuration, func() {
 					cmd := execCommand("qmlformat", "-i", file)
 					if err := cmd.Run(); err != nil {
 						fmt.Println(color.RedString("Format failed: %v.", err))
 					} else {
-						fmt.Printf("Formatted: %s\n", filepath.Base(file))
+						fmt.Printf("Formatted: %s\n", color.BlueString(filepath.Base(file)))
 					}
 					// Release the lock
+					mu.Lock()
 					cooldownInProgress[file] = false
+					mu.Unlock()
 				})
-			case err, ok := <-watcher.Errors:
+				mu.Unlock()
+			case err, ok := <-watcher.Errors():
 				if !ok {
 					return
 				}
@@ -145,7 +181,7 @@ func prettifyOnWatch(path string) {
 	}()
 
 	// Recursively watch all directories under the target path
-	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+	err = filepathWalk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -166,14 +202,14 @@ func prettifyOnWatch(path string) {
 func prettify(path string) {
 	var files []string
 
-	if err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	if err := filepathWalk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
 			return nil
 		}
-		if utils.IsQmlFile(path) {
+		if utilsIsQmlFile(path) {
 			files = append(files, path)
 		}
 		return nil

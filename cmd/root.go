@@ -4,17 +4,71 @@ Copyright 2025 PRAS
 package cmd
 
 import (
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/PRASSamin/prasmoid/cmd/extendcli"
+	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/PRASSamin/prasmoid/types"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
+
+// mockables
+var (
+	// utils
+	utilsLoadConfigRC = utils.LoadConfigRC
+
+	// extendcli
+	extendcliDiscoverAndRegisterCustomCommands = extendcli.DiscoverAndRegisterCustomCommands
+
+	// cobra
+	rootCmdExecute = RootCmd.Execute
+
+	// os
+	osExit = os.Exit
+	osUserCacheDir = os.UserCacheDir
+	osTempDir = os.TempDir
+	osReadFile = os.ReadFile
+	osWriteFile = os.WriteFile
+
+	// time
+	timeParse = time.Parse
+	timeSince = time.Since
+	timeNow = time.Now
+
+	// net/tls
+	tlsDial = tls.Dial
+	connWrite = func(conn *tls.Conn, b []byte) (n int, err error) { return conn.Write(b) }
+	connClose = func(conn *tls.Conn) error { return conn.Close() }
+
+	// io
+	ioReadAll = io.ReadAll
+
+	// encoding/json
+	jsonUnmarshal = json.Unmarshal
+	jsonMarshal = json.Marshal
+
+	// golang.org/x/term
+	termGetSize = term.GetSize
+
+	// internal
+	internalAppMetaDataVersion = internal.AppMetaData.Version
+
+	// for testing purposes
+	logPrintf = log.Printf
+)
+
 
 // project wise prasmoid config
 var ConfigRC types.Config

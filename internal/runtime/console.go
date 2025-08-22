@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -41,13 +42,13 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 	}
 
 	// Helper: For red, green, yellow
-	createColorLogger := func(colorFunc func(format string, a ...interface{})) func(goja.FunctionCall) goja.Value {
+	createColorLogger := func(colorFunc func(format string, a ...interface{}) string) func(goja.FunctionCall) goja.Value {
 		return func(call goja.FunctionCall) goja.Value {
 			var parts []string
 			for _, arg := range call.Arguments {
 				parts = append(parts, stringifyJS(arg.Export(), false))
 			}
-			colorFunc(strings.Join(parts, " "))
+			fmt.Println(colorFunc("%s", strings.Join(parts, " ")))
 			return goja.Undefined()
 		}
 	}
@@ -60,9 +61,9 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 	_ = _console.Set("info", createPlainLogger(""))
 
 	// Colored logs
-	_ = _console.Set("red", createColorLogger(color.Red))
-	_ = _console.Set("green", createColorLogger(color.Green))
-	_ = _console.Set("yellow", createColorLogger(color.Yellow))
+	_ = _console.Set("red", createColorLogger(color.RedString))
+	_ = _console.Set("green", createColorLogger(color.GreenString))
+	_ = _console.Set("yellow", createColorLogger(color.YellowString))
 
 	// Flexible color log: console.color("msg", "colorName")
 	_ = _console.Set("color", func(call goja.FunctionCall) goja.Value {
@@ -109,7 +110,7 @@ func Console(vm *goja.Runtime, module *goja.Object) {
 			c = color.New(color.FgHiWhite)
 		}
 
-		if _, err := c.Println(text); err != nil {
+		if _, err := c.Fprintln(os.Stdout, text); err != nil {
 			fmt.Printf("Error printing colored text: %v\n", err)
 		}
 		return goja.Undefined()

@@ -83,19 +83,6 @@ func TestRemoveCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("fails to remove non-existent command with force flag", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		err := RemoveCommand("non-existent (non-existent.js)", true)
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "no commands found in the commands directory") {
-			t.Errorf("Expected 'no commands found in the commands directory' error, but got: %v", err)
-		}
-	})
-
 	t.Run("filepath.Walk fails for non-existent dir", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()

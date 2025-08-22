@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -36,7 +35,7 @@ var commandsRemoveCmd = &cobra.Command{
 
 func RemoveCommand(commandName string, force bool) error {
 	availableCmds := []string{}
-	if err := filepath.Walk(root.ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
+	if err := filepathWalk(root.ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
 		if info == nil || info.IsDir() {
 			return nil
 		}
@@ -60,7 +59,7 @@ func RemoveCommand(commandName string, force bool) error {
 			Message: "Select a command to remove:",
 			Options: availableCmds,
 		}
-		if err := survey.AskOne(commandNamePrompt, &commandName); err != nil {
+		if err := surveyAskOne(commandNamePrompt, &commandName); err != nil {
 			return fmt.Errorf("error asking for command name: %v", err)
 		}
 	}
@@ -71,7 +70,7 @@ func RemoveCommand(commandName string, force bool) error {
 	var fileName string
 	if strings.Contains(commandName, "(") && strings.Contains(commandName, ")") {
 		// If user passed the select-menu style value
-		re := regexp.MustCompile(`\(([^)]+)\)$`)
+		re := regexpMustCompile(`\(([^)]+)\)$`)
 		matches := re.FindStringSubmatch(commandName)
 		if len(matches) == 2 {
 			fileName = matches[1]
@@ -88,7 +87,7 @@ func RemoveCommand(commandName string, force bool) error {
 
 	// Verify it exists
 	filePath := filepath.Join(root.ConfigRC.Commands.Dir, fileName)
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	if _, err := osStat(filePath); os.IsNotExist(err) {
 		color.Red("Command file does not exist: %s", fileName)
 		return fmt.Errorf("command file does not exist: %s", fileName)
 	}
@@ -100,7 +99,7 @@ func RemoveCommand(commandName string, force bool) error {
 			Message: fmt.Sprintf("Are you sure you want to remove %s?", fileName),
 			Default: true,
 		}
-		if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+		if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
 			return fmt.Errorf("error asking for confirmation: %v", err)
 		}
 	}
@@ -110,7 +109,7 @@ func RemoveCommand(commandName string, force bool) error {
 	}
 
 	// Remove
-	if err := os.Remove(filePath); err != nil {
+	if err := osRemove(filePath); err != nil {
 		color.Red("Error removing file: %v", err)
 		return fmt.Errorf("error removing file: %v", err)
 	}

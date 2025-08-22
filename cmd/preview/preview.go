@@ -7,16 +7,86 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/cmd"
+	"github.com/PRASSamin/prasmoid/cmd/link"
+	"github.com/PRASSamin/prasmoid/consts"
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
+)
 
-	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
+type iWatcher interface {
+	Add(string) error
+	Close() error
+	Events() chan fsnotify.Event
+	Errors() chan error
+}
+
+type watcherWrapper struct {
+	*fsnotify.Watcher
+}
+
+func (w *watcherWrapper) Events() chan fsnotify.Event {
+	return w.Watcher.Events
+}
+
+func (w *watcherWrapper) Errors() chan error {
+	return w.Watcher.Errors
+}
+
+// To enable mocking
+var (
+	// os/exec
+	execCommand = exec.Command
+
+	// utils
+	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
+	utilsIsLinked             = utils.IsLinked
+	utilsGetDevDest           = utils.GetDevDest
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
+	utilsDetectPackageManager = utils.DetectPackageManager
+	utilsInstallPackage       = utils.InstallPackage
+	utilsGetDataFromMetadata  = utils.GetDataFromMetadata
+	utilsIsQmlFile            = utils.IsQmlFile
+
+	// link
+	linkLinkPlasmoid = link.LinkPlasmoid
+
+	// survey
+	surveyAskOne = survey.AskOne
+
+	// fsnotify
+	fsnotifyNewWatcher = func() (iWatcher, error) {
+		w, err := fsnotify.NewWatcher()
+		if err != nil {
+			return nil, err
+		}
+		return &watcherWrapper{w}, nil
+	}
+	currentViewer *exec.Cmd
+	viewerMutex   sync.Mutex
+
+	// filepath
+	filepathWalk = filepath.Walk
+
+	// os/signal
+	signalNotify = signal.Notify
+
+	// time
+	timeAfterFunc = time.AfterFunc
+
+	// confirmation
+	confirmInstallation bool
+	confirmLink         bool
 )
 
 func init() {
@@ -41,7 +111,7 @@ var PreviewCmd = &cobra.Command{
 				Message: "Plasmoid is not linked. Do you want to link it first?",
 				Default: true,
 			}
-			if err := surveyAskOne(confirmPrompt, &confirmLink); err != nil {
+		if err := surveyAskOne(confirmPrompt, &confirmLink); err != nil {
 				return
 			}
 
@@ -52,7 +122,7 @@ var PreviewCmd = &cobra.Command{
 					return
 				}
 				if err := linkLinkPlasmoid(dest); err != nil {
-					fmt.Println(color.RedString("Failed to link plasmoid:", err))
+					fmt.Println(color.RedString("Failed to link plasmoid: %v", err))
 					return
 				}
 			} else {
@@ -73,7 +143,7 @@ var PreviewCmd = &cobra.Command{
 
 			if confirmInstallation {
 				if err := utilsInstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install plasmoidviewer:", err))
+					fmt.Println(color.RedString("Failed to install plasmoidviewer: %v", err))
 					return
 				}
 			} else {
@@ -83,7 +153,7 @@ var PreviewCmd = &cobra.Command{
 		}
 
 		if err := previewPlasmoid(watch); err != nil {
-			fmt.Println(color.RedString("Failed to preview plasmoid:", err))
+			fmt.Println(color.RedString("Failed to preview plasmoid: %v", err))
 			return
 		}
 	},
@@ -95,9 +165,6 @@ var previewPlasmoid = func(watch bool) error {
 		return err
 	}
 
-	quit := make(chan os.Signal, 1)
-	signalNotify(quit, os.Interrupt, syscall.SIGTERM)
-
 	if watch {
 		watchOnChange("./contents", id.(string))
 		return nil
@@ -106,18 +173,18 @@ var previewPlasmoid = func(watch bool) error {
 	plasmoidViewer := execCommand("plasmoidviewer", "-a", id.(string))
 	plasmoidViewer.Stdout = os.Stdout
 	plasmoidViewer.Stderr = os.Stderr
-	return nil
+	return plasmoidViewer.Run()
 }
 
 var watchOnChange = func(path string, id string) {
 	watcher, err := fsnotifyNewWatcher()
 	if err != nil {
-		fmt.Println(color.RedString("Failed to start watcher:", err))
+		fmt.Println(color.RedString("Failed to start watcher: %v", err))
 		return
 	}
 	defer func() {
 		if err := watcher.Close(); err != nil {
-			fmt.Println(color.RedString("Error closing watcher:", err))
+			fmt.Println(color.RedString("Error closing watcher: %v", err))
 		}
 	}()
 
@@ -132,21 +199,22 @@ var watchOnChange = func(path string, id string) {
 
 	go func() {
 		<-quit
+		viewerMutex.Lock()
 		if currentViewer != nil && currentViewer.Process != nil {
 			if err := currentViewer.Process.Kill(); err != nil {
 				log.Printf("Error killing current viewer process: %v", err)
 			}
-			if err := currentViewer.Wait(); err != nil {
-				log.Printf("Error waiting for current viewer process: %v", err)
-			}
 		}
+		viewerMutex.Unlock()
 		close(done)
 	}()
 
 	plasmoidViewer := execCommand("plasmoidviewer", "-a", id)
 	plasmoidViewer.Stdout = os.Stdout
 	plasmoidViewer.Stderr = os.Stderr
+	viewerMutex.Lock()
 	currentViewer = plasmoidViewer
+	viewerMutex.Unlock()
 
 	if err := plasmoidViewer.Start(); err != nil {
 		fmt.Println(color.RedString("Error starting plasmoidviewer: %v", err))
@@ -156,7 +224,7 @@ var watchOnChange = func(path string, id string) {
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-watcher.Events():
 				if !ok {
 					return
 				}
@@ -177,14 +245,13 @@ var watchOnChange = func(path string, id string) {
 				}
 
 				debounceTimers[file] = timeAfterFunc(debounceDuration, func() {
+					viewerMutex.Lock()
 					if currentViewer != nil {
 						if err := currentViewer.Process.Kill(); err != nil {
 							log.Printf("Error killing current viewer process: %v", err)
 						}
-						if err := currentViewer.Wait(); err != nil {
-							log.Printf("Error waiting for current viewer process: %v", err)
-						}
 					}
+					viewerMutex.Unlock()
 
 					plasmoidViewer := execCommand("plasmoidviewer", "-a", id)
 					plasmoidViewer.Stdout = os.Stdout
@@ -194,20 +261,25 @@ var watchOnChange = func(path string, id string) {
 						fmt.Println(color.RedString("Error starting plasmoidviewer: %v", err))
 						return
 					}
+
+					viewerMutex.Lock()
 					currentViewer = plasmoidViewer
+					viewerMutex.Unlock()
 
 					go func() {
 						if err := plasmoidViewer.Wait(); err != nil {
 							log.Printf("Error waiting for plasmoid viewer process: %v", err)
 						}
+						viewerMutex.Lock()
 						if currentViewer == plasmoidViewer {
 							currentViewer = nil
 						}
+						viewerMutex.Unlock()
 					}()
 
 					cooldownInProgress[file] = false
 				})
-			case err, ok := <-watcher.Errors:
+			case err, ok := <-watcher.Errors():
 				if !ok {
 					return
 				}
@@ -218,15 +290,15 @@ var watchOnChange = func(path string, id string) {
 	}()
 
 	if err := filepathWalk(path, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return watcher.Add(p)
-		}
-		return nil
-	}); err != nil {
-		fmt.Println(color.RedString("Failed to watch directory:", err))
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return watcher.Add(p)
+			}
+			return nil
+		}); err != nil {
+		fmt.Println(color.RedString("Failed to watch directory: %v", err))
 		return
 	}
 

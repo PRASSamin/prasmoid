@@ -17,6 +17,15 @@ import (
 	"github.com/fatih/color"
 )
 
+var (
+	surveyAskOne           = survey.AskOne
+	execCommand            = exec.Command
+	execLookPath           = exec.LookPath
+	osLstat                = os.Lstat
+	osSymlink              = os.Symlink
+	getBinPath             = GetBinPath
+)
+
 // check if plasmoid is linked
 func IsLinked() bool {
 	dest, err := GetDevDest()
@@ -34,7 +43,15 @@ func GetDevDest() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", id.(string)), nil
+	baseDir := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids")
+	dest := filepath.Join(baseDir, id.(string))
+
+	// Create only the parent directory (plasmoids) if it doesn't exist
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create parent directory: %v", err)
+	}
+
+	return dest, nil
 }
 
 // GetDataFromMetadata reads metadata.json and returns the requested key's value from the KPlugin section
@@ -92,8 +109,8 @@ func IsInstalled() (bool, string, error) {
 }
 
 // Check if package is installed
-func IsPackageInstalled(name string) bool {
-	_, err := exec.LookPath(name)
+var IsPackageInstalled = func(name string) bool {
+	_, err := execLookPath(name)
 	return err == nil
 }
 
@@ -174,9 +191,9 @@ var supportedPackageManagers = map[string]string{
 }
 
 // Detect package manager
-func DetectPackageManager() (string, error) {
+var DetectPackageManager = func() (string, error) {
 	for binary, pm := range supportedPackageManagers {
-		_, err := exec.LookPath(binary)
+		_, err := execLookPath(binary)
 		if err == nil {
 			return pm, nil
 		}
@@ -184,7 +201,7 @@ func DetectPackageManager() (string, error) {
 	return "", fmt.Errorf("no supported package manager found: %+v", supportedPackageManagers)
 }
 
-func GetBinPath() (string, error) {
+var GetBinPath = func() (string, error) {
 	defaultCandidates := []string{
 		"/usr/bin",
 		"/usr/local/bin",
@@ -208,8 +225,8 @@ func GetBinPath() (string, error) {
 	return "", fmt.Errorf("no supported bin path found: %+v", defaultCandidates)
 }
 
-func InstallPackage(pm, binName string, pkgNames map[string]string) error {
-	binPath, err := GetBinPath()
+var InstallPackage = func(pm, binName string, pkgNames map[string]string) error {
+	binPath, err := getBinPath()
 	if err != nil {
 		return fmt.Errorf("failed to get bin path: %v", err)
 	}
@@ -222,11 +239,11 @@ func InstallPackage(pm, binName string, pkgNames map[string]string) error {
 	var cmd *exec.Cmd
 	switch pm {
 	case "nix":
-		cmd = exec.Command("nix-env", "-iA", pkgName)
+		cmd = execCommand("nix-env", "-iA", pkgName)
 	case "pacman":
-		cmd = exec.Command("sudo", "pacman", "-S", "--noconfirm", pkgName)
+		cmd = execCommand("sudo", "pacman", "-S", "--noconfirm", pkgName)
 	default:
-		cmd = exec.Command("sudo", pm, "install", "-y", pkgName)
+		cmd = execCommand("sudo", pm, "install", "-y", pkgName)
 	}
 
 	cmd.Stdout = os.Stdout
@@ -245,13 +262,13 @@ func InstallPackage(pm, binName string, pkgNames map[string]string) error {
 }
 
 // ensureBinaryLinked looks for a binary and symlinks it into our binPath.
-func ensureBinaryLinked(binName, binPath string) error {
-	if _, err := exec.LookPath(binName); err == nil {
+var ensureBinaryLinked = func(binName, binPath string) error {
+	if _, err := execLookPath(binName); err == nil {
 		return nil // already found in PATH
 	}
 
 	color.Yellow("Binary %s not in PATH, searching manually...", binName)
-	findCmd := exec.Command("sudo", "find", "/", "-type", "f", "-name", binName)
+	findCmd := execCommand("sudo", "find", "/", "-type", "f", "-name", binName)
 	out, err := findCmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to locate %s binary: %v", binName, err)
@@ -263,24 +280,16 @@ func ensureBinaryLinked(binName, binPath string) error {
 	}
 
 	link := filepath.Join(binPath, binName)
-	if _, err := os.Lstat(link); err == nil {
+	if _, err := osLstat(link); err == nil {
 		color.Yellow("Warning: symlink already exists at %s, skipping...", link)
 		return nil
 	}
 
-	if err := os.Symlink(path, link); err != nil {
+	if err := osSymlink(path, link); err != nil {
 		return fmt.Errorf("failed to create symlink: %v", err)
 	}
 
 	return nil
-}
-
-func InstallQmlformat(pm string) error {
-	return InstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName)
-}
-
-func InstallPlasmoidPreview(pm string) error {
-	return InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName)
 }
 
 func InstallDependencies() error {
@@ -291,14 +300,14 @@ func InstallDependencies() error {
 
 	if !IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
 		color.Yellow("Installing qmlformat...")
-		if err := InstallQmlformat(pm); err != nil {
+		if err := InstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName); err != nil {
 			return err
 		}
 	}
 
 	if !IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
 		color.Yellow("Installing plasmoidviewer...")
-		if err := InstallPlasmoidPreview(pm); err != nil {
+		if err := InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
 			return err
 		}
 	}
@@ -422,7 +431,7 @@ func AskForLocales(defaultLocales ...[]string) []string {
 		Default: defaultDisplay,
 	}
 
-	if err := survey.AskOne(localeQuestion, &selectedWithNames, survey.WithValidator(func(ans interface{}) error {
+	if err := surveyAskOne(localeQuestion, &selectedWithNames, survey.WithValidator(func(ans interface{}) error {
 		selected, ok := ans.([]core.OptionAnswer)
 		if !ok {
 			return fmt.Errorf("invalid type for answer")

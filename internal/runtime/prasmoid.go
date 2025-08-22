@@ -102,26 +102,32 @@ func Prasmoid(vm *goja.Runtime, module *goja.Object) {
 				for _, f := range flagArr {
 					if flagMap, ok := f.(map[string]interface{}); ok {
 						typ := asString(flagMap["type"])
-						if typ == "bool" {
-							switch flagMap["value"].(type) {
-							case bool:
-							default:
-								panic("non-bool value not allowed in boolean flag")
-							}
-						}
-						if flagMap["value"] == nil {
-							switch typ {
-							case "bool":
-								flagMap["value"] = false
-							case "string":
-								flagMap["value"] = ""
-							}
-						}
+						                        val := flagMap["value"] // Get the value once
+
+                        // Handle default values if value is not provided
+                        if val == nil {
+                            switch typ {
+                            case "bool":
+                                val = false
+                            case "string":
+                                val = ""
+                            }
+                        }
+
+                        // Type check for boolean flags
+                        if typ == "bool" {
+                            switch val.(type) { // Use the potentially defaulted 'val'
+                            case bool:
+                                // OK
+                            default:
+                                panic("non-bool value not allowed in boolean flag")
+                            }
+                        }
 
 						config.Flags = append(config.Flags, CommandFlag{
 							Name:        asString(flagMap["name"]),
 							Type:        typ,
-							Value:       flagMap["value"],
+							Value:       val,
 							Shorthand:   asString(flagMap["shorthand"]),
 							Description: asString(flagMap["description"]),
 						})
