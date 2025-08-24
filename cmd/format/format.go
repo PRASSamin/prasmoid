@@ -42,6 +42,7 @@ func (w *watcherWrapper) Errors() chan error {
 
 var (
 	utilsIsPackageInstalled   = utils.IsPackageInstalled
+	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
 	utilsDetectPackageManager = utils.DetectPackageManager
 	surveyAskOne              = survey.AskOne
 	utilsIsQmlFile            = utils.IsQmlFile
@@ -74,7 +75,7 @@ var FormatCmd = &cobra.Command{
 	Short: "Prettify QML files",
 	Long:  "Automatically format QML source files to ensure consistent style and readability.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
+		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
 		}

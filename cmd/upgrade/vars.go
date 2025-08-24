@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	utilsIsPackageInstalled = utils.IsPackageInstalled
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
 	utilsDetectPackageManager = utils.DetectPackageManager
-	surveyAskOne = survey.AskOne
-	utilsInstallPackage = utils.InstallPackage
-	osExecutable = os.Executable
-	execCommand = exec.Command
-	osRemove = os.Remove
-	userCurrent = user.Current
-	rootGetCacheFilePath = root.GetCacheFilePath
+	surveyAskOne              = survey.AskOne
+	utilsInstallPackage       = utils.InstallPackage
+	osExecutable              = os.Executable
+	execCommand               = exec.Command
+	osRemove                  = os.Remove
+	userCurrent               = user.Current
+	rootGetCacheFilePath      = root.GetCacheFilePath
 
 	confirmInstallation bool
-	scriptURL = "https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update"
+	scriptURL           = "https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update"
 )

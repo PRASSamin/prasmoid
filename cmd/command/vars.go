@@ -21,9 +21,9 @@ var (
 	osWriteFile = os.WriteFile
 
 	// filepath
-	filepathAbs = filepath.Abs
-	filepathRel = filepath.Rel
-	filepathWalk = filepath.Walk 
+	filepathAbs  = filepath.Abs
+	filepathRel  = filepath.Rel
+	filepathWalk = filepath.Walk
 
 	// regexp
 	regexpMustCompile = regexp.MustCompile

@@ -482,7 +482,7 @@ func TestFSModule(t *testing.T) {
 			t.Error("dirStats.isDirectory() should be true")
 		}
 	})
-	
+
 	t.Run("error handling", func(t *testing.T) {
 		vm, cleanup := setupTestVM(t)
 		defer cleanup()

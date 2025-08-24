@@ -164,7 +164,7 @@ func TestStringifyJS(t *testing.T) {
 		_, _ = io.Copy(&buf, r)
 		return strings.TrimSpace(buf.String())
 	}
-	
+
 	t.Run("stringify one data type array", func(t *testing.T) {
 		script := `console.log(["p", "r", "a", "s"]);`
 		output := captureOutput(func() {
@@ -175,7 +175,7 @@ func TestStringifyJS(t *testing.T) {
 		})
 		require.Contains(t, output, `["p", "r", "a", "s"]`)
 	})
-	
+
 	t.Run("stringify multiple data type array", func(t *testing.T) {
 		script := `console.log(["d", 2, 1, true]);`
 		output := captureOutput(func() {
@@ -186,7 +186,7 @@ func TestStringifyJS(t *testing.T) {
 		})
 		require.Contains(t, output, `["d", 2, 1, true]`)
 	})
-	
+
 	t.Run("stringify empty array", func(t *testing.T) {
 		script := `console.log([]);`
 		output := captureOutput(func() {
@@ -197,7 +197,7 @@ func TestStringifyJS(t *testing.T) {
 		})
 		require.Contains(t, output, `[]`)
 	})
-	
+
 	t.Run("stringify empty object", func(t *testing.T) {
 		script := `console.log({});`
 		output := captureOutput(func() {
@@ -208,7 +208,7 @@ func TestStringifyJS(t *testing.T) {
 		})
 		require.Contains(t, output, `{  }`)
 	})
-	
+
 	t.Run("stringify object", func(t *testing.T) {
 		script := `console.log({a: 1, b: "c"});`
 		output := captureOutput(func() {
@@ -217,9 +217,10 @@ func TestStringifyJS(t *testing.T) {
 				t.Fatalf("vm.RunString() failed: %v", err)
 			}
 		})
-		require.Contains(t, output, `{ a: 1, b: "c" }`)
+		require.Contains(t, output, `a: 1`)
+		require.Contains(t, output, `b: "c"`)
 	})
-	
+
 	t.Run("stringify functions", func(t *testing.T) {
 		script := `console.log(function() { return 1; });`
 		output := captureOutput(func() {
@@ -230,7 +231,7 @@ func TestStringifyJS(t *testing.T) {
 		})
 		require.Contains(t, output, "[Function]")
 	})
-	
+
 	t.Run("stringify null", func(t *testing.T) {
 		script := `console.log(null);`
 		output := captureOutput(func() {

@@ -48,7 +48,7 @@ func TestRootCmd_Run(t *testing.T) {
 		cmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
 		_ = cmd.Flags().Set("version", "true")
 		buf, restore := captureOutput()
-		
+
 		// Act
 		RootCmd.Run(cmd, []string{})
 
@@ -202,16 +202,19 @@ func TestCheckForUpdates_AllBranches(t *testing.T) {
 	t.Run("cached, update available", func(t *testing.T) {
 		readUpdateCache = func() (map[string]interface{}, error) {
 			return map[string]interface{}{
-				"last_checked": time.Now().Format(time.RFC3339),
-				"latest_tag":   "2.0.0",
-			},
-			nil
+					"last_checked": time.Now().Format(time.RFC3339),
+					"latest_tag":   "2.0.0",
+				},
+				nil
 		}
 		timeParse = func(layout, value string) (time.Time, error) { return time.Now(), nil }
 		timeSince = func(t time.Time) time.Duration { return 1 * time.Hour }
 		isUpdateAvailable = func(tag string) bool { return true }
 		var tlsDialCalled bool
-		tlsDial = func(network, addr string, config *tls.Config) (*tls.Conn, error) { tlsDialCalled = true; return nil, errors.New("mock error") }
+		tlsDial = func(network, addr string, config *tls.Config) (*tls.Conn, error) {
+			tlsDialCalled = true
+			return nil, errors.New("mock error")
+		}
 
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
@@ -250,7 +253,7 @@ func TestCheckForUpdates_AllBranches(t *testing.T) {
 		CheckForUpdates()
 		assert.True(t, printed)
 	})
-	
+
 	t.Run("happy flow, update available", func(t *testing.T) {
 		readUpdateCache = func() (map[string]interface{}, error) { return nil, errors.New("miss") }
 		mockConn := &tls.Conn{}
@@ -419,7 +422,7 @@ func TestWriteUpdateCache(t *testing.T) {
 		osWriteFile = func(name string, data []byte, perm os.FileMode) error { writeFileCalled = true; return nil }
 
 		// Act
-		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0"}`)) 
+		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0"}`))
 
 		// Assert: Should not panic, but write file might still be called with empty data
 		assert.True(t, writeFileCalled)
@@ -430,7 +433,7 @@ func TestWriteUpdateCache(t *testing.T) {
 		osWriteFile = func(name string, data []byte, perm os.FileMode) error { return errors.New("write error") }
 
 		// Act
-		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0"}`)) 
+		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0"}`))
 
 		// Assert: Should not panic
 	})
@@ -438,11 +441,11 @@ func TestWriteUpdateCache(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// Arrange
 		var writtenData []byte
-		osWriteFile = func(name string, data []byte, perm os.FileMode) error { 
+		osWriteFile = func(name string, data []byte, perm os.FileMode) error {
 			writtenData = data
-			return nil 
+			return nil
 		}
-		
+
 		// Mock jsonUnmarshal to parse the input body
 		jsonUnmarshal = func(data []byte, v interface{}) error {
 			if m, ok := v.(*map[string]interface{}); ok {
@@ -453,7 +456,7 @@ func TestWriteUpdateCache(t *testing.T) {
 			}
 			return nil
 		}
-		
+
 		// Mock jsonMarshal to return test data
 		jsonMarshal = func(v interface{}) ([]byte, error) {
 			return json.Marshal(map[string]interface{}{
@@ -465,12 +468,12 @@ func TestWriteUpdateCache(t *testing.T) {
 				},
 			})
 		}
-		
+
 		timeNow = func() time.Time { return time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC) }
-	
+
 		// Act
-		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0","other":"data"}`)) 
-	
+		writeUpdateCache("v1.0.0", []byte(`{"tag_name":"v1.0.0","other":"data"}`))
+
 		// Assert
 		assert.NotNil(t, writtenData)
 		assert.Contains(t, string(writtenData), `"latest_tag":"v1.0.0"`)
@@ -508,7 +511,7 @@ func TestGetLatestTag(t *testing.T) {
 		}
 
 		// Act
-		tag := getLatestTag([]byte(`{"some_other_key":"value"}`)) 
+		tag := getLatestTag([]byte(`{"some_other_key":"value"}`))
 
 		// Assert
 		assert.Empty(t, tag)
@@ -526,7 +529,7 @@ func TestGetLatestTag(t *testing.T) {
 		}
 
 		// Act
-		tag := getLatestTag([]byte(`{"tag_name":123}`)) 
+		tag := getLatestTag([]byte(`{"tag_name":123}`))
 
 		// Assert
 		assert.Empty(t, tag)
@@ -544,7 +547,7 @@ func TestGetLatestTag(t *testing.T) {
 		}
 
 		// Act
-		tag := getLatestTag([]byte(`{"tag_name":"v1.2.3"}`)) 
+		tag := getLatestTag([]byte(`{"tag_name":"v1.2.3"}`))
 
 		// Assert
 		assert.Equal(t, "1.2.3", tag)
@@ -562,7 +565,7 @@ func TestGetLatestTag(t *testing.T) {
 		}
 
 		// Act
-		tag := getLatestTag([]byte(`{"tag_name":"1.2.3"}`)) 
+		tag := getLatestTag([]byte(`{"tag_name":"1.2.3"}`))
 
 		// Assert
 		assert.Equal(t, "1.2.3", tag)
@@ -591,10 +594,10 @@ func TestCompareVersions(t *testing.T) {
 	})
 
 	t.Run("malformed versions", func(t *testing.T) {
-		assert.Equal(t, -1, compareVersions("abc", "1.0.0"))  // 0.0.0 < 1.0.0
-		assert.Equal(t, 1, compareVersions("1.0.0", "abc"))   // 1.0.0 > 0.0.0
-		assert.Equal(t, 0, compareVersions("1.0", "1.0.0"))   // 1.0.0 == 1.0.0 (missing parts default to 0)
-		assert.Equal(t, 0, compareVersions("1", "1.0.0"))     // 1.0.0 == 1.0.0 (missing parts default to 0)
+		assert.Equal(t, -1, compareVersions("abc", "1.0.0")) // 0.0.0 < 1.0.0
+		assert.Equal(t, 1, compareVersions("1.0.0", "abc"))  // 1.0.0 > 0.0.0
+		assert.Equal(t, 0, compareVersions("1.0", "1.0.0"))  // 1.0.0 == 1.0.0 (missing parts default to 0)
+		assert.Equal(t, 0, compareVersions("1", "1.0.0"))    // 1.0.0 == 1.0.0 (missing parts default to 0)
 	})
 }
 

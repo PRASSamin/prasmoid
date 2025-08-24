@@ -36,19 +36,19 @@ var (
 	rootCmdExecute = RootCmd.Execute
 
 	// os
-	osExit = os.Exit
+	osExit         = os.Exit
 	osUserCacheDir = os.UserCacheDir
-	osTempDir = os.TempDir
-	osReadFile = os.ReadFile
-	osWriteFile = os.WriteFile
+	osTempDir      = os.TempDir
+	osReadFile     = os.ReadFile
+	osWriteFile    = os.WriteFile
 
 	// time
 	timeParse = time.Parse
 	timeSince = time.Since
-	timeNow = time.Now
+	timeNow   = time.Now
 
 	// net/tls
-	tlsDial = tls.Dial
+	tlsDial   = tls.Dial
 	connWrite = func(conn *tls.Conn, b []byte) (n int, err error) { return conn.Write(b) }
 	connClose = func(conn *tls.Conn) error { return conn.Close() }
 
@@ -57,7 +57,7 @@ var (
 
 	// encoding/json
 	jsonUnmarshal = json.Unmarshal
-	jsonMarshal = json.Marshal
+	jsonMarshal   = json.Marshal
 
 	// golang.org/x/term
 	termGetSize = term.GetSize
@@ -68,7 +68,6 @@ var (
 	// for testing purposes
 	logPrintf = log.Printf
 )
-
 
 // project wise prasmoid config
 var ConfigRC types.Config
@@ -189,7 +188,7 @@ var getLatestTag = func(body []byte) string {
 	if err != nil {
 		return ""
 	}
-	
+
 	tag, ok := tagData["tag_name"].(string)
 	if !ok {
 		return ""

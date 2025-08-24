@@ -3,7 +3,6 @@ package runtime
 import (
 	"fmt"
 	"testing"
-
 )
 
 func TestChildProcessModule(t *testing.T) {

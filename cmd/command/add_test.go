@@ -1,8 +1,10 @@
 package command
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
+	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,8 +67,21 @@ func TestCommandNameValidator(t *testing.T) {
 	})
 }
 
-
 func TestAddCommand(t *testing.T) {
+	captureOutput := func() (*bytes.Buffer, func()) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w // Redirect color output as well
+		buf := new(bytes.Buffer)
+		return buf, func() {
+			_ = w.Close()
+			_, _ = io.Copy(buf, r)
+			os.Stdout = oldStdout
+			color.Output = oldStdout
+		}
+	}
+
 	// Backup original functions
 	originalOsStat := osStat
 	originalOsMkdirAll := osMkdirAll
@@ -136,15 +152,19 @@ func TestAddCommand(t *testing.T) {
 			assert.Equal(t, "/project/prasmoid.d.ts", targpath)
 			return "../prasmoid.d.ts", nil
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand(commandName)
+		_ = commandsAddCmd.Flags().Set("name", commandName)
+		commandsAddCmd.Run(commandsAddCmd, []string{})
 
 		// Assert
-		require.NoError(t, err)
+		restore()
+		output := buf.String()
 		expectedContent := fmt.Sprintf(consts.JS_COMMAND_TEMPLATE, "../prasmoid.d.ts", commandName)
 		assert.Equal(t, filepath.Join("test_commands", "my-command.js"), writtenPath)
 		assert.Equal(t, expectedContent, string(writtenContent))
+		assert.Contains(t, output, "Successfully created my-command command at")
 	})
 
 	t.Run("error: command already exists", func(t *testing.T) {
@@ -153,13 +173,15 @@ func TestAddCommand(t *testing.T) {
 		osStat = func(name string) (fs.FileInfo, error) {
 			return &MockFileInfo{}, nil // command exists
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand(commandName)
+		AddCommand(commandName)
 
 		// Assert
-		require.Error(t, err)
-		assert.Equal(t, "command already exists", err.Error())
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Command already exists")
 	})
 
 	t.Run("success: using survey to get command name", func(t *testing.T) {
@@ -192,14 +214,17 @@ func TestAddCommand(t *testing.T) {
 		filepathRel = func(basepath, targpath string) (string, error) {
 			return "../prasmoid.d.ts", nil
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand("") // Trigger survey
+		AddCommand("") // Trigger survey
 
 		// Assert
-		require.NoError(t, err)
+		restore()
+		output := buf.String()
 		expectedContent := fmt.Sprintf(consts.JS_COMMAND_TEMPLATE, "../prasmoid.d.ts", commandName)
 		assert.Equal(t, expectedContent, string(writtenContent))
+		assert.Contains(t, output, "Successfully created from-survey command at")
 	})
 
 	t.Run("error: survey fails", func(t *testing.T) {
@@ -207,13 +232,15 @@ func TestAddCommand(t *testing.T) {
 		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
 			return errors.New("survey error")
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand("") // Trigger survey
+		AddCommand("") // Trigger survey
 
 		// Assert
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error asking for command name")
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error asking for command name")
 	})
 
 	t.Run("error: mkdir fails", func(t *testing.T) {
@@ -221,13 +248,15 @@ func TestAddCommand(t *testing.T) {
 		commandName := "any-command"
 		osStat = func(name string) (fs.FileInfo, error) { return nil, os.ErrNotExist }
 		osMkdirAll = func(path string, perm fs.FileMode) error { return errors.New("mkdir failed") }
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand(commandName)
+		AddCommand(commandName)
 
 		// Assert
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create commands directory")
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Failed to create commands directory")
 	})
 
 	t.Run("error: write file fails", func(t *testing.T) {
@@ -241,13 +270,15 @@ func TestAddCommand(t *testing.T) {
 		osWriteFile = func(name string, data []byte, perm fs.FileMode) error {
 			return errors.New("write failed")
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand(commandName)
+		AddCommand(commandName)
 
 		// Assert
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error writing to file")
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error writing to file")
 	})
 
 	t.Run("error: relpath fails", func(t *testing.T) {
@@ -260,12 +291,14 @@ func TestAddCommand(t *testing.T) {
 		filepathRel = func(basepath, targpath string) (string, error) {
 			return "", errors.New("relpath failed")
 		}
+		buf, restore := captureOutput()
 
 		// Act
-		err := AddCommand(commandName)
+		AddCommand(commandName)
 
 		// Assert
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error calculating relative path")
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error calculating relative path")
 	})
 }

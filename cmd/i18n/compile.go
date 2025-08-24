@@ -23,7 +23,6 @@ import (
 var silent bool
 
 func init() {
-	I18nCompileCmd.Flags().Bool("restart", false, "Restart plasmashell after compiling")
 	I18nCompileCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Do not show progress messages")
 
 	I18nCmd.AddCommand(I18nCompileCmd)
@@ -33,26 +32,26 @@ var I18nCompileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile .po files to binary .mo files",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
+		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
 		}
 
-		if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utils.DetectPackageManager()
+		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
+			pm, _ := utilsDetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "gettext is not installed. Do you want to install it first?",
 				Default: true,
 			}
 			if !confirm {
-				if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
 					return
 				}
 			}
 
 			if confirm {
-				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
+				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
 					fmt.Println(color.RedString("Failed to install gettext:", err))
 					return
 				}
@@ -73,13 +72,6 @@ var I18nCompileCmd = &cobra.Command{
 
 		if !silent {
 			fmt.Println(color.GreenString("Successfully compiled all translation files."))
-		}
-
-		if restart, _ := cmd.Flags().GetBool("restart"); restart {
-			fmt.Println(color.CyanString("Restarting plasmashell..."))
-			if err := restartPlasmashell(); err != nil {
-				color.Red("Failed to restart plasmashell: %v", err)
-			}
 		}
 	},
 }
@@ -148,17 +140,4 @@ func CompileI18n(config types.Config, silent bool) error {
 	}
 
 	return nil
-}
-
-func restartPlasmashell() error {
-	if err := execCommand("killall", "plasmashell").Run(); err != nil {
-		color.Yellow("Could not stop plasmashell (it might not have been running).", err)
-	}
-	// Use kstart5 or kstart, depending on the system
-	cmdName := "kstart5"
-	if _, err := execLookPath(cmdName); err != nil {
-		cmdName = "kstart"
-	}
-
-	return execCommand(cmdName, "plasmashell").Start()
 }

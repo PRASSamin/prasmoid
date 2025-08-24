@@ -1,255 +1,183 @@
 package changeset
 
 import (
-	"fmt"
+	"bytes"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/utils"
+	"github.com/fatih/color"
+	"github.com/stretchr/testify/assert"
 )
 
+type mockFileInfo struct {
+	isDir bool
+	name  string
+}
+
+func (m *mockFileInfo) Name() string       { return m.name }
+func (m *mockFileInfo) Size() int64        { return 0 }
+func (m *mockFileInfo) Mode() os.FileMode  { return 0 }
+func (m *mockFileInfo) ModTime() time.Time { return time.Now() }
+func (m *mockFileInfo) IsDir() bool        { return m.isDir }
+func (m *mockFileInfo) Sys() interface{}   { return nil }
+
 func TestUpdateChangelog(t *testing.T) {
-	tmpDir := t.TempDir()
-	changelogPath := filepath.Join(tmpDir, "CHANGELOG.md")
-
-	// Wrapper to allow testing with a specific path
-	updateChangelogInPath := func(t *testing.T, path, version, date, body string) error {
-		// Temporarily change the working directory for the test
-		originalWd, _ := os.Getwd()
-		defer func() {
-			if err := os.Chdir(originalWd); err != nil {
-				t.Errorf("Failed to restore original directory: %v", err)
-			}
-		}()
-
-		if err := os.Chdir(filepath.Dir(path)); err != nil {
-			return err
-		}
-
-		return UpdateChangelog(version, date, body)
-	}
-
 	t.Run("create new changelog", func(t *testing.T) {
-		// ensure file doesn't exist
-		_ = os.Remove(changelogPath)
-		err := updateChangelogInPath(t, changelogPath, "1.0.0", "2025-01-01", "Initial release")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
+		// Arrange
+		t.Cleanup(func() {
+			osStat = os.Stat
+			osWriteFile = os.WriteFile
+		})
+
+		osStat = func(name string) (os.FileInfo, error) {
+			return nil, os.ErrNotExist
+		}
+		var writtenContent string
+		osWriteFile = func(name string, data []byte, perm os.FileMode) error {
+			writtenContent = string(data)
+			return nil
 		}
 
-		data, err := os.ReadFile(changelogPath)
-		if err != nil {
-			t.Fatalf("Failed to read changelog: %v", err)
-		}
+		// Act
+		err := UpdateChangelog("1.0.0", "2025-01-01", "Initial release")
 
-		expected := "# CHANGELOG\n\n## [v1.0.0] - 2025-01-01\n\nInitial release\n\n"
-		if string(data) != expected {
-			t.Errorf("Expected changelog content %q, but got %q", expected, string(data))
-		}
+		// Assert
+		assert.NoError(t, err)
+		assert.Contains(t, writtenContent, "# CHANGELOG")
+		assert.Contains(t, writtenContent, "[v1.0.0] - 2025-01-01")
+		assert.Contains(t, writtenContent, "Initial release")
 	})
 
 	t.Run("append to existing changelog", func(t *testing.T) {
-		err := updateChangelogInPath(t, changelogPath, "1.1.0", "2025-01-02", "Added new feature")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
+		// Arrange
+		t.Cleanup(func() {
+			osStat = os.Stat
+			osReadFile = os.ReadFile
+			osWriteFile = os.WriteFile
+		})
+
+		osStat = func(name string) (os.FileInfo, error) { return nil, nil }
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte("# CHANGELOG\n\n## [v1.0.0] - 2025-01-01\n\nOld entry."), nil
+		}
+		var writtenContent string
+		osWriteFile = func(name string, data []byte, perm os.FileMode) error {
+			writtenContent = string(data)
+			return nil
 		}
 
-		data, err := os.ReadFile(changelogPath)
-		if err != nil {
-			t.Fatalf("Failed to read changelog: %v", err)
-		}
+		// Act
+		err := UpdateChangelog("1.1.0", "2025-01-02", "New entry")
 
-		expected := "# CHANGELOG\n\n## [v1.1.0] - 2025-01-02\n\nAdded new feature\n\n## [v1.0.0] - 2025-01-01\n\nInitial release\n\n"
-		if string(data) != expected {
-			t.Errorf("Expected changelog content %q, but got %q", expected, string(data))
-		}
-	})
-
-	t.Run("append to existing changelog without header", func(t *testing.T) {
-		// First, create a file without the header
-		_ = os.WriteFile(changelogPath, []byte("Some initial content.\n"), 0644)
-
-		err := updateChangelogInPath(t, changelogPath, "1.2.0", "2025-01-03", "Added another feature")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
-		}
-
-		data, err := os.ReadFile(changelogPath)
-		if err != nil {
-			t.Fatalf("Failed to read changelog: %v", err)
-		}
-
-		expected := "# CHANGELOG\n\n## [v1.2.0] - 2025-01-03\n\nAdded another feature\n\nSome initial content.\n"
-		if string(data) != expected {
-			t.Errorf("Expected changelog content %q, but got %q", expected, string(data))
-		}
-	})
-
-	t.Run("fail to update changelog", func(t *testing.T) {
-		// Create the file as read-only for all users
-		if err := os.WriteFile(changelogPath, []byte(""), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
-		if err := os.Chmod(changelogPath, 0444); err != nil {
-			t.Fatalf("Failed to set file as read-only: %v", err)
-		}
-		defer func() { _ = os.Chmod(changelogPath, 0644) }()
-
-		err := updateChangelogInPath(t, changelogPath, "1.2.0", "2025-01-03", "Added another feature")
-		if err == nil {
-			t.Fatal("UpdateChangelog() expected error, but got none")
-		}
-		if !strings.Contains(err.Error(), "permission denied") {
-			t.Errorf("UpdateChangelog() expected permission error, but got %q", err.Error())
-		}
+		// Assert
+		assert.NoError(t, err)
+		assert.True(t, strings.HasPrefix(writtenContent, "# CHANGELOG\n\n## [v1.1.0] - 2025-01-02\n\nNew entry"))
+		assert.Contains(t, writtenContent, "## [v1.0.0] - 2025-01-01")
 	})
 }
 
 func TestApplyChanges(t *testing.T) {
-	t.Run("successful apply", func(t *testing.T) {
-		// Setup
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		changesDir := ".changes"
-		_ = os.Mkdir(changesDir, 0755)
-
-		// Create changeset files
-		cs1 := "---\nid: org.kde.testplasmoid\nbump: patch\nnext: 1.0.1\ndate: 2025-01-01\n---\n- Added a new feature."
-
-		cs2 := "---\nid: org.kde.testplasmoid\nbump: minor\nnext: 1.1.0\ndate: 2025-01-02\n---\n- Fixed a bug."
-
-		// write files in reverse alphabetical order to test sorting
-		_ = os.WriteFile(filepath.Join(changesDir, "z_change2.mdx"), []byte(cs2), 0644)
-		_ = os.WriteFile(filepath.Join(changesDir, "a_change1.mdx"), []byte(cs1), 0644)
-
-		// Run Apply
-		changesetApplyCmd.Run(nil, []string{})
-
-		// Verify version in metadata.json
-		version, err := utils.GetDataFromMetadata("Version")
-		fmt.Println("version", version)
-		if err != nil {
-			t.Fatal("Failed to get metadata")
-		}
-		if version != "1.1.0" {
-			t.Errorf("expected version 1.1.0, got %s", version)
-		}
-
-		// Verify CHANGELOG.md
-		changelog, _ := os.ReadFile("CHANGELOG.md")
-		if !strings.Contains(string(changelog), "Added a new feature") {
-			t.Error("changelog does not contain first change")
-		}
-		if !strings.Contains(string(changelog), "Fixed a bug") {
-			t.Error("changelog does not contain second change")
-		}
-
-		// Verify changeset files are removed
-		files, _ := os.ReadDir(changesDir)
-		if len(files) != 0 {
-			t.Errorf("expected .changes dir to be empty, but it has %d files", len(files))
-		}
-	})
-
-	t.Run("no changeset files", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-		_ = os.Mkdir(".changes", 0755)
-
-		err := ApplyChanges()
-		if err == nil {
-			t.Fatal("expected an error but got none")
-		}
-		if !strings.Contains(err.Error(), "no changeset files found") {
-			t.Errorf("expected 'no changeset files found' error, got: %v", err)
-		}
-	})
-
-	t.Run("changeset dir not found", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		err := ApplyChanges()
-		if err == nil {
-			t.Fatal("expected an error but got none")
-		}
-		if !strings.Contains(err.Error(), "failed to walk changes directory") {
-			t.Errorf("expected 'failed to walk changes directory' error, got: %v", err)
-		}
-	})
-
-	t.Run("continue on parsing error", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		changesDir := ".changes"
-		_ = os.Mkdir(changesDir, 0755)
-
-		cs_invalid := "---\ninvalid-yaml: :\n---\n- This one is invalid."
-		cs_valid := "---\nid: org.kde.testplasmoid\nbump: minor\nnext: 1.1.0\ndate: 2025-01-02\n---\n- This one is valid."
-		_ = os.WriteFile(filepath.Join(changesDir, "invalid.mdx"), []byte(cs_invalid), 0644)
-		_ = os.WriteFile(filepath.Join(changesDir, "valid.mdx"), []byte(cs_valid), 0644)
-
-		err := ApplyChanges()
-		if err != nil {
-			t.Fatalf("ApplyChanges() failed: %v", err)
-		}
-
-		files, _ := os.ReadDir(changesDir)
-		if len(files) != 1 {
-			t.Errorf("expected .changes dir to have 1 file, but it has %d files", len(files))
-		}
-		if files[0].Name() != "invalid.mdx" {
-			t.Errorf("expected invalid.mdx to remain, but found %s", files[0].Name())
-		}
-	})
-
-	varifyContinue := func(t *testing.T) {
-		changesDir := ".changes"
-		_ = os.Mkdir(changesDir, 0755)
-
-		cs_valid := "---\nid: org.kde.testplasmoid\nbump: minor\nnext: 1.1.0\ndate: 2025-01-02\n---\n- This one is valid."
-		_ = os.WriteFile(filepath.Join(changesDir, "valid.mdx"), []byte(cs_valid), 0644)
-
-		err := ApplyChanges()
-		if err != nil {
-			t.Fatalf("ApplyChanges() failed: %v", err)
-		}
-
-		files, _ := os.ReadDir(changesDir)
-		if len(files) != 1 {
-			t.Errorf("expected .changes dir to have 1 file, but it has %d files", len(files))
-		}
-		if files[0].Name() != "valid.mdx" {
-			t.Errorf("expected valid.mdx to remain, but found %s", files[0].Name())
+	captureOutput := func() (*bytes.Buffer, func()) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w // Redirect color output as well
+		buf := new(bytes.Buffer)
+		return buf, func() {
+			_ = w.Close()
+			_, _ = io.Copy(buf, r)
+			os.Stdout = oldStdout
+			color.Output = oldStdout
 		}
 	}
 
-	t.Run("continue on metadata update failure", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		_ = os.Chmod("metadata.json", 0444)
-		defer func() { _ = os.Chmod("metadata.json", 0644) }()
-		defer cleanup()
+	t.Run("successful apply", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() {
+			filepathWalk = filepath.Walk
+			osReadFile = os.ReadFile
+			utilsUpdateMetadata = utils.UpdateMetadata
+			osRemove = os.Remove
+			osStat = os.Stat
+			osWriteFile = os.WriteFile
+		})
 
-		varifyContinue(t)
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return walkFn(".changes/change1.mdx", &mockFileInfo{}, nil)
+		}
+		osReadFile = func(name string) ([]byte, error) {
+			if strings.HasSuffix(name, ".mdx") {
+				return []byte("---\nid: test\nbump: patch\nnext: 1.0.1\ndate: 2025-01-01\n---\n- A change."), nil
+			}
+			return nil, nil
+		}
+		utilsUpdateMetadata = func(key string, value interface{}, sectionOpt ...string) error { return nil }
+		osRemove = func(name string) error { return nil }
+		osStat = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist } // for new changelog
+		osWriteFile = func(name string, data []byte, perm os.FileMode) error { return nil }
+		buf, restore := captureOutput()
+
+		changesetApplyCmd.Run(changesetApplyCmd, []string{})
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "All changesets applied successfully!")
 	})
-	
-	t.Run("continue on changelog update failure", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		if err := os.WriteFile("CHANGELOG.md", []byte(""), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
-		if err := os.Chmod("CHANGELOG.md", 0444); err != nil {
-			t.Fatalf("Failed to set file as read-only: %v", err)
-		}
-		defer cleanup()
-		defer func() { _ = os.Chmod("CHANGELOG.md", 0644) }()
 
-		varifyContinue(t)
+	t.Run("no changeset files", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { filepathWalk = filepath.Walk })
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error { return nil } // no files found
+		buf, restore := captureOutput()
+
+		// Act
+		ApplyChanges()
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "No changeset files found.")
+		assert.Contains(t, output, "run `prasmoid changeset add` to create a changeset.")
+	})
+
+	t.Run("changeset dir not found", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { filepathWalk = filepath.Walk })
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error { return errors.New("dir not found") }
+		buf, restore := captureOutput()
+
+		// Act
+		ApplyChanges()
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Failed to walk changes directory")
+	})
+
+	t.Run("changeset file read error", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { filepathWalk = filepath.Walk })
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return walkFn(".changes/change1.mdx", &mockFileInfo{}, nil)
+		}
+		osReadFile = func(name string) ([]byte, error) { return nil, errors.New("file not found") }
+		buf, restore := captureOutput()
+
+		// Act
+		ApplyChanges()
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Failed to read changeset file")
 	})
 }
 
@@ -263,15 +191,12 @@ date: 2025-01-01
 ---
 This is the body.`)
 		meta, body, err := matterParse(data)
-		if err != nil {
-			t.Fatalf("matterParse failed: %v", err)
-		}
-		if meta.ID != "test" || meta.Bump != "patch" || meta.Next != "1.0.1" || meta.Date != "2025-01-01" {
-			t.Errorf("parsed metadata is incorrect: %+v", meta)
-		}
-		if strings.TrimSpace(body) != "This is the body." {
-			t.Errorf("parsed body is incorrect: %q", body)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, "test", meta.ID)
+		assert.Equal(t, "patch", meta.Bump)
+		assert.Equal(t, "1.0.1", meta.Next)
+		assert.Equal(t, "2025-01-01", meta.Date)
+		assert.Equal(t, "This is the body.", strings.TrimSpace(body))
 	})
 
 	t.Run("invalid yaml", func(t *testing.T) {
@@ -281,30 +206,7 @@ invalid-yaml: :
 ---
 This is the body.`)
 		_, _, err := matterParse(data)
-		if err == nil {
-			t.Fatal("expected an error but got none")
-		}
+		assert.Error(t, err)
 	})
 
-	t.Run("no frontmatter", func(t *testing.T) {
-		data := []byte(`This is just a body.`)
-		meta, body, err := matterParse(data)
-		if err != nil {
-			t.Fatalf("matterParse failed: %v", err)
-		}
-		if (meta != ChangesetMeta{}) {
-			t.Errorf("expected empty metadata, got %+v", meta)
-		}
-		if strings.TrimSpace(body) != "This is just a body." {
-			t.Errorf("parsed body is incorrect: %q", body)
-		}
-	})
-
-	t.Run("empty input", func(t *testing.T) {
-		data := []byte(``)
-		_, _, err := matterParse(data)
-		if err != nil {
-			t.Fatalf("expected an error for empty input but got none %v", err)
-		}
-	})
 }

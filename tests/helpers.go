@@ -81,7 +81,6 @@ func SetupTestProject(t *testing.T) (string, func()) {
 	return tmpDir, cleanup
 }
 
-
 // setupTestEnvironment creates a temporary project and a temporary home directory.
 func SetupTestEnvironment(t *testing.T) (projectDir, homeDir string, cleanup func()) {
 	projectDir, projectCleanup := SetupTestProject(t)

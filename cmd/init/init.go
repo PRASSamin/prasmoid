@@ -369,4 +369,3 @@ func printNextSteps() {
 func clearLine() {
 	fmt.Print("\033[H\033[2J")
 }
-

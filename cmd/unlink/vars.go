@@ -8,5 +8,5 @@ import (
 
 var (
 	utilsGetDevDest = utils.GetDevDest
-	osRemoveAll = os.RemoveAll
+	osRemoveAll     = os.RemoveAll
 )

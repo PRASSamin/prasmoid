@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	utilsAskForLocales      = utils.AskForLocales
-	initCmdCreateConfigFile = initCmd.CreateConfigFile
+	utilsAskForLocales            = utils.AskForLocales
+	initCmdCreateConfigFile       = initCmd.CreateConfigFile
 	initCmdCreateFileFromTemplate = initCmd.CreateFileFromTemplate
 )

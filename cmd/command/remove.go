@@ -29,11 +29,11 @@ var commandsRemoveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		commandName, _ := cmd.Flags().GetString("name")
 		force, _ := cmd.Flags().GetBool("force")
-		_ = RemoveCommand(commandName, force)
+		RemoveCommand(commandName, force)
 	},
 }
 
-func RemoveCommand(commandName string, force bool) error {
+func RemoveCommand(commandName string, force bool) {
 	availableCmds := []string{}
 	if err := filepathWalk(root.ConfigRC.Commands.Dir, func(path string, info os.FileInfo, err error) error {
 		if info == nil || info.IsDir() {
@@ -44,13 +44,13 @@ func RemoveCommand(commandName string, force bool) error {
 		availableCmds = append(availableCmds, fmt.Sprintf("%s (%s)", nameWithoutExt, base))
 		return nil
 	}); err != nil {
-		color.Red("Error walking commands directory: %v", err)
-		return fmt.Errorf("error walking commands directory: %v", err)
+		fmt.Println(color.RedString("Error walking commands directory: %v", err))
+		return
 	}
 
 	if len(availableCmds) == 0 {
-		color.Red("No commands found in the commands directory.")
-		return fmt.Errorf("no commands found in the commands directory")
+		fmt.Println(color.RedString("No commands found in the commands directory."))
+		return
 	}
 
 	// If not provided, prompt
@@ -60,7 +60,8 @@ func RemoveCommand(commandName string, force bool) error {
 			Options: availableCmds,
 		}
 		if err := surveyAskOne(commandNamePrompt, &commandName); err != nil {
-			return fmt.Errorf("error asking for command name: %v", err)
+			fmt.Println(color.RedString("Error asking for command name: %v", err))
+			return
 		}
 	}
 
@@ -88,8 +89,8 @@ func RemoveCommand(commandName string, force bool) error {
 	// Verify it exists
 	filePath := filepath.Join(root.ConfigRC.Commands.Dir, fileName)
 	if _, err := osStat(filePath); os.IsNotExist(err) {
-		color.Red("Command file does not exist: %s", fileName)
-		return fmt.Errorf("command file does not exist: %s", fileName)
+		fmt.Println(color.RedString("Command file does not exist: %s", fileName))
+		return
 	}
 
 	// Confirmation
@@ -100,19 +101,19 @@ func RemoveCommand(commandName string, force bool) error {
 			Default: true,
 		}
 		if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-			return fmt.Errorf("error asking for confirmation: %v", err)
+			fmt.Println(color.RedString("Error asking for confirmation: %v", err))
+			return
 		}
 	}
 	if !confirm {
-		color.Yellow("Operation cancelled.")
-		return fmt.Errorf("command removal cancelled")
+		fmt.Println(color.YellowString("Operation cancelled."))
+		return
 	}
 
 	// Remove
 	if err := osRemove(filePath); err != nil {
-		color.Red("Error removing file: %v", err)
-		return fmt.Errorf("error removing file: %v", err)
+		fmt.Println(color.RedString("Error removing file: %v", err))
+		return
 	}
-	color.Green("Successfully removed command: %s", fileName)
-	return nil
+	fmt.Println(color.GreenString("Successfully removed command: %s", fileName))
 }

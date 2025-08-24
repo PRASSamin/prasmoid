@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -41,18 +39,20 @@ var changesetAddCmd = &cobra.Command{
 		bump, _ := cmd.Flags().GetString("bump")
 		summary, _ := cmd.Flags().GetString("summary")
 		apply, _ := cmd.Flags().GetBool("apply")
-		_ = AddChangeset(bump, summary, apply)
+		AddChangeset(bump, summary, apply)
 	},
 }
 
-func AddChangeset(bump string, summary string, apply bool) error {
-	if !utils.IsValidPlasmoid() {
-		return fmt.Errorf("current directory is not a valid plasmoid")
+var AddChangeset = func(bump string, summary string, apply bool) {
+	if !utilsIsValidPlasmoid() {
+		fmt.Println(color.RedString("Current directory is not a valid plasmoid"))
+		return
 	}
-	version, verr := utils.GetDataFromMetadata("Version")
-	id, ierr := utils.GetDataFromMetadata("Id")
+	version, verr := utilsGetDataFromMetadata("Version")
+	id, ierr := utilsGetDataFromMetadata("Id")
 	if verr != nil || ierr != nil {
-		return fmt.Errorf("invalid metadata: %v", fmt.Sprintf("%v or %v", ierr, verr))
+		fmt.Println(color.RedString("Invalid metadata: %v", fmt.Sprintf("%v or %v", ierr, verr)))
+		return
 	}
 	var next string
 
@@ -63,23 +63,23 @@ func AddChangeset(bump string, summary string, apply bool) error {
 			if nextVer, err := GetNextVersion(version.(string), bumpType); err == nil {
 				bumpLabels[bumpType] = fmt.Sprintf("%s (%s)", bumpType, nextVer)
 			} else {
-				color.Red("Failed to compute next version for %s: %v", bumpType, err)
-				return fmt.Errorf("failed to compute next version for %s: %v", bumpType, err)
+				fmt.Println(color.RedString("Failed to compute next version for %s: %v", bumpType, err))
+				return
 			}
 		}
-	
+
 		options := []string{bumpLabels["patch"], bumpLabels["minor"], bumpLabels["major"]}
 
 		var selected string
-		err := survey.AskOne(&survey.Select{
+		err := surveyAskOne(&survey.Select{
 			Message: "Select version bump:",
 			Options: options,
 			Default: bumpLabels["patch"],
 		}, &selected, survey.WithValidator(survey.Required))
 
 		if err != nil {
-			color.Red("Failed to prompt for version bump: %v", err)
-			return fmt.Errorf("failed to prompt for version bump: %v", err)
+			fmt.Println(color.RedString("Failed to prompt for version bump: %v", err))
+			return
 		}
 
 		// Split once and trim parens cleanly
@@ -92,8 +92,8 @@ func AddChangeset(bump string, summary string, apply bool) error {
 		var err error
 		next, err = GetNextVersion(version.(string), bump)
 		if err != nil {
-			color.Red("Failed to compute next version for %s: %v", bump, err)
-			return fmt.Errorf("failed to compute next version for %s: %v", bump, err)
+			fmt.Println(color.RedString("Failed to compute next version for %s: %v", bump, err))
+			return
 		}
 	}
 
@@ -106,19 +106,19 @@ func AddChangeset(bump string, summary string, apply bool) error {
 			prompt := &survey.Input{
 				Message: "Enter changelog summary:",
 			}
-			err = survey.AskOne(prompt, &summary, survey.WithValidator(survey.Required))
+			err = surveyAskOne(prompt, &summary, survey.WithValidator(survey.Required))
 
 			if err != nil {
-				color.Red("Failed to prompt for changelog summary: %v", err)
-				return fmt.Errorf("failed to prompt for changelog summary: %v", err)
+				fmt.Println(color.RedString("Failed to prompt for changelog summary: %v", err))
+				return
 			}
 		}
 	}
 
 	// Create changes dir if not exist
-	if err := os.MkdirAll(ChangesFolder, 0755); err != nil {
-		color.Red("Failed to create changes directory: %v", err)
-		return fmt.Errorf("failed to create changes directory: %v", err)
+	if err := osMkdirAll(ChangesFolder, 0755); err != nil {
+		fmt.Println(color.RedString("Failed to create changes directory: %v", err))
+		return
 	}
 
 	// Generate filename & content
@@ -138,18 +138,17 @@ date: %s
 `, id, bump, next, dateOnly, summary)
 
 	// Write file
-	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
-		color.Red("Failed to write changeset: %v", err)
-		return fmt.Errorf("failed to write changeset: %v", err)
+	if err := osWriteFile(filename, []byte(content), 0644); err != nil {
+		fmt.Println(color.RedString("Failed to write changeset: %v", err))
+		return
 	}
 
 	if apply {
-		_ = ApplyChanges()
+		ApplyChanges()
 	}
-	return nil
 }
 
-func GetNextVersion(version string, bump string) (string, error) {
+var GetNextVersion = func(version string, bump string) (string, error) {
 	versionParts := strings.Split(version, ".")
 	if len(versionParts) != 3 {
 		return "", fmt.Errorf("invalid version format: %s, expected format: major.minor.patch", version)
@@ -179,18 +178,18 @@ func GetNextVersion(version string, bump string) (string, error) {
 	return fmt.Sprintf("%d.%d.%d", major, minor, patch), nil
 }
 
-func OpenEditor() (string, error) {
-	editor := os.Getenv("EDITOR")
+var OpenEditor = func() (string, error) {
+	editor := osGetenv("EDITOR")
 	if editor == "" {
 		editor = "nano"
 	}
 
-	tmpFile, err := os.CreateTemp("", "changeset-*.mdx")
+	tmpFile, err := osCreateTemp("", "changeset-*.mdx")
 	if err != nil {
 		return "", err
 	}
 	defer func() {
-		if err := os.Remove(tmpFile.Name()); err != nil {
+		if err := osRemove(tmpFile.Name()); err != nil {
 			log.Printf("Error removing temporary file: %v", err)
 		}
 	}()
@@ -205,7 +204,7 @@ func OpenEditor() (string, error) {
 		return "", err
 	}
 
-	cmd := exec.Command(editor, tmpFile.Name())
+	cmd := execCommand(editor, tmpFile.Name())
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -214,7 +213,7 @@ func OpenEditor() (string, error) {
 		return "", err
 	}
 
-	data, err := os.ReadFile(tmpFile.Name())
+	data, err := osReadFile(tmpFile.Name())
 	if err != nil {
 		return "", err
 	}
@@ -229,4 +228,3 @@ func OpenEditor() (string, error) {
 
 	return strings.Join(cleaned, "\n"), nil
 }
-

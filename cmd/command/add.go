@@ -47,35 +47,35 @@ var commandsAddCmd = &cobra.Command{
 	Long:  "Add a custom command to the project.",
 	Run: func(cmd *cobra.Command, args []string) {
 		commandName, _ := cmd.Flags().GetString("name")
-		_ = AddCommand(commandName)
+		AddCommand(commandName)
 	},
 }
 
-func AddCommand(commandName string) error {
+func AddCommand(commandName string) {
 	// Ask for command name
 	if strings.TrimSpace(commandName) == "" || invalidChars.MatchString(commandName) {
 		namePrompt := &survey.Input{
 			Message: "Command name:",
 		}
 		if err := surveyAskOne(namePrompt, &commandName, survey.WithValidator(commandNameValidator)); err != nil {
-			return fmt.Errorf("error asking for command name: %v", err)
+			fmt.Println(color.RedString("Error asking for command name: %v", err))
+			return
 		}
 	}
 
 	if !invalidChars.MatchString(commandName) {
 		baseName := filepath.Join(root.ConfigRC.Commands.Dir, commandName)
 		if _, err := osStat(baseName + ".js"); err == nil {
-			color.Red("Command name already exists")
-			return fmt.Errorf("command already exists")
+			fmt.Println(color.RedString("Command already exists"))
+			return
 		}
 	}
 
-	
-	if (strings.TrimSpace(root.ConfigRC.Commands.Dir) != "") {
+	if strings.TrimSpace(root.ConfigRC.Commands.Dir) != "" {
 		// Ensure the commands directory exists
 		if err := osMkdirAll(root.ConfigRC.Commands.Dir, 0755); err != nil {
-			color.Red("Failed to create commands directory: %v", err)
-			return fmt.Errorf("failed to create commands directory: %v", err)
+			fmt.Println(color.RedString("Failed to create commands directory: %v", err))
+			return
 		}
 	}
 
@@ -84,7 +84,7 @@ func AddCommand(commandName string) error {
 
 	// Absolute path to command file
 	absCommandFilePath, _ := filepathAbs(filePath)
-	
+
 	cwd, _ := osGetwd()
 	rootDir, _ := filepathAbs(cwd)
 	prasmoidDef := filepath.Join(rootDir, "prasmoid.d.ts")
@@ -92,18 +92,17 @@ func AddCommand(commandName string) error {
 	// Calculate relative path from command file to prasmoid.d.ts
 	relPath, err := filepathRel(filepath.Dir(absCommandFilePath), prasmoidDef)
 	if err != nil {
-		color.Red("Error calculating relative path: %v", err)
-		return fmt.Errorf("error calculating relative path: %v", err)
+		fmt.Println(color.RedString("Error calculating relative path: %v", err))
+		return
 	}
-	
+
 	templateFilled := fmt.Sprintf(commandTemplates["js"], relPath, commandName)
 
 	err = osWriteFile(filePath, []byte(templateFilled), 0644)
 	if err != nil {
-		color.Red("Error writing to file: %v", err)
-		return fmt.Errorf("error writing to file: %v", err)
+		fmt.Println(color.RedString("Error writing to file: %v", err))
+		return
 	}
 
-	color.Green("Successfully created %s command at %s", commandName, color.BlueString(filePath))
-	return nil
+	fmt.Println(color.GreenString("Successfully created %s command at %s", commandName, color.BlueString(filePath)))
 }

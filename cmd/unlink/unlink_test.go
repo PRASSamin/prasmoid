@@ -30,7 +30,7 @@ func TestLinkAndUnlink(t *testing.T) {
 			t.Errorf("Expected symlink '%s' to be removed, but it still exists", dest)
 		}
 	})
-	
+
 	t.Run("failed to get destination", func(t *testing.T) {
 		orgUtilsGetDevDest := utilsGetDevDest
 		utilsGetDevDest = func() (string, error) { return "", errors.New("getdest error") }

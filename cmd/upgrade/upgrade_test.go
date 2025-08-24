@@ -92,14 +92,14 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("checkRoot fails", func(t *testing.T) {
 		// Arrange
-		checkRoot = func() error { return errors.New("root check failed") } 
+		checkRoot = func() error { return errors.New("root check failed") }
 		defer func() { checkRoot = func() error { return nil } }()
 
 		buf, restoreOutput := captureOutput()
-		
+
 		// Act
 		upgradeCmd.Run(nil, []string{})
-		
+
 		// Assert
 		restoreOutput()
 		assert.Contains(t, buf.String(), "root check failed")

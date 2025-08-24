@@ -92,7 +92,7 @@ func TestPrettifyOnWatch(t *testing.T) {
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	os.Stderr = w // Redirect stderr as well, as color.RedString uses it
+	os.Stderr = w    // Redirect stderr as well, as color.RedString uses it
 	color.Output = w // Redirect color output as well
 
 	var buf bytes.Buffer
@@ -101,8 +101,8 @@ func TestPrettifyOnWatch(t *testing.T) {
 
 	// Start a goroutine to copy output from the pipe to the buffer
 	go func() {
-		defer wg.Done() 
-		_,_ = io.Copy(&buf, r)
+		defer wg.Done()
+		_, _ = io.Copy(&buf, r)
 	}()
 
 	t.Run("success: formats a modified QML file", func(t *testing.T) {
@@ -193,7 +193,7 @@ func TestPrettifyOnWatch(t *testing.T) {
 		// Act
 		done := make(chan bool)
 		prettifyOnWatch("/fake/path", done)
-		
+
 		// Cleanup
 		close(done)
 	})
@@ -241,7 +241,7 @@ func TestPrettifyOnWatch(t *testing.T) {
 
 	// After all subtests, close the pipe writer to signal EOF to the reader goroutine
 	_ = w.Close()
-	wg.Wait() 
+	wg.Wait()
 	os.Stdout = oldStdout
 
 	output := buf.String()
@@ -264,7 +264,7 @@ func TestPrettify(t *testing.T) {
 
 	require.NoError(t, w.Close())
 	var buf bytes.Buffer
-	_,_ = io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	os.Stdout = oldStdout
 	color.Output = os.Stdout
 	output := buf.String()
@@ -291,7 +291,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 
@@ -300,6 +300,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 	t.Run("Run format successfully", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
+		utilsIsPackageInstalled = func(name string) bool { return true }
 		defer cleanup()
 
 		// Capture stdout
@@ -311,7 +312,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 		output := buf.String()
@@ -340,7 +341,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 		output := buf.String()
@@ -368,7 +369,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 		output := buf.String()
@@ -397,7 +398,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 		output := buf.String()
@@ -424,7 +425,7 @@ func TestFormatCmdRun(t *testing.T) {
 
 		require.NoError(t, w.Close())
 		var buf bytes.Buffer
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
 		output := buf.String()
@@ -432,7 +433,6 @@ func TestFormatCmdRun(t *testing.T) {
 		assert.NotContains(t, output, "Operation cancelled")
 	})
 }
-
 
 func TestPrettifyError(t *testing.T) {
 	oldStdout := os.Stdout
@@ -443,7 +443,7 @@ func TestPrettifyError(t *testing.T) {
 
 	require.NoError(t, w.Close())
 	var buf bytes.Buffer
-	_,_ = io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	os.Stdout = oldStdout
 	color.Output = os.Stdout
 	output := buf.String()
@@ -465,7 +465,7 @@ func TestFormatError(t *testing.T) {
 
 	require.NoError(t, w.Close())
 	var buf bytes.Buffer
-	_,_ = io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	os.Stdout = oldStdout
 	color.Output = os.Stdout
 	output := buf.String()

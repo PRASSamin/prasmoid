@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/adrg/frontmatter"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,13 +32,13 @@ var changesetApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Apply all .mdx changesets from the .changes directory",
 	Run: func(cmd *cobra.Command, args []string) {
-		_ = ApplyChanges()
+		ApplyChanges()
 	},
 }
 
-func ApplyChanges() error {
+var ApplyChanges = func() {
 	changesetFiles := []string{}
-	err := filepath.Walk(".changes", func(path string, info os.FileInfo, err error) error {
+	err := filepathWalk(".changes", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -52,50 +51,49 @@ func ApplyChanges() error {
 		return nil
 	})
 	if err != nil {
-		color.Red("Failed to walk changes directory: %v", err)
-		return fmt.Errorf("failed to walk changes directory: %v", err)
+		fmt.Println(color.RedString("Failed to walk changes directory: %v", err))
+		return
 	}
 
 	if len(changesetFiles) == 0 {
-		color.Yellow("No changeset files found.")
-		color.Cyan("run `prasmoid changeset add` to create a changeset.")
-		return fmt.Errorf("no changeset files found")
+		fmt.Println(color.YellowString("No changeset files found."))
+		fmt.Println(color.CyanString("run `prasmoid changeset add` to create a changeset."))
+		return
 	}
 
 	for _, file := range changesetFiles {
-		data, err := os.ReadFile(file)
+		data, err := osReadFile(file)
 		if err != nil {
-			color.Red("Failed to read changeset file %s: %v", file, err)
+			fmt.Println(color.RedString("Failed to read changeset file %s: %v", file, err))
 			continue
 		}
 
 		meta, body, err := matterParse(data)
 		if err != nil {
-			color.Red("Failed to parse %s: %v", file, err)
+			fmt.Println(color.RedString("Failed to parse %s: %v", file, err))
 			continue
 		}
 
-		if err := utils.UpdateMetadata("Version", meta.Next); err != nil {
-			color.Red("Metadata update failed in %s: %v", file, err)
+		if err := utilsUpdateMetadata("Version", meta.Next); err != nil {
+			fmt.Println(color.RedString("Metadata update failed in %s: %v", file, err))
 			continue
 		}
 
 		if err := UpdateChangelog(meta.Next, meta.Date, body); err != nil {
-			color.Red("Changelog update failed in %s: %v", file, err)
+			fmt.Println(color.RedString("Changelog update failed in %s: %v", file, err))
 			continue
 		}
 
-		if err := os.Remove(file); err != nil {
-			color.Red("Failed to remove changeset file %s: %v", file, err)
+		if err := osRemove(file); err != nil {
+			fmt.Println(color.RedString("Failed to remove changeset file %s: %v", file, err))
 			continue
 		}
 	}
 
-	color.Green("All changesets applied successfully!")
-	return nil
+	fmt.Println(color.GreenString("All changesets applied successfully!"))
 }
 
-func matterParse(data []byte) (ChangesetMeta, string, error) {
+var matterParse = func(data []byte) (ChangesetMeta, string, error) {
 	var meta ChangesetMeta
 	body, err := frontmatter.Parse(bytes.NewReader(data), &meta)
 	if err != nil {
@@ -105,29 +103,24 @@ func matterParse(data []byte) (ChangesetMeta, string, error) {
 	return meta, string(body), nil
 }
 
-func UpdateChangelog(version, date, body string) error {
+var UpdateChangelog = func(version, date, body string) error {
 	const changelogPath = "CHANGELOG.md"
 
 	newEntry := fmt.Sprintf("## [v%s] - %s\n\n%s\n\n", version, date, strings.TrimSpace(body))
 
 	// Check if file exists
-	if _, err := os.Stat(changelogPath); os.IsNotExist(err) {
+	if _, err := osStat(changelogPath); os.IsNotExist(err) {
 		initial := "# CHANGELOG\n\n" + newEntry
-		return os.WriteFile(changelogPath, []byte(initial), 0644)
+		return osWriteFile(changelogPath, []byte(initial), 0644)
 	}
 
 	// Read the existing changelog
-	data, err := os.ReadFile(changelogPath)
+	data, err := osReadFile(changelogPath)
 	if err != nil {
 		return fmt.Errorf("failed to read changelog: %w", err)
 	}
 
 	content := string(data)
-
-	// Ensure there's a top-level header
-	if !strings.HasPrefix(content, "# CHANGELOG") {
-		content = "# CHANGELOG\n\n" + content
-	}
 
 	// Split the content: keep the header, and append the new entry below
 	parts := strings.SplitN(content, "\n", 2)
@@ -141,7 +134,7 @@ func UpdateChangelog(version, date, body string) error {
 	updated := header + "\n\n" + newEntry + strings.TrimPrefix(rest, "\n")
 
 	// Save it back
-	if err := os.WriteFile(changelogPath, []byte(updated), 0644); err != nil {
+	if err := osWriteFile(changelogPath, []byte(updated), 0644); err != nil {
 		return fmt.Errorf("failed to write changelog: %w", err)
 	}
 

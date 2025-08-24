@@ -32,27 +32,27 @@ var I18nExtractCmd = &cobra.Command{
 	Use:   "extract",
 	Short: "Extract translatable strings from source files",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
-			color.Red("Current directory is not a valid plasmoid.")
+		if !utilsIsValidPlasmoid() {
+			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
 		}
 
-		if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utils.DetectPackageManager()
+		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
+			pm, _ := utilsDetectPackageManager()
 			var confirm bool
 			confirmPrompt := &survey.Confirm{
 				Message: "gettext is not installed. Do you want to install it first?",
 				Default: true,
 			}
 			if !confirm {
-				if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
 					return
 				}
 			}
 
 			if confirm {
-				if err := utils.InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-					color.Red("Failed to install gettext:", err)
+				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
+					fmt.Println(color.RedString("Failed to install gettext:", err))
 					return
 				}
 			} else {
@@ -69,17 +69,17 @@ var I18nExtractCmd = &cobra.Command{
 
 		// Run xgettext to extract strings
 		if err := runXGettext(translationsDir); err != nil {
-			color.Red("Failed to extract strings: %v", err)
+			fmt.Println(color.RedString("Failed to extract strings: %v", err))
 			return
 		}
 
-		color.Green("Successfully extracted strings to %s/template.pot", translationsDir)
+		fmt.Println(color.GreenString("Successfully extracted strings to %s/template.pot", translationsDir))
 
 		// Generate .po files for configured locales
 		isPoGen, _ := cmd.Flags().GetBool("no-po")
 		if !isPoGen {
 			if err := generatePoFiles(translationsDir); err != nil {
-				color.Red("Failed to generate .po files: %v", err)
+				fmt.Println(color.RedString("Failed to generate .po files: %v", err))
 				return
 			}
 		}
@@ -88,7 +88,7 @@ var I18nExtractCmd = &cobra.Command{
 
 func generatePoFiles(poDir string) error {
 	if len(root.ConfigRC.I18n.Locales) == 0 {
-		color.Yellow("No locales configured in prasmoid.config.js. Skipping .po file generation.")
+		fmt.Println(color.YellowString("No locales configured in prasmoid.config.js. Skipping .po file generation."))
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func generatePoFiles(poDir string) error {
 
 		if _, err := osStat(poFile); os.IsNotExist(err) {
 			// .po file doesn't exist, create it from the template
-			color.Cyan("Creating %s...", poFile)
+			fmt.Println(color.CyanString("Creating %s...", poFile))
 			cmd := execCommand("msginit", "--no-translator", "-i", potFile, "-o", poFile, "-l", lang)
 			if err := runCommand(cmd); err != nil {
 				return fmt.Errorf("failed to create %s: %w", poFile, err)
@@ -110,7 +110,7 @@ func generatePoFiles(poDir string) error {
 			_ = osWriteFile(poFile, content, 0644)
 		} else {
 			// .po file exists, update it
-			color.Cyan("Updating %s...", poFile)
+			fmt.Println(color.CyanString("Updating %s...", poFile))
 			cmd := execCommand("msgmerge", "--update", "--no-fuzzy-matching", poFile, potFile)
 			if err := runCommand(cmd); err != nil {
 				return fmt.Errorf("failed to merge %s: %w", poFile, err)
@@ -131,7 +131,7 @@ func cleanupBackupFiles(poDir string) error {
 	for _, file := range backupFiles {
 		if err := osRemove(filepath.Join(poDir, file)); err != nil {
 			// Don't fail the whole process, just log a warning
-			color.Yellow("Warning: failed to remove backup file %s: %v", file, err)
+			fmt.Println(color.YellowString("Warning: failed to remove backup file %s: %v", file, err))
 		}
 	}
 	return nil
@@ -180,7 +180,7 @@ func runXGettext(poDir string) error {
 	}
 
 	if len(srcFiles) == 0 {
-		color.Yellow("No translatable source files (.qml, .js) found.")
+		fmt.Println(color.YellowString("No translatable source files (.qml, .js) found."))
 		return nil
 	}
 
@@ -291,6 +291,3 @@ func handlePotFileUpdate(oldPath, newPath string) error {
 		return osRename(newPath, oldPath)
 	}
 }
-
-
-

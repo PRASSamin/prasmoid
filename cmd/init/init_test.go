@@ -87,7 +87,6 @@ func SetupTestProject(t *testing.T) (string, func()) {
 	return tmpDir, cleanup
 }
 
-
 func SetupTempDir(t *testing.T) (string, func()) {
 	tmpDir, err := os.MkdirTemp("", "plasmoid-test-")
 	if err != nil {
@@ -161,7 +160,7 @@ func TestInitCmd_Run(t *testing.T) {
 
 		assert.Contains(t, buf.String(), "Failed to initialize plasmoid: init error")
 	})
-	
+
 	t.Run("fails when InitGit errors", func(t *testing.T) {
 		Config.InitGit = true
 
@@ -172,7 +171,7 @@ func TestInitCmd_Run(t *testing.T) {
 
 		// Mock InitPlasmoid to fail
 		oldInit := InitPlasmoid
-		InitPlasmoid = func() error { return nil}
+		InitPlasmoid = func() error { return nil }
 		defer func() { InitPlasmoid = oldInit }()
 
 		// Mock InitGit to fail
@@ -579,7 +578,6 @@ func TestCreateConfigFile(t *testing.T) {
 	require.Contains(t, content, "/// <reference path=")
 	require.Contains(t, content, "const config =")
 }
-
 
 func TestInitializeGitRepo(t *testing.T) {
 	t.Run("fails when git command errors", func(t *testing.T) {

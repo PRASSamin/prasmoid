@@ -8,8 +8,8 @@ import (
 )
 
 var completionCommand = &cobra.Command{
-	Use:   "completion",
-	Short: "Generate the autocompletion script for the specified shell",
+	Use:    "completion",
+	Short:  "Generate the autocompletion script for the specified shell",
 	Hidden: true,
 }
 

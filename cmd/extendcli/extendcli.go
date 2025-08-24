@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dop251/goja"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -23,14 +22,14 @@ func DiscoverAndRegisterCustomCommands(rootCmd *cobra.Command, ConfigRC types.Co
 	commandsDir := ConfigRC.Commands.Dir
 
 	// Check if command directory exists
-	if _, err := os.Stat(commandsDir); os.IsNotExist(err) {
+	if _, err := osStat(commandsDir); os.IsNotExist(err) {
 		return
 	}
 
-	files, err := os.ReadDir(commandsDir)
+	files, err := osReadDir(commandsDir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, color.RedString("Error reading commands directory: %v", err))
-		return 
+		return
 	}
 
 	// Filter out ignored files
@@ -57,7 +56,7 @@ func isIgnored(filename string, ignoreList []string, root string) bool {
 		if strings.ContainsAny(rule, "*?[") {
 			// Glob pattern
 			pattern := filepath.Join(root, rule)
-			match, _ := doublestar.PathMatch(pattern, filepath.Join(root, filename))
+			match, _ := doublestarPathMatch(pattern, filepath.Join(root, filename))
 			if match {
 				return true
 			}
@@ -74,9 +73,9 @@ type flagValues struct {
 	Bools   map[string]*bool
 }
 
-func registerJSCommand(rootCmd *cobra.Command, path string) error {
+var registerJSCommand = func(rootCmd *cobra.Command, path string) error {
 	// Read the JS file
-	src, err := os.ReadFile(path)
+	src, err := osReadFile(path)
 	if err != nil {
 		fmt.Println(color.RedString("Failed to read JS script %s: %v", path, err))
 		return fmt.Errorf("failed to read JS script %s: %v", path, err)

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -28,7 +29,6 @@ var (
 
 	// exec functions
 	execCommand = exec.Command
-	execLookPath = exec.LookPath
 
 	// other libraries
 	doublestarGlob = func(fsys fs.FS, pattern string) ([]string, error) {
@@ -36,8 +36,14 @@ var (
 	}
 
 	// utils functions
-	GetDataFromMetadata = utils.GetDataFromMetadata
-	IsPackageInstalled = utils.IsPackageInstalled
+	GetDataFromMetadata       = utils.GetDataFromMetadata
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
+	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
+	utilsInstallPackage       = utils.InstallPackage
+	utilsDetectPackageManager = utils.DetectPackageManager
+
+	// survey functions
+	surveyAskOne = survey.AskOne
 
 	// command runner
 	runCommand = func(cmd *exec.Cmd) error {

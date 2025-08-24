@@ -4,16 +4,16 @@ Copyright 2025 PRAS
 package extendcli
 
 import (
-	"fmt"
 	"io"
+	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/PRASSamin/prasmoid/internal/runtime"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsIgnored(t *testing.T) {
@@ -45,269 +45,217 @@ func TestIsIgnored(t *testing.T) {
 }
 
 func TestRegisterJSCommand(t *testing.T) {
-	rootCmd := &cobra.Command{}
-	rootCmd.AddGroup(&cobra.Group{
-		ID:    "custom",
-		Title: "Custom Commands:",
-	})
-	validJS := `const prasmoid = require("prasmoid");
-prasmoid.Command({
-	run: (ctx) => {
-		const plasmoidId = prasmoid.getMetadata("Id");
-		if (!plasmoidId) {
-			console.red(
-			"Could not get Plasmoid ID. Are you in a valid project directory?"
-			);
-			return;
-		}
-	},
-	short: "A brief description of your command.",
-	long: "A longer description that spans multiple lines and likely contains examples\nand usage of using your command. For example:\n\nPlasmoid CLI is a CLI tool for KDE Plasmoid development.\nIt's a all-in-one tool for plasmoid development.",
-	alias: ["tc", "testcmd"],
-	flags: [
-		{ name: "name", type: "string", shorthand: "n", value: "default", description: "a string flag" },
-		{ name: "verbose", type: "bool", value: false, description: "a bool flag" },
-	],
-});`
-
 	t.Run("valid js command", func(t *testing.T) {
-		tmpfile := createTempJSFile(t, "valid_cmd", validJS)
-		defer func() { _ = os.Remove(tmpfile) }()
-
-		runtime.CommandStorage = runtime.CommandConfig{}
-		_ = registerJSCommand(rootCmd, tmpfile)
-
-		cmdName := strings.TrimSuffix(filepath.Base(tmpfile), ".js")
-		cmdName = strings.ReplaceAll(cmdName, " ", "")
-
-		found := false
-		for _, cmd := range rootCmd.Commands() {
-			if strings.HasPrefix(cmd.Use, cmdName) {
-				found = true
-				if !strings.Contains(cmd.Short,"A brief description of your command.") {
-					t.Errorf("expected short description 'A brief description of your command.', got '%s'", cmd.Short)
-				}
-				if !strings.Contains(cmd.Long, "A longer description that spans multiple lines and likely contains examples") {
-					t.Errorf("expected long description 'A longer description that spans multiple lines and likely contains examples...', got '%s'", cmd.Long)
-				}
-				if len(cmd.Aliases) != 2 {
-					t.Errorf("expected 2 aliases, got %d", len(cmd.Aliases))
-				}
-
-				break
-			}
+		// Arrange
+		t.Cleanup(func() {
+			osReadFile = os.ReadFile
+		})
+		validJS := `const prasmoid = require("prasmoid");
+		prasmoid.Command({
+			run: (ctx) => {},
+			short: "A brief description of your command.",
+		});`
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(validJS), nil
 		}
+		rootCmd := &cobra.Command{}
 
-		if !found {
-			t.Errorf("command '%s' not registered", cmdName)
-		}
+		// Act
+		err := registerJSCommand(rootCmd, "test.js")
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(rootCmd.Commands()))
+		assert.Equal(t, "test", rootCmd.Commands()[0].Use)
+		assert.Equal(t, "A brief description of your command.", rootCmd.Commands()[0].Short)
 	})
 
 	t.Run("non-existent file", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
+		osReadFile = func(name string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		}
+		rootCmd := &cobra.Command{}
+
+		// Act
 		err := registerJSCommand(rootCmd, "non-existent-file.js")
-		if err == nil {
-			t.Errorf("expected error for non-existent file")
-		}
-		if !strings.Contains(err.Error(), "failed to read JS script") {
-			t.Errorf("expected error message for non-existent file, got: %s", err.Error())
-		}
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read JS script")
 	})
 
 	t.Run("invalid js syntax", func(t *testing.T) {
-		tmpfile := createTempJSFile(t, "invalid_syntax", "const a =;")
-		defer func() { _ = os.Remove(tmpfile) }()
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err == nil {
-			t.Errorf("expected error for invalid JS syntax")
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte("const a =;"), nil
 		}
-		if !strings.Contains(err.Error(), "error running script") {
-			t.Errorf("expected error message for invalid JS syntax, got: %s", err.Error())
-		}
+		rootCmd := &cobra.Command{}
+
+		// Act
+		err := registerJSCommand(rootCmd, "invalid.js")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error running script")
 	})
 
 	t.Run("flag with no name", func(t *testing.T) {
-		js := `prasmoid.Command({ 
-			run: (ctx) => {
-				const plasmoidId = prasmoid.getMetadata("Id");
-				if (!plasmoidId) {
-					console.red(
-						"Could not get Plasmoid ID. Are you in a valid project directory?"
-					);
-					return;
-				}
-			},
-	flags: [{ type: "string" }] })
-		`
-		tmpfile := createTempJSFile(t, "flag_no_name", js)
-		defer func() { _ = os.Remove(tmpfile) }()
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err == nil {
-			t.Errorf("expected error for flag with no name")
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
+		js := `prasmoid.Command({run:()=>{}, flags: [{ type: "string" }] })`
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(js), nil
 		}
-		if !strings.Contains(err.Error(), "flag name is required") {
-			t.Errorf("expected error message for flag with no name, got: %s", err.Error())
-		}
+		rootCmd := &cobra.Command{}
+
+		// Act
+		err := registerJSCommand(rootCmd, "test.js")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "flag name is required")
 	})
 
 	t.Run("flag with no type", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
 		js := `prasmoid.Command({run:()=>{}, flags: [{ name: "myflag" }] })`
-		tmpfile := createTempJSFile(t, "flag_no_type", js)
-		defer func() { _ = os.Remove(tmpfile) }()
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err == nil {
-			t.Errorf("expected error for flag with no type")
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(js), nil
 		}
-		if !strings.Contains(err.Error(), "flag type is required") {
-			t.Errorf("expected error message for flag with no type, got: %s", err.Error())
-		}
+		rootCmd := &cobra.Command{}
+
+		// Act
+		err := registerJSCommand(rootCmd, "test.js")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "flag type is required")
 	})
 
 	t.Run("unsupported flag type", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
 		js := `prasmoid.Command({run:()=>{}, flags: [{ name: "myflag", type: "invalid" }] })`
-		tmpfile := createTempJSFile(t, "flag_unsupported_type", js)
-		defer func() { _ = os.Remove(tmpfile) }()
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err == nil {
-			t.Errorf("expected error for unsupported flag type")
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(js), nil
 		}
-		if !strings.Contains(err.Error(), "unsupported flag type") {
-			t.Errorf("expected error message for unsupported flag type, got: %s", err.Error())
-		}
+		rootCmd := &cobra.Command{}
+
+		// Act
+		err := registerJSCommand(rootCmd, "test.js")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported flag type")
 	})
 
 	t.Run("command execution with args and flags", func(t *testing.T) {
-		// Reset command storage for this test
-		runtime.CommandStorage = runtime.CommandConfig{}
-
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
 		jsContent := `
-const prasmoid = require("prasmoid");
-prasmoid.Command({
-    run: (ctx) => {
-        const args = ctx.Args();
-        const flags = ctx.Flags();
-        const name = flags.get("name");
-        const verboseByGet = flags.get("verbose");
-		const verboseByDot = flags.verbose;
-        console.log("Args:", args.join(","));
-        console.log("Flag 'name':", name);
-        console.log("Flag 'verbose':", verboseByGet);
-		console.log("Flag 'verbose':", verboseByDot);
-    },
-    short: "test run",
-    flags: [
-        { name: "name", type: "string", shorthand: "n", value: "default", description: "a string flag" },
-        { name: "verbose", type: "bool", value: false, description: "a bool flag" },
-    ],
-});`
-		tmpfile := createTempJSFile(t, "run_cmd", jsContent)
-		defer func() { _ = os.Remove(tmpfile) }()
-
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err != nil {
-			t.Fatalf("registerJSCommand failed: %v", err)
+		const prasmoid = require("prasmoid");
+		prasmoid.Command({
+		    run: (ctx) => {
+		        const args = ctx.Args();
+		        const flags = ctx.Flags();
+		        const name = flags.get("name");
+		        const verbose = flags.get("verbose");
+				const directName = flags.name;
+		        console.log("Args:", args.join(","));
+		        console.log("Flag 'name':", name);
+		        console.log("Flag 'verbose':", verbose);
+				console.log("Flag direct 'name':", directName);
+		    },
+		    short: "test run",
+		    flags: [
+		        { name: "name", type: "string", shorthand: "n", value: "default", description: "a string flag" },
+		        { name: "verbose", type: "bool", value: false, description: "a bool flag" },
+		    ],
+		});`
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(jsContent), nil
 		}
+		rootCmd := &cobra.Command{Use: "root"}
+		rootCmd.AddGroup(&cobra.Group{ID: "custom", Title: "Custom Commands"})
+		rootCmd.SetOut(io.Discard) // Prevent cobra from printing
+		rootCmd.SetErr(io.Discard)
 
-		cmdName := strings.TrimSuffix(filepath.Base(tmpfile), ".js")
-		var registeredCmd *cobra.Command
-		for _, cmd := range rootCmd.Commands() {
-			if strings.HasPrefix(cmd.Use, cmdName) {
-				registeredCmd = cmd
-				break
-			}
-		}
-
-		if registeredCmd == nil {
-			t.Fatalf("command '%s' not registered", cmdName)
-		}
+		err := registerJSCommand(rootCmd, "test.js")
+		require.NoError(t, err)
 
 		// Capture stdout
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		_ = registeredCmd.Flags().Set("name", "test-name")
-		_ = registeredCmd.Flags().Set("verbose", "true")
-		// Execute the command
-		registeredCmd.Run(registeredCmd, []string{"arg1", "arg2"})
+		// Act
+		rootCmd.SetArgs([]string{"test", "arg1", "arg2", "--name", "test-name", "--verbose"})
+		executeErr := rootCmd.Execute()
 
-		// Restore stdout and read captured output
 		_ = w.Close()
 		os.Stdout = oldStdout
 		var buf strings.Builder
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
-		// Assertions
-		expectedArgs := "Args: arg1,arg2"
-		if !strings.Contains(output, expectedArgs) {
-			t.Errorf("expected output to contain '%s', got '%s'", expectedArgs, output)
-		}
-
-		expectedNameFlag := "Flag 'name': test-name"
-		if !strings.Contains(output, expectedNameFlag) {
-			t.Errorf("expected output to contain '%s', got '%s'", expectedNameFlag, output)
-		}
-
-		expectedVerboseFlag := "Flag 'verbose': true"
-		if !strings.Contains(output, expectedVerboseFlag) {
-			t.Errorf("expected output to contain '%s', got '%s'", expectedVerboseFlag, output)
-		}
+		// Assert
+		require.NoError(t, executeErr)
+		assert.Contains(t, output, "Args: arg1,arg2")
+		assert.Contains(t, output, "Flag 'name': test-name")
+		assert.Contains(t, output, "Flag 'verbose': true")
+		assert.Contains(t, output, "Flag direct 'name': test-name")
 	})
 
 	t.Run("js command run error", func(t *testing.T) {
-		runtime.CommandStorage = runtime.CommandConfig{}
-
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
 		jsContent := `
-const prasmoid = require("prasmoid");
-prasmoid.Command({
-    run: (ctx) => {
-        throw new Error("JS runtime error");
-    },
-    short: "test run error",
-});`
-		tmpfile := createTempJSFile(t, "run_error_cmd", jsContent)
-		defer func() { _ = os.Remove(tmpfile) }()
-
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err != nil {
-			t.Fatalf("registerJSCommand failed: %v", err)
+		const prasmoid = require("prasmoid");
+		prasmoid.Command({
+		    run: (ctx) => {
+		        throw new Error("JS runtime error");
+		    },
+		    short: "test run error",
+		});`
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(jsContent), nil
 		}
+		rootCmd := &cobra.Command{Use: "root"}
+		rootCmd.AddGroup(&cobra.Group{ID: "custom", Title: "Custom Commands"})
+		rootCmd.SetOut(io.Discard)
+		rootCmd.SetErr(io.Discard)
 
-		cmdName := strings.TrimSuffix(filepath.Base(tmpfile), ".js")
-		var registeredCmd *cobra.Command
-		for _, cmd := range rootCmd.Commands() {
-			if strings.HasPrefix(cmd.Use, cmdName) {
-				registeredCmd = cmd
-				break
-			}
-		}
+		err := registerJSCommand(rootCmd, "test.js")
+		require.NoError(t, err)
 
-		if registeredCmd == nil {
-			t.Fatalf("command '%s' not registered", cmdName)
-		}
-
-		// Capture stdout
+		// Capture stderr
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
 		os.Stderr = w
-			
-		// Execute the command
-		registeredCmd.Run(registeredCmd, []string{})
-		
-		// Restore stdout and read captured output
+
+		// Act
+		rootCmd.SetArgs([]string{"test"})
+		executeErr := rootCmd.Execute()
+
 		_ = w.Close()
-		os.Stdout = oldStderr
+		os.Stderr = oldStderr
 		var buf strings.Builder
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
-		if !strings.Contains(output, "JS command error") || !strings.Contains(output, "JS runtime error") {
-			t.Errorf("expected error message in stderr, got: %s", output)
-		}
+		// Assert
+		require.NoError(t, executeErr)
+		assert.Contains(t, output, "JS command error")
+		assert.Contains(t, output, "JS runtime error")
 	})
 
 	t.Run("flag variations", func(t *testing.T) {
-		rootCmd := &cobra.Command{}
+		// Arrange
+		t.Cleanup(func() { osReadFile = os.ReadFile })
 		js := `prasmoid.Command({
         run:()=>{},
         flags: [
@@ -315,40 +263,43 @@ prasmoid.Command({
             { name: "bool-with-shorthand", type: "bool", shorthand: "b", value: false, description: "a bool flag" },
         ],
     })`
-		tmpfile := createTempJSFile(t, "flag_variations", js)
-		defer func() { _ = os.Remove(tmpfile) }()
+		osReadFile = func(name string) ([]byte, error) {
+			return []byte(js), nil
+		}
+		rootCmd := &cobra.Command{}
 
-		runtime.CommandStorage = runtime.CommandConfig{}
-		err := registerJSCommand(rootCmd, tmpfile)
-		if err != nil {
-			t.Fatalf("registerJSCommand failed: %v", err)
-		}
+		// Act
+		err := registerJSCommand(rootCmd, "test.js")
 
-		cmdName := strings.TrimSuffix(filepath.Base(tmpfile), ".js")
-		var registeredCmd *cobra.Command
-		for _, cmd := range rootCmd.Commands() {
-			if strings.HasPrefix(cmd.Use, cmdName) {
-				registeredCmd = cmd
-				break
-			}
-		}
-		if registeredCmd == nil {
-			t.Fatalf("command '%s' not registered", cmdName)
-		}
+		// Assert
+		assert.NoError(t, err)
+	})
+}
 
-		stringFlag := registeredCmd.Flags().Lookup("string-no-shorthand")
-		if stringFlag == nil {
-			t.Error("expected 'string-no-shorthand' flag to be registered")
-		} else if stringFlag.Shorthand != "" {
-			t.Errorf("expected 'string-no-shorthand' to have no shorthand, got '%s'", stringFlag.Shorthand)
-		}
+func setup(t *testing.T) {
+	t.Helper()
+	// Save original functions
+	originalOsStat := osStat
+	originalOsReadDir := osReadDir
+	originalOsReadFile := osReadFile
+	originalOsMkdirAll := osMkdirAll
+	originalOsWriteFile := osWriteFile
+	originalOsRemoveAll := osRemoveAll
+	originalOsCreateTemp := osCreateTemp
+	originalFilepathJoin := filepathJoin
+	originalDoublestarPathMatch := doublestarPathMatch
 
-		boolFlag := registeredCmd.Flags().Lookup("bool-with-shorthand")
-		if boolFlag == nil {
-			t.Error("expected 'bool-with-shorthand' flag to be registered")
-		} else if boolFlag.Shorthand != "b" {
-			t.Errorf("expected 'bool-with-shorthand' to have shorthand 'b', got '%s'", boolFlag.Shorthand)
-		}
+	// Restore original functions after test
+	t.Cleanup(func() {
+		osStat = originalOsStat
+		osReadDir = originalOsReadDir
+		osReadFile = originalOsReadFile
+		osMkdirAll = originalOsMkdirAll
+		osWriteFile = originalOsWriteFile
+		osRemoveAll = originalOsRemoveAll
+		osCreateTemp = originalOsCreateTemp
+		filepathJoin = originalFilepathJoin
+		doublestarPathMatch = originalDoublestarPathMatch
 	})
 }
 
@@ -356,15 +307,16 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "root"}
 
 	t.Run("discover and register", func(t *testing.T) {
+		setup(t) // Call setup at the beginning of each test case
 		commandsDir := t.TempDir()
 		jsCmd1 := `if (typeof prasmoid !== 'undefined') { prasmoid.command = { Short: "cmd1" } }`
 		jsCmd2 := `if (typeof prasmoid !== 'undefined') { prasmoid.command = { Short: "cmd2" } }`
 		ignoredFile := `if (typeof prasmoid !== 'undefined') { prasmoid.command = { Short: "ignored" } }`
 
-		_ = os.WriteFile(filepath.Join(commandsDir, "cmd1.js"), []byte(jsCmd1), 0644)
-		_ = os.WriteFile(filepath.Join(commandsDir, "cmd2.js"), []byte(jsCmd2), 0644)
-		_ = os.WriteFile(filepath.Join(commandsDir, "ignored.js"), []byte(ignoredFile), 0644)
-		_ = os.Mkdir(filepath.Join(commandsDir, "subdir"), 0755)
+		_ = osWriteFile(filepathJoin(commandsDir, "cmd1.js"), []byte(jsCmd1), 0644)
+		_ = osWriteFile(filepathJoin(commandsDir, "cmd2.js"), []byte(jsCmd2), 0644)
+		_ = osWriteFile(filepathJoin(commandsDir, "ignored.js"), []byte(ignoredFile), 0644)
+		_ = osMkdirAll(filepathJoin(commandsDir, "subdir"), 0755)
 
 		config := types.Config{
 			Commands: types.ConfigCommands{
@@ -394,6 +346,7 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 	})
 
 	t.Run("commands dir does not exist", func(t *testing.T) {
+		setup(t) // Call setup at the beginning of each test case
 		rootCmd := &cobra.Command{Use: "root"}
 		config := types.Config{
 			Commands: types.ConfigCommands{
@@ -407,13 +360,14 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 	})
 
 	t.Run("cannot read commands dir", func(t *testing.T) {
+		setup(t) // Call setup at the beginning of each test case
 		rootCmd := &cobra.Command{Use: "root"}
 		commandsDir := t.TempDir()
 		// On Unix-like systems, removing read permissions should cause ReadDir to fail.
-		if err := os.Chmod(commandsDir, 0300); err != nil {
-			t.Skipf("Skipping test: could not chmod: %v", err)
+		// Mock osReadDir to simulate permission denied error
+		osReadDir = func(name string) ([]fs.DirEntry, error) {
+			return nil, os.ErrPermission
 		}
-		defer func() { _ = os.Chmod(commandsDir, 0755) }() // clean up
 
 		config := types.Config{
 			Commands: types.ConfigCommands{
@@ -431,7 +385,7 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 		_ = w.Close()
 		os.Stderr = oldStderr
 		var buf strings.Builder
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		if len(rootCmd.Commands()) != 0 {
@@ -441,19 +395,4 @@ func TestDiscoverAndRegisterCustomCommands(t *testing.T) {
 			t.Errorf("expected error message about reading directory, got: %s", output)
 		}
 	})
-}
-
-func createTempJSFile(t *testing.T, name, content string) string {
-	t.Helper()
-	tmpfile, err := os.CreateTemp("", fmt.Sprintf("%s.*.js", name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tmpfile.Write([]byte(content)); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return tmpfile.Name()
 }

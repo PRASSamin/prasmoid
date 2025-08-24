@@ -310,7 +310,7 @@ func TestWatchOnChange(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_,_ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 	}()
 
 	t.Run("success: restarts on change", func(t *testing.T) {

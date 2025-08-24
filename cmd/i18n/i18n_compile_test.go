@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -86,11 +87,11 @@ msgstr "Hello World"
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
-		oldIsPackageInstalled := IsPackageInstalled
-		IsPackageInstalled = func(packageName string) bool {
+		oldIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(packageName string) bool {
 			return false
 		}
-		t.Cleanup(func() { IsPackageInstalled = oldIsPackageInstalled })
+		t.Cleanup(func() { utilsIsPackageInstalled = oldIsPackageInstalled })
 
 		// Capture stdout
 		oldStdout := os.Stdout
@@ -108,6 +109,54 @@ msgstr "Hello World"
 		output := buf.String()
 
 		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
+	})
+
+	t.Run("successfull install missing gettext package", func(t *testing.T) {
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+
+		oldIsValidPlasmoid := utilsIsValidPlasmoid
+		oldIsPackageInstalled := utilsIsPackageInstalled
+		oldInstallPackage := utilsInstallPackage
+		oldSurveyAskOne := surveyAskOne
+
+		t.Cleanup(func() {
+			utilsIsPackageInstalled = oldIsPackageInstalled
+			utilsIsValidPlasmoid = oldIsValidPlasmoid
+			utilsInstallPackage = oldInstallPackage
+			surveyAskOne = oldSurveyAskOne
+		})
+
+		utilsIsPackageInstalled = func(packageName string) bool {
+			return false
+		}
+		utilsIsValidPlasmoid = func() bool {
+			return true
+		}
+		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error {
+			return errors.New("install failed")
+		}
+		surveyAskOne = func(prompt survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+			*(response.(*bool)) = true
+			return nil
+		}
+
+		// Capture stdout
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		I18nCompileCmd.Run(I18nCompileCmd, []string{})
+		_ = w.Close()
+
+		os.Stdout = oldStdout
+		color.Output = os.Stdout
+
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		output := buf.String()
+
+		require.Contains(t, output, "Failed to install gettext")
 	})
 
 }
@@ -223,45 +272,5 @@ func TestCompileI18n(t *testing.T) {
 
 		err := CompileI18n(config, true)
 		assert.Error(t, err)
-	})
-}
-
-func TestRestartPlasmashell(t *testing.T) {
-	t.Run("killall fails", func(t *testing.T) {
-		oldExecCommand := execCommand
-		execCommand = func(name string, arg ...string) *exec.Cmd {
-			if name == "killall" {
-				return exec.Command("non-existent-command")
-			}
-			return exec.Command(name, arg...)
-		}
-		t.Cleanup(func() { execCommand = oldExecCommand })
-
-		// Should not return an error, just print a warning
-		err := restartPlasmashell()
-		assert.NoError(t, err)
-	})
-
-	t.Run("kstart5 not found, fallback to kstart", func(t *testing.T) {
-		var calledWith string
-		oldExecCommand := execCommand
-		execCommand = func(name string, arg ...string) *exec.Cmd {
-			calledWith = name
-			return exec.Command("echo") // return a command that exists and does nothing
-		}
-		t.Cleanup(func() { execCommand = oldExecCommand })
-
-		oldExecLookPath := execLookPath
-		execLookPath = func(file string) (string, error) {
-			if file == "kstart5" {
-				return "", errors.New("not found")
-			}
-			return "/bin/kstart", nil
-		}
-		t.Cleanup(func() { execLookPath = oldExecLookPath })
-
-		err := restartPlasmashell()
-		assert.NoError(t, err)
-		assert.Equal(t, "kstart", calledWith)
 	})
 }

@@ -212,24 +212,24 @@ ANOTHER_VAR=test2
 		})
 	})
 
-		t.Run("not implemented functions", func(t *testing.T) {
-			notImplementedFuncs := []string{
-				"nextTick", "binding", "dlopen", "getActiveResourcesInfo", "reallyExit", "loadEnvFile",
-				"cpuUsage", "resourceUsage", "constrainedMemory", "availableMemory", "execve",
-				"ref", "unref", "hrtime", "openStdin", "getgroups", "assert",
-				"setUncaughtExceptionCaptureCallback", "hasUncaughtExceptionCaptureCallback",
-				"emitWarning", "setSourceMapsEnabled", "getBuiltinModule", "abort",
-				"initgroups", "setgroups", "setegid", "seteuid", "setgid", "setuid",
-			}
+	t.Run("not implemented functions", func(t *testing.T) {
+		notImplementedFuncs := []string{
+			"nextTick", "binding", "dlopen", "getActiveResourcesInfo", "reallyExit", "loadEnvFile",
+			"cpuUsage", "resourceUsage", "constrainedMemory", "availableMemory", "execve",
+			"ref", "unref", "hrtime", "openStdin", "getgroups", "assert",
+			"setUncaughtExceptionCaptureCallback", "hasUncaughtExceptionCaptureCallback",
+			"emitWarning", "setSourceMapsEnabled", "getBuiltinModule", "abort",
+			"initgroups", "setgroups", "setegid", "seteuid", "setgid", "setuid",
+		}
 
-			for _, name := range notImplementedFuncs {
-				t.Run(name, func(t *testing.T) {
-					script := fmt.Sprintf(`process.%s();`, name)
-					val, err := vm.RunString(script)
-					require.NoError(t, err)
-					expected := fmt.Sprintf("process.%s is not implemented in this runtime", name)
-					require.Equal(t, expected, val.String())
-				})
-			}
-		})
-	}
+		for _, name := range notImplementedFuncs {
+			t.Run(name, func(t *testing.T) {
+				script := fmt.Sprintf(`process.%s();`, name)
+				val, err := vm.RunString(script)
+				require.NoError(t, err)
+				expected := fmt.Sprintf("process.%s is not implemented in this runtime", name)
+				require.Equal(t, expected, val.String())
+			})
+		}
+	})
+}

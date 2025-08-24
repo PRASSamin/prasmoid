@@ -18,12 +18,12 @@ import (
 )
 
 var (
-	surveyAskOne           = survey.AskOne
-	execCommand            = exec.Command
-	execLookPath           = exec.LookPath
-	osLstat                = os.Lstat
-	osSymlink              = os.Symlink
-	getBinPath             = GetBinPath
+	surveyAskOne = survey.AskOne
+	execCommand  = exec.Command
+	execLookPath = exec.LookPath
+	osLstat      = os.Lstat
+	osSymlink    = os.Symlink
+	getBinPath   = GetBinPath
 )
 
 // check if plasmoid is linked

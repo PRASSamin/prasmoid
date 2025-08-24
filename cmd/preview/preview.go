@@ -111,7 +111,7 @@ var PreviewCmd = &cobra.Command{
 				Message: "Plasmoid is not linked. Do you want to link it first?",
 				Default: true,
 			}
-		if err := surveyAskOne(confirmPrompt, &confirmLink); err != nil {
+			if err := surveyAskOne(confirmPrompt, &confirmLink); err != nil {
 				return
 			}
 
@@ -214,12 +214,12 @@ var watchOnChange = func(path string, id string) {
 	plasmoidViewer.Stderr = os.Stderr
 	viewerMutex.Lock()
 	currentViewer = plasmoidViewer
-	viewerMutex.Unlock()
-
-	if err := plasmoidViewer.Start(); err != nil {
+	if err := currentViewer.Start(); err != nil {
+		viewerMutex.Unlock()
 		fmt.Println(color.RedString("Error starting plasmoidviewer: %v", err))
 		return
 	}
+	viewerMutex.Unlock()
 
 	go func() {
 		for {
@@ -257,13 +257,13 @@ var watchOnChange = func(path string, id string) {
 					plasmoidViewer.Stdout = os.Stdout
 					plasmoidViewer.Stderr = os.Stderr
 
-					if err := plasmoidViewer.Start(); err != nil {
+					viewerMutex.Lock()
+					currentViewer = plasmoidViewer
+					if err := currentViewer.Start(); err != nil {
+						viewerMutex.Unlock()
 						fmt.Println(color.RedString("Error starting plasmoidviewer: %v", err))
 						return
 					}
-
-					viewerMutex.Lock()
-					currentViewer = plasmoidViewer
 					viewerMutex.Unlock()
 
 					go func() {
@@ -290,14 +290,14 @@ var watchOnChange = func(path string, id string) {
 	}()
 
 	if err := filepathWalk(path, func(p string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return watcher.Add(p)
-			}
-			return nil
-		}); err != nil {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return watcher.Add(p)
+		}
+		return nil
+	}); err != nil {
 		fmt.Println(color.RedString("Failed to watch directory: %v", err))
 		return
 	}

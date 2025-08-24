@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -34,6 +35,26 @@ func mockExecCommand(t *testing.T, failingCmd string) {
 }
 
 func TestI18nExtractCommand(t *testing.T) {
+	t.Run("invalid plasmoid", func(t *testing.T) {
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+		_ = os.Remove("metadata.json")
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		I18nExtractCmd.Run(I18nExtractCmd, []string{})
+
+		require.NoError(t, w.Close())
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		color.Output = os.Stdout
+		output := buf.String()
+		assert.Contains(t, output, "Current directory is not a valid plasmoid")
+	})
+
 	t.Run("successfully extracts and creates .po files", func(t *testing.T) {
 		// Arrange
 		projectDir, cleanup := tests.SetupTestProject(t)
@@ -76,23 +97,22 @@ func TestI18nExtractCommand(t *testing.T) {
 		assert.NoFileExists(t, enPoFile)
 	})
 
-
 	t.Run("error on gettext missing", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
 		// Save & override PATH to raise error
-		oldIsPackageInstalled := IsPackageInstalled
-		IsPackageInstalled = func(packageName string) bool {
+		oldIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(packageName string) bool {
 			return false
 		}
-		t.Cleanup(func() { IsPackageInstalled = oldIsPackageInstalled })
+		t.Cleanup(func() { utilsIsPackageInstalled = oldIsPackageInstalled })
 
 		// Capture stdout
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
-		
+
 		I18nExtractCmd.Run(I18nExtractCmd, []string{})
 		_ = w.Close()
 
@@ -104,6 +124,54 @@ func TestI18nExtractCommand(t *testing.T) {
 		output := buf.String()
 
 		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
+	})
+
+	t.Run("successfull install missing gettext package", func(t *testing.T) {
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+
+		oldIsValidPlasmoid := utilsIsValidPlasmoid
+		oldIsPackageInstalled := utilsIsPackageInstalled
+		oldInstallPackage := utilsInstallPackage
+		oldSurveyAskOne := surveyAskOne
+
+		t.Cleanup(func() {
+			utilsIsPackageInstalled = oldIsPackageInstalled
+			utilsIsValidPlasmoid = oldIsValidPlasmoid
+			utilsInstallPackage = oldInstallPackage
+			surveyAskOne = oldSurveyAskOne
+		})
+
+		utilsIsPackageInstalled = func(packageName string) bool {
+			return false
+		}
+		utilsIsValidPlasmoid = func() bool {
+			return true
+		}
+		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error {
+			return errors.New("install failed")
+		}
+		surveyAskOne = func(prompt survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+			*(response.(*bool)) = true
+			return nil
+		}
+
+		// Capture stdout
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		I18nExtractCmd.Run(I18nExtractCmd, []string{})
+		_ = w.Close()
+
+		os.Stdout = oldStdout
+		color.Output = os.Stdout
+
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		output := buf.String()
+
+		require.Contains(t, output, "Failed to install gettext")
 	})
 }
 
@@ -278,7 +346,7 @@ msgstr ""
 		defer cleanup()
 		oldPath := "test.pot"
 		newPath := "test.pot.new"
-	
+
 		oldContent := []byte(`
 	"POT-Creation-Date: 2023-01-01 10:00+0000\n"
 	msgid "Hello"
@@ -289,24 +357,24 @@ msgstr ""
 	msgid "Hello World"
 	msgstr ""
 	`)
-	
+
 		// write different contents
 		_ = os.WriteFile(oldPath, oldContent, 0644)
 		_ = os.WriteFile(newPath, newContent, 0644)
-	
+
 		// Act
 		err := handlePotFileUpdate(oldPath, newPath)
-	
+
 		// Assert
 		require.NoError(t, err)
 		assert.FileExists(t, oldPath)
 		assert.NoFileExists(t, newPath)
-	
+
 		// check the old file got replaced with new content
 		finalContent, _ := os.ReadFile(oldPath)
 		assert.Contains(t, string(finalContent), "Hello World")
 	})
-	
+
 }
 
 func TestStripCreationDate(t *testing.T) {
@@ -322,7 +390,6 @@ func TestStripCreationDate(t *testing.T) {
 	output := stripCreationDate(input)
 	assert.Equal(t, strings.TrimSpace(string(expected)), strings.TrimSpace(string(output)))
 }
-
 
 func TestPostProcessPotFile(t *testing.T) {
 	t.Run("returns early if file read fails", func(t *testing.T) {
