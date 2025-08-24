@@ -6,12 +6,12 @@ First of all, thank you for considering contributing to Prasmoid! We welcome any
 
 We use the standard GitHub flow for contributions. Here's a quick overview:
 
-2.  **Fork the repository** to your own GitHub account.
-3.  **Create a new branch** for your changes.
-4.  **Make your changes** and commit them with a clear and descriptive commit message.
-5.  **Run the local CI checks** to ensure your changes meet our standards.
-6.  **Push your changes** to your fork.
-7.  **Submit a pull request** to the `main` branch of the Prasmoid repository.
+1.  **Fork the repository** to your own GitHub account.
+2.  **Create a new branch** for your changes.
+3.  **Make your changes** and commit them with a clear and descriptive commit message.
+4.  **Run the local CI checks** to ensure your changes meet our standards.
+5.  **Push your changes** to your fork.
+6.  **Submit a pull request** to the `main` branch of the Prasmoid repository.
 
 ## Development Setup
 
