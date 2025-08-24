@@ -6,7 +6,6 @@ First of all, thank you for considering contributing to Prasmoid! We welcome any
 
 We use the standard GitHub flow for contributions. Here's a quick overview:
 
-1.  **Find an issue to work on.** You can find a list of open issues [here](https://github.com/PRASSamin/prasmoid/issues). Look for issues tagged with `good first issue` or `help wanted` if you're new to the project.
 2.  **Fork the repository** to your own GitHub account.
 3.  **Create a new branch** for your changes.
 4.  **Make your changes** and commit them with a clear and descriptive commit message.
