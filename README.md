@@ -220,7 +220,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `commands remove`   | Removes a custom command.                                               | `prasmoid commands remove [-n <name>]` <br> `-n, --name`: Command name.                                                                       |
 | `i18n`              | Handles internationalization tasks.                                     | See subcommands below.                                                                                                                        |
 | `i18n extract`      | Extracts strings for translation from metadata and QML files.           | `prasmoid i18n extract` <br> `--no-po`: Skip `.po` generation.                                                                                |
-| `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output.                                                                                  |
+| `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output.                                                                                 |
 | `i18n locales`      | Manages supported locales.                                              | See subcommands below.                                                                                                                        |
 | `i18n locales edit` | Launches locale selector to edit supported locales.                     | `prasmoid i18n locales edit`                                                                                                                  |
 | `regen`             | Regenerates config or type definition files.                            | See subcommands below.                                                                                                                        |
@@ -335,6 +335,8 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 
 - **Report Bugs**: If you find an issue, please open a [GitHub Issue](https://github.com/PRASSamin/prasmoid/issues).
 - **Suggest Features**: Have an idea for a new feature? Open an issue to discuss it.
+
+For more information on how to contribute, see the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ---
 
