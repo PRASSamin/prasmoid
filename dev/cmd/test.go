@@ -28,6 +28,7 @@ var testCmd = &cobra.Command{
 				color.Red("Failed to run tests: %v", err)
 				return
 			}
+			return
 		}
 
 		command := []string{"go", "test", "./cmd/...", "./internal/...", "./utils/...", "-v", "-race", "-coverprofile=coverage.out", "-covermode=atomic"}

@@ -10,7 +10,7 @@ import (
 
 // commandsCmd represents the commands command
 var commandsCmd = &cobra.Command{
-	Use:   "commands",
+	Use:   "command",
 	Short: "Manage project-specific custom commands",
 }
 
