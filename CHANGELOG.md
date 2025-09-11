@@ -4,7 +4,7 @@
 
 ## [v0.0.4] - 2025-09-12
 
-#### Change
+#### Changed
 
 - Changed `prasmoid update me` to `prasmoid upgrade` for better clarity and consistency
 - Renamed subcommand `commands` to `command`. Custom commands are now managed via `prasmoid command [add|remove]`
