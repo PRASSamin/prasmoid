@@ -2,7 +2,7 @@
 
 ---
 
-## [Unreleased]
+## [v0.0.4] - 2025-09-12
 
 #### Changed
 
@@ -58,3 +58,4 @@
 ## [v0.0.1] - 2025-07-28
 
 - **Initial Release**: Initial release of the project
+

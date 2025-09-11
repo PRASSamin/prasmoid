@@ -28,6 +28,9 @@ var testCmd = &cobra.Command{
 				color.Red("Failed to run tests: %v", err)
 				return
 			}
+			// This return is intentionally placed here to prevent executing the test command
+			// when the help flag is used. The first return handles the error case, while
+			// this one handles the successful help command case.
 			return
 		}
 
