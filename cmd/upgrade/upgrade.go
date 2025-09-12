@@ -8,16 +8,13 @@ package upgrade
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/consts"
-	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	
+
 	root "github.com/PRASSamin/prasmoid/cmd"
 )
 
@@ -30,24 +27,24 @@ var upgradeCmd = &cobra.Command{
 	Short: "Upgrade to latest version of Prasmoid CLI.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := checkRoot(); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			fmt.Println(color.RedString(err.Error()))
+			return
 		}
 
-		if !utils.IsPackageInstalled(consts.CurlPackageName["binary"]) {
-			pm, _ := utils.DetectPackageManager()
-			var confirm bool
+		if !utilsIsPackageInstalled(consts.CurlPackageName["binary"]) {
+			pm, _ := utilsDetectPackageManager()
 			confirmPrompt := &survey.Confirm{
 				Message: "curl is not installed. Do you want to install it first?",
 				Default: true,
 			}
-			if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+			if err := surveyAskOne(confirmPrompt, &confirmInstallation); err != nil {
+				fmt.Println(color.RedString("Failed to ask for curl installation: %v", err))
 				return
 			}
 
-			if confirm {
-				if err := utils.InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
-					color.Red("Failed to install curl:", err)
+			if confirmInstallation {
+				if err := utilsInstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
+					fmt.Println(color.RedString("Failed to install curl:", err))
 					return
 				}
 			} else {
@@ -56,33 +53,31 @@ var upgradeCmd = &cobra.Command{
 			}
 		}
 
-		scriptURL := "https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update"
-
-		exePath, err := os.Executable()
+		exePath, err := osExecutable()
 		if err != nil {
-			color.Red("Failed to get current executable path: %v", err)
+			fmt.Println(color.RedString("Failed to get current executable path: %v", err))
 			return
 		}
 
 		cmdStr := fmt.Sprintf("curl -sSL %s | bash -s %s", scriptURL, exePath)
 
-		command := exec.Command("bash", "-c", cmdStr)
+		command := execCommand("bash", "-c", cmdStr)
 		command.Stdout = os.Stdout
 		command.Stderr = os.Stderr
 
 		if err := command.Run(); err != nil {
-			color.Red("Update failed: %v", err)
+			fmt.Println(color.RedString("Update failed: %v", err))
 		}
 
-		if err := os.Remove(root.GetCacheFilePath()); err != nil {
+		if err := osRemove(rootGetCacheFilePath()); err != nil {
 			// Log the error, but don't fail the upgrade process
-			color.Yellow("Warning: Failed to remove update cache file: %v\n", err)
+			fmt.Println(color.YellowString("Warning: Failed to remove update cache file: %v\n", err))
 		}
 	},
 }
 
-func checkRoot() error {
-	currentUser, err := user.Current()
+var checkRoot = func() error {
+	currentUser, err := userCurrent()
 	if err != nil {
 		return fmt.Errorf("failed to get current user: %v", err)
 	}

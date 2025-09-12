@@ -5,15 +5,12 @@ package init
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
@@ -22,7 +19,6 @@ import (
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 type Author struct {
@@ -83,35 +79,33 @@ var InitCmd = &cobra.Command{
 		printHeader()
 
 		if err := gatherProjectConfig(); err != nil {
-			color.Red("Failed to gather project config: %v", err)
+			fmt.Println(color.RedString("Failed to gather project config: %v", err))
 			return
 		}
 
-		color.Yellow("Creating project at: %s", Config.Path)
-		fmt.Println()
+		fmt.Println(color.YellowString("Creating project at: %s", Config.Path))
 
 		if err := InitPlasmoid(); err != nil {
-			color.Red("Failed to initialize plasmoid: "+
-				"%v", err)
+			fmt.Println(color.RedString("Failed to initialize plasmoid: %v", err))
 			return
 		}
 
 		if Config.InitGit {
 			if err := initializeGitRepo(); err != nil {
-				color.Yellow("Could not initialize git repository: %v", err)
+				fmt.Println(color.YellowString("Could not initialize git repository: %v", err))
 			} else {
-				color.Green("Initialized git repository.")
+				fmt.Println(color.GreenString("Initialized git repository."))
 			}
 		}
 
 		fmt.Println()
-		color.Green("Plasmoid initialized successfully!")
+		fmt.Println(color.GreenString("Plasmoid initialized successfully!"))
 		fmt.Println()
 		printNextSteps()
 	},
 }
 
-func gatherProjectConfig() error {
+var gatherProjectConfig = func() error {
 	var qs = []*survey.Question{
 		{
 			Name: "Description",
@@ -141,15 +135,15 @@ func gatherProjectConfig() error {
 		Default: "MyPlasmoid",
 	}
 
-	invalidChars := regexp.MustCompile(`[\\/:*?"<>|\s@]`)
+	invalidChars := regexp.MustCompile(`[\/:*?"<>|\s@]`)
 	if strings.TrimSpace(Config.Name) == "" || invalidChars.MatchString(Config.Name) {
-		if err := survey.AskOne(namePrompt, &Config.Name, survey.WithValidator(validateProjectName)); err != nil {
+		if err := surveyAskOne(namePrompt, &Config.Name, survey.WithValidator(validateProjectName)); err != nil {
 			return err
 		}
 	}
 
 	// Ask initial questions
-	if err := survey.Ask(qs, &Config); err != nil {
+	if err := surveyAsk(qs, &Config); err != nil {
 		return err
 	}
 
@@ -157,14 +151,14 @@ func gatherProjectConfig() error {
 		AuthorEmailQuestion := &survey.Input{
 			Message: "Author email:",
 		}
-		if err := survey.AskOne(AuthorEmailQuestion, &Config.AuthorEmail); err != nil {
+		if err := surveyAskOne(AuthorEmailQuestion, &Config.AuthorEmail); err != nil {
 			return err
 		}
 	}
 
 	// Set project path and ID based on name
 	if Config.Name == "." {
-		Config.Path, _ = os.Getwd()
+		Config.Path, _ = osGetwd()
 	} else {
 		Config.Path, _ = filepath.Abs(fmt.Sprintf("./%s", Config.Name))
 	}
@@ -175,19 +169,19 @@ func gatherProjectConfig() error {
 		Message: "Plasmoid ID:",
 		Default: Config.ID,
 	}
-	if err := survey.AskOne(idQuestion, &Config.ID); err != nil {
+	if err := surveyAskOne(idQuestion, &Config.ID); err != nil {
 		return err
 	}
 
-	Config.Locales = utils.AskForLocales()
+	Config.Locales = utilsAskForLocales()
 
 	// Check for git and ask to initialize
-	if utils.IsPackageInstalled("git") {
+	if utilsIsPackageInstalled("git") {
 		gitQuestion := &survey.Confirm{
 			Message: "Initialize a git repository?",
 			Default: true,
 		}
-		if err := survey.AskOne(gitQuestion, &Config.InitGit); err != nil {
+		if err := surveyAskOne(gitQuestion, &Config.InitGit); err != nil {
 			return err
 		}
 	}
@@ -198,7 +192,7 @@ func gatherProjectConfig() error {
 func validateProjectName(ans interface{}) error {
 	name := ans.(string)
 	if name == "." {
-		files, err := os.ReadDir(".")
+		files, err := osReadDir(".")
 		if err != nil {
 			return fmt.Errorf("failed to read current directory: %v", err)
 		}
@@ -208,19 +202,19 @@ func validateProjectName(ans interface{}) error {
 		return nil
 	}
 
-	invalidChars := regexp.MustCompile(`[\\/:*?"<>|\s@]`)
+	invalidChars := regexp.MustCompile(`[\/:*?"<>|\s@]`)
 	if invalidChars.MatchString(name) {
 		return errors.New("invalid characters in project name")
 	}
 
-	if _, err := os.Stat(name); !os.IsNotExist(err) {
+	if _, err := osStat(name); !os.IsNotExist(err) {
 		return errors.New("project directory already exists")
 	}
 	return nil
 }
 
-func InitPlasmoid() error {
-	if err := utils.InstallDependencies(); err != nil {
+var InitPlasmoid = func() error {
+	if err := utilsInstallDependencies(); err != nil {
 		return err
 	}
 
@@ -242,34 +236,33 @@ func InitPlasmoid() error {
 	}
 
 	// Create custom commands directory
-	_ = os.MkdirAll(filepath.Join(Config.Path, ".prasmoid/commands"), 0755)
+	_ = osMkdirAll(filepath.Join(Config.Path, ".prasmoid/commands"), 0755)
 
 	dest := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", Config.ID)
 
 	// Remove if exists
-	_ = os.Remove(dest)
-	_ = os.RemoveAll(dest)
+	_ = osRemoveAll(dest)
 
 	// retrive current dir
-	cwd, err := os.Getwd()
+	cwd, err := osGetwd()
 	if err != nil {
 		return err
 	}
 
 	// Link
-	if err := os.Symlink(filepath.Join(cwd, Config.Name), dest); err != nil {
+	if err := osSymlink(filepath.Join(cwd, Config.Name), dest); err != nil {
 		return fmt.Errorf("failed to create symlink: %w", err)
 	}
 	return nil
 }
 
-func CreateFileFromTemplate(relPath, contentTmpl string) error {
+var CreateFileFromTemplate = func(relPath, contentTmpl string) error {
 	fullPath := filepath.Join(Config.Path, relPath)
-	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+	if err := osMkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(fullPath), err)
 	}
 
-	tmpl, err := template.New(relPath).Parse(contentTmpl)
+	tmpl, err := templateNew(relPath).Parse(contentTmpl)
 	if err != nil {
 		return fmt.Errorf("failed to parse template for %s: %w", relPath, err)
 	}
@@ -279,10 +272,10 @@ func CreateFileFromTemplate(relPath, contentTmpl string) error {
 		return fmt.Errorf("failed to execute template for %s: %w", relPath, err)
 	}
 
-	return os.WriteFile(fullPath, buf.Bytes(), 0644)
+	return osWriteFile(fullPath, buf.Bytes(), 0644)
 }
 
-func CreateConfigFile(locales []string) error {
+var CreateConfigFile = func(locales []string) error {
 	fullPath := filepath.Join(Config.Path, "prasmoid.config.js")
 	RC := types.Config{
 		Commands: types.ConfigCommands{
@@ -294,16 +287,16 @@ func CreateConfigFile(locales []string) error {
 			Locales: locales,
 		},
 	}
-	configData, _ := json.MarshalIndent(RC, "", "  ")
+	configData, _ := jsonMarshalIndent(RC, "", "  ")
 	content := fmt.Sprintf(`/// <reference path="prasmoid.d.ts" />
 /** @type {PrasmoidConfig} */
 const config = %v;`, string(configData))
-	return os.WriteFile(fullPath, []byte(content), 0644)
+	return osWriteFile(fullPath, []byte(content), 0644)
 }
 
-func createMetadataFile() error {
+var createMetadataFile = func() error {
 	fullPath := filepath.Join(Config.Path, "metadata.json")
-	var authors []map[string]interface{}
+	authors := []map[string]interface{}{}
 	if strings.TrimSpace(Config.AuthorName) != "" || strings.TrimSpace(Config.AuthorEmail) != "" {
 		authorMap := map[string]interface{}{
 			"Name":  Config.AuthorName,
@@ -311,7 +304,7 @@ func createMetadataFile() error {
 		}
 		// Add localized author names
 		for _, locale := range Config.Locales {
-			cleanLocale := strings.Trim(locale, "\"")
+			cleanLocale := strings.TrimSpace(locale)
 			authorMap[fmt.Sprintf("Name[%s]", cleanLocale)] = Config.AuthorName
 		}
 		authors = append(authors, authorMap)
@@ -337,21 +330,21 @@ func createMetadataFile() error {
 	// Add localized placeholders for Name and Description directly under KPlugin
 	kplugin := metadata["KPlugin"].(map[string]interface{})
 	for _, locale := range Config.Locales {
-		cleanLocale := strings.Trim(locale, "\"")
+		cleanLocale := strings.TrimSpace(locale)
 		kplugin[fmt.Sprintf("Name[%s]", cleanLocale)] = Config.Name
 		kplugin[fmt.Sprintf("Description[%s]", cleanLocale)] = Config.Description
 	}
 
-	data, err := json.MarshalIndent(metadata, "", "  ")
+	data, err := jsonMarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata JSON: %w", err)
 	}
 
-	return os.WriteFile(fullPath, data, 0644)
+	return osWriteFile(fullPath, data, 0644)
 }
 
-func initializeGitRepo() error {
-	cmd := exec.Command("git", "init")
+var initializeGitRepo = func() error {
+	cmd := execCommand("git", "init")
 	cmd.Dir = Config.Path
 	return cmd.Run()
 }

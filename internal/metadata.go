@@ -1,6 +1,6 @@
 package internal
 
-var Version = "0.0.3"
+var Version = "0.0.4"
 
 type AppMetadata struct {
 	Version string

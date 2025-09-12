@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	initCmd "github.com/PRASSamin/prasmoid/cmd/init"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 // SetupTestProject creates a temporary directory with a dummy metadata.json file.
@@ -80,98 +79,6 @@ func SetupTestProject(t *testing.T) (string, func()) {
 	}
 
 	return tmpDir, cleanup
-}
-
-func TestGetDataFromMetadata(t *testing.T) {
-	_, cleanup := SetupTestProject(t)
-	defer cleanup()
-
-	t.Run("get existing key", func(t *testing.T) {
-		id, err := utils.GetDataFromMetadata("Id")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
-		}
-		if id != "org.kde.testplasmoid" {
-			t.Errorf("Expected Id 'org.kde.testplasmoid', but got '%s'", id)
-		}
-	})
-
-	t.Run("get non-existing key", func(t *testing.T) {
-		_, err := utils.GetDataFromMetadata("NonExistent")
-		if err == nil {
-			t.Error("Expected an error for non-existing key, but got none")
-		}
-	})
-}
-
-func TestUpdateMetadata(t *testing.T) {
-	tmpDir, cleanup := SetupTestProject(t)
-	defer cleanup()
-
-	metadataPath := filepath.Join(tmpDir, "metadata.json")
-
-	t.Run("update existing key", func(t *testing.T) {
-		err := utils.UpdateMetadata("Version", "1.1.0")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
-		}
-
-		data, _ := os.ReadFile(metadataPath)
-		var meta map[string]map[string]interface{}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			t.Fatalf("Failed to unmarshal metadata.json: %v", err)
-		}
-
-		if meta["KPlugin"]["Version"] != "1.1.0" {
-			t.Errorf("Expected version '1.1.0', but got '%s'", meta["KPlugin"]["Version"])
-		}
-	})
-
-	t.Run("add new key", func(t *testing.T) {
-		err := utils.UpdateMetadata("NewKey", "NewValue")
-		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
-		}
-
-		data, _ := os.ReadFile(metadataPath)
-		var meta map[string]map[string]interface{}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			t.Fatalf("Failed to unmarshal metadata.json: %v", err)
-		}
-
-		if meta["KPlugin"]["NewKey"] != "NewValue" {
-			t.Errorf("Expected NewKey 'NewValue', but got '%s'", meta["KPlugin"]["NewKey"])
-		}
-	})
-}
-
-func TestIsValidPlasmoid(t *testing.T) {
-	tmpDir, cleanup := SetupTestProject(t)
-	defer cleanup()
-
-	t.Run("valid plasmoid", func(t *testing.T) {
-		if !utils.IsValidPlasmoid() {
-			t.Error("Expected IsValidPlasmoid to be true, but it was false")
-		}
-	})
-
-	t.Run("missing metadata.json", func(t *testing.T) {
-		if err := os.Remove(filepath.Join(tmpDir, "metadata.json")); err != nil {
-			t.Errorf("Failed to remove metadata.json: %v", err)
-		}
-		if utils.IsValidPlasmoid() {
-			t.Error("Expected IsValidPlasmoid to be false, but it was true")
-		}
-	})
-
-	t.Run("missing contents dir", func(t *testing.T) {
-		if err := os.RemoveAll(filepath.Join(tmpDir, "contents")); err != nil {
-			t.Errorf("Failed to remove contents dir: %v", err)
-		}
-		if utils.IsValidPlasmoid() {
-			t.Error("Expected IsValidPlasmoid to be false, but it was true")
-		}
-	})
 }
 
 // setupTestEnvironment creates a temporary project and a temporary home directory.

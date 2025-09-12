@@ -1,170 +1,304 @@
 package command
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 	"testing"
+	"time"
 
-	root "github.com/PRASSamin/prasmoid/cmd"
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/consts"
-	"github.com/PRASSamin/prasmoid/tests"
+	"github.com/PRASSamin/prasmoid/types"
+	"github.com/fatih/color"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// MockFileInfo is a mock implementation of fs.FileInfo
+type MockFileInfo struct{}
+
+func (m *MockFileInfo) Name() string       { return "mock.js" }
+func (m *MockFileInfo) Size() int64        { return 0 }
+func (m *MockFileInfo) Mode() fs.FileMode  { return 0 }
+func (m *MockFileInfo) ModTime() time.Time { return time.Now() }
+func (m *MockFileInfo) IsDir() bool        { return false }
+func (m *MockFileInfo) Sys() interface{}   { return nil }
+
+func TestCommandNameValidator(t *testing.T) {
+	// Setup fake commands dir
+	tmpDir := t.TempDir()
+	cmd.ConfigRC.Commands.Dir = tmpDir
+
+	t.Run("empty name returns error", func(t *testing.T) {
+		err := commandNameValidator("")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "command name cannot be empty")
+	})
+
+	t.Run("invalid chars returns error", func(t *testing.T) {
+		invalidNames := []string{"bad name", "name@", "na/me", "na*me"}
+		for _, n := range invalidNames {
+			err := commandNameValidator(n)
+			assert.Error(t, err, "expected error for name %s", n)
+			assert.Contains(t, err.Error(), "invalid characters in command name")
+		}
+	})
+
+	t.Run("existing command returns error", func(t *testing.T) {
+		existingFile := filepath.Join(tmpDir, "exists.js")
+		err := os.WriteFile(existingFile, []byte("dummy"), 0644)
+		require.NoError(t, err)
+
+		err = commandNameValidator("exists")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "command already exists")
+	})
+
+	t.Run("valid name passes", func(t *testing.T) {
+		err := commandNameValidator("validCommand")
+		assert.NoError(t, err)
+	})
+}
+
 func TestAddCommand(t *testing.T) {
-	t.Run("successful command creation", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		commandName := "my-test-command"
-		err := AddCommand(commandName)
-		if err != nil {
-			t.Fatalf("AddCommand() failed: %v", err)
+	captureOutput := func() (*bytes.Buffer, func()) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w // Redirect color output as well
+		buf := new(bytes.Buffer)
+		return buf, func() {
+			_ = w.Close()
+			_, _ = io.Copy(buf, r)
+			os.Stdout = oldStdout
+			color.Output = oldStdout
 		}
+	}
 
-		commandFile := filepath.Join(root.ConfigRC.Commands.Dir, commandName+".js")
-		if _, err := os.Stat(commandFile); os.IsNotExist(err) {
-			t.Errorf("Command file was not created at %s", commandFile)
-		}
+	// Backup original functions
+	originalOsStat := osStat
+	originalOsMkdirAll := osMkdirAll
+	originalOsGetwd := osGetwd
+	originalOsWriteFile := osWriteFile
+	originalFilepathAbs := filepathAbs
+	originalFilepathRel := filepathRel
+	originalSurveyAskOne := surveyAskOne
+	originalRegexpMustCompile := regexpMustCompile
+	originalConfigRC := cmd.ConfigRC
 
-		content, err := os.ReadFile(commandFile)
-		if err != nil {
-			t.Fatalf("Failed to read command file: %v", err)
-		}
-
-		absCommandFilePath, _ := filepath.Abs(commandFile)
-		cwd, _ := os.Getwd()
-		prasmoidDef := filepath.Join(cwd, "prasmoid.d.ts")
-		relPath, _ := filepath.Rel(filepath.Dir(absCommandFilePath), prasmoidDef)
-
-		expectedContent := fmt.Sprintf(consts.JS_COMMAND_TEMPLATE, relPath, commandName)
-		if string(content) != expectedContent {
-			t.Errorf("Generated file content does not match expected content.\nExpected:\n%s\n\nGot:\n%s", expectedContent, string(content))
-		}
+	// Cleanup function to restore mocks
+	t.Cleanup(func() {
+		osStat = originalOsStat
+		osMkdirAll = originalOsMkdirAll
+		osGetwd = originalOsGetwd
+		osWriteFile = originalOsWriteFile
+		filepathAbs = originalFilepathAbs
+		filepathRel = originalFilepathRel
+		surveyAskOne = originalSurveyAskOne
+		regexpMustCompile = originalRegexpMustCompile
+		cmd.ConfigRC = originalConfigRC
 	})
 
-	t.Run("command already exists", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
+	// Common setup
+	cmd.ConfigRC = types.Config{
+		Commands: types.ConfigCommands{
+			Dir: "test_commands",
+		},
+	}
+	// Mock regexp.MustCompile to return a predictable regexp
+	validRegexp := regexp.MustCompile(`[\/:*?"<>|\s@]`)
+	regexpMustCompile = func(str string) *regexp.Regexp {
+		return validRegexp
+	}
 
-		commandName := "existing-command"
+	t.Run("success: create new command", func(t *testing.T) {
+		// Arrange
+		commandName := "my-command"
+		var writtenContent []byte
+		var writtenPath string
 
-		err := AddCommand(commandName)
-		if err != nil {
-			t.Fatalf("Initial AddCommand() failed: %v", err)
+		osStat = func(name string) (fs.FileInfo, error) {
+			return nil, os.ErrNotExist // command does not exist
 		}
-
-		err = AddCommand(commandName)
-		if err == nil {
-			t.Error("AddCommand() should have failed for existing command, but it didn't")
+		osMkdirAll = func(path string, perm fs.FileMode) error {
+			assert.Equal(t, "test_commands", path)
+			return nil
 		}
-		if err != nil && !strings.Contains(err.Error(), "command already exists") {
-			t.Errorf("Expected 'command already exists' error, but got: %v", err)
+		osWriteFile = func(name string, data []byte, perm fs.FileMode) error {
+			writtenPath = name
+			writtenContent = data
+			assert.Equal(t, fs.FileMode(0644), perm)
+			return nil
 		}
-	})
-
-	t.Run("empty command name fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		err := AddCommand("")
-		if err == nil {
-			t.Fatal("AddCommand() with empty name should have failed")
+		osGetwd = func() (string, error) { return "/project", nil }
+		filepathAbs = func(path string) (string, error) {
+			if path == "test_commands/my-command.js" {
+				return "/project/test_commands/my-command.js", nil
+			}
+			if path == "/project" {
+				return "/project", nil
+			}
+			return path, nil
 		}
-		if !strings.Contains(err.Error(), "error asking for command name") {
-			t.Errorf("Expected prompt error, but got: %v", err)
+		filepathRel = func(basepath, targpath string) (string, error) {
+			assert.Equal(t, "/project/test_commands", basepath)
+			assert.Equal(t, "/project/prasmoid.d.ts", targpath)
+			return "../prasmoid.d.ts", nil
 		}
-	})
+		buf, restore := captureOutput()
 
-	t.Run("invalid command name fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		err := AddCommand("invalid@name")
-		if err == nil {
-			t.Fatal("AddCommand() with invalid name should have failed")
-		}
-		if !strings.Contains(err.Error(), "error asking for command name") {
-			t.Errorf("Expected prompt error, but got: %v", err)
-		}
-	})
-
-	t.Run("failed to create commands directory", func(t *testing.T) {
-		tmpDir, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		if err := os.Chmod(tmpDir, 0555); err != nil {
-			t.Fatalf("Failed to make temp dir read-only: %v", err)
-		}
-		defer func() { _ = os.Chmod(tmpDir, 0755) }()
-
-		err := AddCommand("test-command")
-		if err == nil {
-			t.Error("AddCommand() expected an error for failed directory creation, but got nil")
-		}
-		if err != nil && !strings.Contains(err.Error(), "failed to create commands directory") {
-			t.Errorf("Expected 'failed to create commands directory' error, got: %v", err)
-		}
-	})
-
-	t.Run("failed to create command file", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		commandsDir := root.ConfigRC.Commands.Dir
-		if err := os.MkdirAll(commandsDir, 0755); err != nil {
-			t.Fatalf("Failed to create commands folder: %v", err)
-		}
-		if err := os.Chmod(commandsDir, 0555); err != nil {
-			t.Fatalf("Failed to make commands folder read-only: %v", err)
-		}
-		defer func() { _ = os.Chmod(commandsDir, 0755) }()
-
-		err := AddCommand("test-command")
-		if err == nil {
-			t.Error("AddCommand() expected an error for failed file creation, but got nil")
-		}
-		if err != nil && !strings.Contains(err.Error(), "failed to create command file") {
-			t.Errorf("Expected 'failed to create command file' error, got: %v", err)
-		}
-	})
-
-	t.Run("cobra command execution", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		commandName := "cobra-command"
+		// Act
 		_ = commandsAddCmd.Flags().Set("name", commandName)
-
 		commandsAddCmd.Run(commandsAddCmd, []string{})
 
-		commandFile := filepath.Join(root.ConfigRC.Commands.Dir, commandName+".js")
-		if _, err := os.Stat(commandFile); os.IsNotExist(err) {
-			t.Errorf("Command file was not created at %s by cobra command", commandFile)
-		}
-
-		_ = commandsAddCmd.Flags().Set("name", "")
+		// Assert
+		restore()
+		output := buf.String()
+		expectedContent := fmt.Sprintf(consts.JS_COMMAND_TEMPLATE, "../prasmoid.d.ts", commandName)
+		assert.Equal(t, filepath.Join("test_commands", "my-command.js"), writtenPath)
+		assert.Equal(t, expectedContent, string(writtenContent))
+		assert.Contains(t, output, "Successfully created my-command command at")
 	})
 
-	t.Run("empty commands dir in config", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		originalDir := root.ConfigRC.Commands.Dir
-		root.ConfigRC.Commands.Dir = ""
-		defer func() { root.ConfigRC.Commands.Dir = originalDir }()
-
-		commandName := "test-in-root"
-		err := AddCommand(commandName)
-		if err != nil {
-			t.Fatalf("AddCommand() failed with empty commands dir: %v", err)
+	t.Run("error: command already exists", func(t *testing.T) {
+		// Arrange
+		commandName := "existing-command"
+		osStat = func(name string) (fs.FileInfo, error) {
+			return &MockFileInfo{}, nil // command exists
 		}
+		buf, restore := captureOutput()
 
-		cwd, _ := os.Getwd()
-		commandFile := filepath.Join(cwd, commandName+".js")
-		if _, err := os.Stat(commandFile); os.IsNotExist(err) {
-			t.Errorf("Command file was not created in current dir at %s", commandFile)
+		// Act
+		AddCommand(commandName)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Command already exists")
+	})
+
+	t.Run("success: using survey to get command name", func(t *testing.T) {
+		// Arrange
+		commandName := "from-survey"
+		var writtenContent []byte
+
+		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+			*(response.(*string)) = commandName
+			return nil
 		}
+		osStat = func(name string) (fs.FileInfo, error) {
+			return nil, os.ErrNotExist
+		}
+		osMkdirAll = func(path string, perm fs.FileMode) error { return nil }
+		osWriteFile = func(name string, data []byte, perm fs.FileMode) error {
+			writtenContent = data
+			return nil
+		}
+		osGetwd = func() (string, error) { return "/project", nil }
+		filepathAbs = func(path string) (string, error) {
+			if path == "test_commands/from-survey.js" {
+				return "/project/test_commands/from-survey.js", nil
+			}
+			if path == "/project" {
+				return "/project", nil
+			}
+			return path, nil
+		}
+		filepathRel = func(basepath, targpath string) (string, error) {
+			return "../prasmoid.d.ts", nil
+		}
+		buf, restore := captureOutput()
+
+		// Act
+		AddCommand("") // Trigger survey
+
+		// Assert
+		restore()
+		output := buf.String()
+		expectedContent := fmt.Sprintf(consts.JS_COMMAND_TEMPLATE, "../prasmoid.d.ts", commandName)
+		assert.Equal(t, expectedContent, string(writtenContent))
+		assert.Contains(t, output, "Successfully created from-survey command at")
+	})
+
+	t.Run("error: survey fails", func(t *testing.T) {
+		// Arrange
+		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+			return errors.New("survey error")
+		}
+		buf, restore := captureOutput()
+
+		// Act
+		AddCommand("") // Trigger survey
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error asking for command name")
+	})
+
+	t.Run("error: mkdir fails", func(t *testing.T) {
+		// Arrange
+		commandName := "any-command"
+		osStat = func(name string) (fs.FileInfo, error) { return nil, os.ErrNotExist }
+		osMkdirAll = func(path string, perm fs.FileMode) error { return errors.New("mkdir failed") }
+		buf, restore := captureOutput()
+
+		// Act
+		AddCommand(commandName)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Failed to create commands directory")
+	})
+
+	t.Run("error: write file fails", func(t *testing.T) {
+		// Arrange
+		commandName := "any-command"
+		osStat = func(name string) (fs.FileInfo, error) { return nil, os.ErrNotExist }
+		osMkdirAll = func(path string, perm fs.FileMode) error { return nil }
+		osGetwd = func() (string, error) { return "/project", nil }
+		filepathAbs = func(path string) (string, error) { return path, nil }
+		filepathRel = func(basepath, targpath string) (string, error) { return "../prasmoid.d.ts", nil }
+		osWriteFile = func(name string, data []byte, perm fs.FileMode) error {
+			return errors.New("write failed")
+		}
+		buf, restore := captureOutput()
+
+		// Act
+		AddCommand(commandName)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error writing to file")
+	})
+
+	t.Run("error: relpath fails", func(t *testing.T) {
+		// Arrange
+		commandName := "any-command"
+		osStat = func(name string) (fs.FileInfo, error) { return nil, os.ErrNotExist }
+		osMkdirAll = func(path string, perm fs.FileMode) error { return nil }
+		osGetwd = func() (string, error) { return "/project", nil }
+		filepathAbs = func(path string) (string, error) { return path, nil }
+		filepathRel = func(basepath, targpath string) (string, error) {
+			return "", errors.New("relpath failed")
+		}
+		buf, restore := captureOutput()
+
+		// Act
+		AddCommand(commandName)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error calculating relative path")
 	})
 }

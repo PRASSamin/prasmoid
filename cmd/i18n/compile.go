@@ -8,12 +8,12 @@ package i18n
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	root "github.com/PRASSamin/prasmoid/cmd"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
@@ -23,7 +23,6 @@ import (
 var silent bool
 
 func init() {
-	I18nCompileCmd.Flags().Bool("restart", false, "Restart plasmashell after compiling")
 	I18nCompileCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Do not show progress messages")
 
 	I18nCmd.AddCommand(I18nCompileCmd)
@@ -33,34 +32,46 @@ var I18nCompileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile .po files to binary .mo files",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
-			color.Red("Current directory is not a valid plasmoid.")
+		if !utilsIsValidPlasmoid() {
+			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
 		}
 
-		if !utils.IsPackageInstalled("msgfmt") {
-			color.Red("msgfmt command not found. Please install gettext.")
-			return
+		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
+			pm, _ := utilsDetectPackageManager()
+			var confirm bool
+			confirmPrompt := &survey.Confirm{
+				Message: "gettext is not installed. Do you want to install it first?",
+				Default: true,
+			}
+			if !confirm {
+				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
+					return
+				}
+			}
+
+			if confirm {
+				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
+					fmt.Println(color.RedString("Failed to install gettext:", err))
+					return
+				}
+			} else {
+				fmt.Println("Operation cancelled.")
+				return
+			}
 		}
 
 		if !silent {
-			color.Cyan("Compiling translation files...")
+			fmt.Println(color.CyanString("Compiling translation files..."))
 		}
 
 		if err := CompileI18n(root.ConfigRC, silent); err != nil {
-			color.Red("Failed to compile messages: %v", err)
+			fmt.Println(color.RedString("Failed to compile messages: %v", err))
 			return
 		}
 
 		if !silent {
-			color.Green("Successfully compiled all translation files.")
-		}
-
-		if restart, _ := cmd.Flags().GetBool("restart"); restart {
-			color.Cyan("Restarting plasmashell...")
-			if err := restartPlasmashell(); err != nil {
-				color.Red("Failed to restart plasmashell: %v", err)
-			}
+			fmt.Println(color.GreenString("Successfully compiled all translation files."))
 		}
 	},
 }
@@ -75,7 +86,7 @@ func CompileI18n(config types.Config, silent bool) error {
 	}
 	projectName := "plasma_applet_" + plasmoidIdStr
 
-	poFiles, err := filepath.Glob(filepath.Join(poDir, "*.po"))
+	poFiles, err := filepathGlob(filepath.Join(poDir, "*.po"))
 	if err != nil {
 		return fmt.Errorf("could not find .po files: %w", err)
 	}
@@ -110,14 +121,15 @@ func CompileI18n(config types.Config, silent bool) error {
 		}
 
 		// Create the destination directory
-		if err := os.MkdirAll(installDir, 0755); err != nil {
+		if err := osMkdirAll(installDir, 0755); err != nil {
 			return fmt.Errorf("could not create directory %s: %w", installDir, err)
 		}
 
 		// Run msgfmt
-		cmd := exec.Command("msgfmt", "-o", moFile, poFile)
-		if err := runCommand(cmd); err != nil {
-			return fmt.Errorf("failed to compile %s: %w\nTry checking syntax with `msgfmt -c %s`", poFile, err, poFile)
+		cmd := execCommand("msgfmt", "-o", moFile, poFile)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to compile %s: %w Output: %s Try checking syntax with `msgfmt -c %s`", poFile, err, string(output), poFile)
 		}
 
 		compiledCount++
@@ -128,17 +140,4 @@ func CompileI18n(config types.Config, silent bool) error {
 	}
 
 	return nil
-}
-
-func restartPlasmashell() error {
-	if err := exec.Command("killall", "plasmashell").Run(); err != nil {
-		color.Yellow("Could not stop plasmashell (it might not have been running).", err)
-	}
-	// Use kstart5 or kstart, depending on the system
-	cmd := "kstart5"
-	if _, err := exec.LookPath(cmd); err != nil {
-		cmd = "kstart"
-	}
-
-	return exec.Command(cmd, "plasmashell").Start()
 }

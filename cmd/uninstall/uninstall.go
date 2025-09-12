@@ -5,13 +5,11 @@ package uninstall
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 func init() {
@@ -24,7 +22,7 @@ var UninstallCmd = &cobra.Command{
 	Short: "Uninstall plasmoid system-wide",
 	Long:  "Uninstall the plasmoid from the system directories.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utils.IsValidPlasmoid() {
+		if !utilsIsValidPlasmoid() {
 			color.Red("Current directory is not a valid plasmoid.")
 			return
 		}
@@ -36,13 +34,13 @@ var UninstallCmd = &cobra.Command{
 	},
 }
 
-func UninstallPlasmoid() error {
-	isInstalled, where, err := utils.IsInstalled()
+var UninstallPlasmoid = func() error {
+	isInstalled, where, err := utilsIsInstalled()
 	if err != nil {
 		return err
 	}
 	if isInstalled {
-		if err := os.RemoveAll(where); err != nil {
+		if err := osRemoveAll(where); err != nil {
 			return fmt.Errorf("failed to remove installation directory %s: %w", where, err)
 		}
 	}

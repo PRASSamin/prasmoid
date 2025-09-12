@@ -120,7 +120,11 @@ func Path(vm *goja.Runtime, module *goja.Object) {
 		SetObjProperty(result, "root", root)
 		SetObjProperty(result, "dir", dir)
 		SetObjProperty(result, "base", base)
-		SetObjProperty(result, "ext", ext)
+		if ext == "." {
+			SetObjProperty(result, "ext", "")
+		} else {
+			SetObjProperty(result, "ext", ext)
+		}
 		SetObjProperty(result, "name", name)
 		return result
 	})

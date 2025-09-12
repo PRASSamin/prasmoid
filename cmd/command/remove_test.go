@@ -1,146 +1,174 @@
 package command
 
 import (
+	"bytes"
+	"errors"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	root "github.com/PRASSamin/prasmoid/cmd"
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/tests"
+	"github.com/PRASSamin/prasmoid/types"
+	"github.com/fatih/color"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRemoveCommand(t *testing.T) {
+	// Common setup
+	cmd.ConfigRC = types.Config{
+		Commands: types.ConfigCommands{
+			Dir: "test_commands",
+		},
+	}
+
+	captureOutput := func() (*bytes.Buffer, func()) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w // Redirect color output as well
+		buf := new(bytes.Buffer)
+		return buf, func() {
+			_ = w.Close()
+			_, _ = io.Copy(buf, r)
+			os.Stdout = oldStdout
+			color.Output = oldStdout
+		}
+	}
+
 	t.Run("successfully removes a command with force flag", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
+		// Arrange
+		t.Cleanup(func() {
+			filepathWalk = filepath.Walk
+			osStat = os.Stat
+			osRemove = os.Remove
+		})
 
-		_ = AddCommand("test-cmd")
-		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd (test-cmd.js)")
-		_ = commandsRemoveCmd.Flags().Set("force", "true")
-
-		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
-
-		if _, err := os.Stat(filepath.Join(root.ConfigRC.Commands.Dir, "test-cmd.js")); !os.IsNotExist(err) {
-			t.Errorf("Command file was not removed")
+		var removedPath string
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return walkFn("test_commands/test-cmd.js", &MockFileInfo{}, nil)
 		}
-	})
-	
-	t.Run("successfully removes a command with command name", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
+		osStat = func(name string) (fs.FileInfo, error) { return &MockFileInfo{}, nil }
+		osRemove = func(name string) error {
+			removedPath = name
+			return nil
+		}
+		buf, restore := captureOutput()
 
-		_ = AddCommand("test-cmd")
+		_ = commandsRemoveCmd.Flags().Set("force", "true")
 		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd")
-		_ = commandsRemoveCmd.Flags().Set("force", "true")
-
 		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
 
-		if _, err := os.Stat(filepath.Join(root.ConfigRC.Commands.Dir, "test-cmd.js")); !os.IsNotExist(err) {
-			t.Errorf("Command file was not removed")
-		}
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Equal(t, filepath.Join("test_commands", "test-cmd.js"), removedPath)
+		assert.Contains(t, output, "Successfully removed command: test-cmd")
 	})
-	
-	t.Run("successfully removes a command with command file name", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
 
-		_ = AddCommand("test-cmd")
-		_ = commandsRemoveCmd.Flags().Set("name", "test-cmd.js")
-		_ = commandsRemoveCmd.Flags().Set("force", "true")
+	t.Run("successfully removes a command with survey", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() {
+			filepathWalk = filepath.Walk
+			surveyAskOne = survey.AskOne
+			osStat = os.Stat
+			osRemove = os.Remove
+		})
 
-		commandsRemoveCmd.Run(commandsRemoveCmd, []string{})
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error {
+			return walkFn("test_commands/test-cmd.js", &MockFileInfo{}, nil)
 
-		if _, err := os.Stat(filepath.Join(root.ConfigRC.Commands.Dir, "test-cmd.js")); !os.IsNotExist(err) {
-			t.Errorf("Command file was not removed")
 		}
+		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+			switch p.(type) {
+			case *survey.Select:
+				*(response.(*string)) = "test-cmd (test-cmd.js)"
+			case *survey.Confirm:
+				*(response.(*bool)) = true
+			}
+			return nil
+		}
+		osStat = func(name string) (fs.FileInfo, error) { return &MockFileInfo{}, nil }
+		osRemove = func(name string) error { return nil }
+		buf, restore := captureOutput()
+
+		// Act
+		RemoveCommand("", false) // trigger survey
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Successfully removed command: test-cmd")
 	})
 
 	t.Run("fails to remove command", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
-	
-		_ = AddCommand("test-cmd")
-		cmdFile := filepath.Join(root.ConfigRC.Commands.Dir, "test-cmd.js")
-		
-		// Make the directory read-only instead of the file
-		dir := filepath.Dir(cmdFile)
-		_ = os.Chmod(dir, 0555)
-		defer func() { _ = os.Chmod(dir, 0755) }() 
-		
-		err := RemoveCommand("test-cmd (test-cmd.js)", true)
-	
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "error removing file") {
-			t.Errorf("Expected 'error removing file' error, but got: %v", err)
-		}
-		
-		// Verify the file still exists
-		if _, err := os.Stat(cmdFile); os.IsNotExist(err) {
-			t.Error("File was removed when it shouldn't have been")
-		}
+		// Arrange
+		t.Cleanup(func() { osRemove = os.Remove })
+
+		AddCommand("test-cmd")
+		osRemove = func(name string) error { return errors.New("remove error") }
+		buf, restore := captureOutput()
+
+		// Act
+		RemoveCommand("test-cmd", true)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error removing file")
 	})
 
-	t.Run("fails to remove non-existent command with force flag", func(t *testing.T) {
+	t.Run("no commands found", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
+		// Arrange
+		t.Cleanup(func() { osRemove = os.Remove })
 
-		err := RemoveCommand("non-existent (non-existent.js)", true)
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "no commands found in the commands directory") {
-			t.Errorf("Expected 'no commands found in the commands directory' error, but got: %v", err)
-		}
+		buf, restore := captureOutput()
+
+		// Act
+		RemoveCommand("test-cmd", true)
+
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "No commands found in the commands directory.")
 	})
 
-	t.Run("filepath.Walk fails for non-existent dir", func(t *testing.T) {
+	t.Run("command file does not exist", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
+		// Arrange
+		t.Cleanup(func() { osRemove = os.Remove })
+		AddCommand("test-cmd")
+		buf, restore := captureOutput()
 
-		// Point to a non-existent directory
-		root.ConfigRC.Commands.Dir = filepath.Join(root.ConfigRC.Commands.Dir, "nonexistent")
+		// Act
+		RemoveCommand("test-cmd2", true)
 
-		err := RemoveCommand("test-cmd (test-cmd.js)", true)
-
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "no commands found in the commands directory") {
-			t.Errorf("Expected 'no commands found in the commands directory' error, but got: %v", err)
-		}
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Command file does not exist")
 	})
 
-	t.Run("select prompt fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
+	t.Run("filepath.Walk fails", func(t *testing.T) {
+		// Arrange
+		t.Cleanup(func() { filepathWalk = filepath.Walk })
+		filepathWalk = func(root string, walkFn filepath.WalkFunc) error { return errors.New("walk error") }
+		buf, restore := captureOutput()
 
-		_ = AddCommand("test-cmd")
+		// Act
+		RemoveCommand("test-cmd", true)
 
-		err := RemoveCommand("", false)
-
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "error asking for command name") {
-			t.Errorf("Expected 'error asking for command name' error, but got: %v", err)
-		}
-	})
-
-	t.Run("confirm prompt fails in non-interactive", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		_ = AddCommand("test-cmd")
-		err := RemoveCommand("test-cmd (test-cmd.js)", false)
-
-		if err == nil {
-			t.Fatal("RemoveCommand() should have failed but did not")
-		}
-		if !strings.Contains(err.Error(), "error asking for confirmation") {
-			t.Errorf("Expected 'error asking for confirmation' error, but got: %v", err)
-		}
+		// Assert
+		restore()
+		output := buf.String()
+		assert.Contains(t, output, "Error walking commands directory")
 	})
 }

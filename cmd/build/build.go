@@ -6,7 +6,6 @@ package build
 import (
 	"archive/zip"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,9 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/PRASSamin/prasmoid/cmd/i18n"
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/utils"
 )
 
 var buildOutputDir string
@@ -40,13 +37,13 @@ var BuildCmd = &cobra.Command{
 }
 
 func BuildPlasmoid() error {
-	if !utils.IsValidPlasmoid() {
+	if !utilsIsValidPlasmoid() {
 		return fmt.Errorf("current directory is not a valid plasmoid")
 	}
 
 	// compile translations
 	color.Cyan("→ Compiling translations...")
-	if err := i18n.CompileI18n(root.ConfigRC, false); err != nil {
+	if err := i18nCompileI18n(root.ConfigRC, false); err != nil {
 		color.Red("Failed to compile translations: %v", err)
 		// We don't necessarily want to stop the build if translations fail
 		color.Yellow("Continuing build without translations...")
@@ -55,21 +52,21 @@ func BuildPlasmoid() error {
 	}
 
 	color.Cyan("→ Starting plasmoid build...")
-	plasmoidID, ierr := utils.GetDataFromMetadata("Id")
-	version, verr := utils.GetDataFromMetadata("Version")
+	plasmoidID, ierr := utilsGetDataFromMetadata("Id")
+	version, verr := utilsGetDataFromMetadata("Version")
 	if ierr != nil || verr != nil {
 		return fmt.Errorf("invalid metadata: %v", fmt.Sprintf("%v or %v", ierr, verr))
 	}
 	zipFileName := plasmoidID.(string) + "-" + version.(string) + ".plasmoid"
 
-	if err := os.RemoveAll(buildOutputDir); err != nil {
+	if err := osRemoveAll(buildOutputDir); err != nil {
 		return fmt.Errorf("failed to clean build dir: %v", err)
 	}
-	if err := os.MkdirAll(buildOutputDir, 0755); err != nil {
+	if err := osMkdirAll(buildOutputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create build dir: %v", err)
 	}
 
-	outFile, err := os.Create(filepath.Join(buildOutputDir, zipFileName))
+	outFile, err := osCreate(filepath.Join(buildOutputDir, zipFileName))
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %v", err)
 	}
@@ -79,7 +76,7 @@ func BuildPlasmoid() error {
 		}
 	}()
 
-	zipWriter := zip.NewWriter(outFile)
+	zipWriter := zipNewWriter(outFile)
 	defer func() {
 		if err := zipWriter.Close(); err != nil {
 			log.Printf("Error closing zip writer: %v", err)
@@ -100,8 +97,8 @@ func BuildPlasmoid() error {
 	return nil
 }
 
-func AddFileToZip(zipWriter *zip.Writer, filename string) error {
-	file, err := os.Open(filename)
+var AddFileToZip = func(zipWriter *zip.Writer, filename string) error {
+	file, err := osOpen(filename)
 	if err != nil {
 		return err
 	}
@@ -115,12 +112,12 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(w, file)
+	_, err = ioCopy(w, file)
 	return err
 }
 
-func AddDirToZip(zipWriter *zip.Writer, baseDir string) error {
-	return filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+var AddDirToZip = func(zipWriter *zip.Writer, baseDir string) error {
+	return filepathWalk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -134,7 +131,7 @@ func AddDirToZip(zipWriter *zip.Writer, baseDir string) error {
 			return nil // folders are implicit in zip
 		}
 
-		file, err := os.Open(path)
+		file, err := osOpen(path)
 		if err != nil {
 			return err
 		}
@@ -149,7 +146,7 @@ func AddDirToZip(zipWriter *zip.Writer, baseDir string) error {
 			return err
 		}
 
-		_, err = io.Copy(w, file)
+		_, err = ioCopy(w, file)
 		return err
 	})
 }

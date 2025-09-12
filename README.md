@@ -215,12 +215,12 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `changeset`         | Manages versioning and changelogs.                                      | See subcommands below.                                                                                                                        |
 | `changeset add`     | Creates a new changeset with version bump and summary.                  | `prasmoid changeset add [-b <type>] [-s <summary>]` <br> `-b, --bump`: `patch`, `minor`, or `major`. <br> `-s, --summary`: Changelog summary. |
 | `changeset apply`   | Applies pending changesets to `metadata.json` and `CHANGELOG.md`.       | `prasmoid changeset apply`                                                                                                                    |
-| `commands`          | Manages custom JavaScript CLI commands.                                 | See subcommands below.                                                                                                                        |
-| `commands add`      | Adds a new custom JS command in `.prasmoid/commands/`.                  | `prasmoid commands add [-n <name>]` <br> `-n, --name`: Command name.                                                                          |
-| `commands remove`   | Removes a custom command.                                               | `prasmoid commands remove [-n <name>]` <br> `-n, --name`: Command name.                                                                       |
+| `command`           | Manages custom JavaScript CLI commands.                                 | See subcommands below.                                                                                                                        |
+| `command add`       | Adds a new custom JS command in `.prasmoid/commands/`.                  | `prasmoid command add [-n <name>]` <br> `-n, --name`: Command name.                                                                          |
+| `command remove`    | Removes a custom command.                                               | `prasmoid command remove [-n <name>]` <br> `-n, --name`: Command name.                                                                       |
 | `i18n`              | Handles internationalization tasks.                                     | See subcommands below.                                                                                                                        |
 | `i18n extract`      | Extracts strings for translation from metadata and QML files.           | `prasmoid i18n extract` <br> `--no-po`: Skip `.po` generation.                                                                                |
-| `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output. <br> `--restart`: Restart plasmashell after compiling.                          |
+| `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output.                                                                                 |
 | `i18n locales`      | Manages supported locales.                                              | See subcommands below.                                                                                                                        |
 | `i18n locales edit` | Launches locale selector to edit supported locales.                     | `prasmoid i18n locales edit`                                                                                                                  |
 | `regen`             | Regenerates config or type definition files.                            | See subcommands below.                                                                                                                        |
@@ -244,7 +244,7 @@ This means you can write powerful automation scripts in JavaScript, and Prasmoid
 1.  **Generate the command file:**
 
     ```bash
-    prasmoid commands add deploy
+    prasmoid command add deploy
     ```
 
     This will create a file like `.prasmoid/commands/deploy.js`.
@@ -335,6 +335,8 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 
 - **Report Bugs**: If you find an issue, please open a [GitHub Issue](https://github.com/PRASSamin/prasmoid/issues).
 - **Suggest Features**: Have an idea for a new feature? Open an issue to discuss it.
+
+For more information on how to contribute, see the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ---
 
