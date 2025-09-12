@@ -89,7 +89,7 @@ mv "$TEMP_FILE" "$CURRENT_EXE"
 
 log_done "Update complete $LATEST_VERSION ($LATEST_HASH)"
 
-log_step "Relaunching CLI..."
-exec "$CURRENT_EXE"
+# log_step "Relaunching CLI..."
+# exec "$CURRENT_EXE"
 
 exit 0

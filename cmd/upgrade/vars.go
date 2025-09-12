@@ -22,5 +22,5 @@ var (
 	rootGetCacheFilePath      = root.GetCacheFilePath
 
 	confirmInstallation bool
-	scriptURL           = "https://raw.githubusercontent.com/PRASSamin/prasmoid/refs/heads/pras/update"
+	scriptURL           = "https://raw.githubusercontent.com/PRASSamin/prasmoid/main/update"
 )

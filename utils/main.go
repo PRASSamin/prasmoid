@@ -364,36 +364,27 @@ func LoadConfigRC() types.Config {
 
 	data, err := os.ReadFile(configFileName)
 	if err != nil {
-		color.Yellow("Configuration file (prasmoid.config.js) not found.\n" +
-			"Run 'prasmoid regen config'\n")
 		return defaultConfig
 	}
 	vm := runtime.NewRuntime()
 	_, err = vm.RunString(string(data))
 	if err != nil {
-		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-			"Run 'prasmoid regen config'\n")
 		return defaultConfig
 	}
 	config := vm.Get("config")
 	if config == nil {
-		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-			"Run 'prasmoid regen config'\n")
 		return defaultConfig
 	}
 
 	// Convert to JSON bytes
 	configBytes, err := json.Marshal(config.Export())
 	if err != nil {
-		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" + "Run 'prasmoid regen config'\n")
 		return defaultConfig
 	}
 
 	// Unmarshal into Config struct
 	var result types.Config
 	if err := json.Unmarshal(configBytes, &result); err != nil {
-		color.Yellow("Failed to load configuration file (prasmoid.config.js).\n" +
-			"Run 'prasmoid regen config'\n")
 		return defaultConfig
 	}
 
