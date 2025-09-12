@@ -227,7 +227,6 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `regen types`       | Regenerates `prasmoid.d.ts`.                                            | `prasmoid regen types`                                                                                                                        |
 | `regen config`      | Regenerates `prasmoid.config.js`.                                       | `prasmoid regen config`                                                                                                                       |
 | `upgrade`           | Updates Prasmoid itself to the latest version.                          | `prasmoid upgrade`                                                                                                                            |
-| `version`           | Shows the current version of Prasmoid.                                  | `prasmoid version`                                                                                                                            |
 
 ## Extending Prasmoid with Custom Commands
 

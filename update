@@ -22,7 +22,7 @@ if [ -z "$LATEST_RELEASE_INFO" ]; then
     log_fail "Failed to fetch release info from GitHub."
 fi
 
-CURRENT_VERSION=$("$CURRENT_EXE" version)
+CURRENT_VERSION=$("$CURRENT_EXE" --version)
 RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-portable//")
 IS_PORTABLE=false
 if [[ "$CURRENT_VERSION" == *"-portable"* ]]; then
