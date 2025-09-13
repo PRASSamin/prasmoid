@@ -67,3 +67,4 @@ Thumbs.db
 
 # demo project
 MyPlasmoid
+pkg/deb/prasmoid/debian/prasmoid.config.js

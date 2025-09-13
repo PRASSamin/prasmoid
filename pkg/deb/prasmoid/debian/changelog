@@ -1,3 +1,13 @@
+prasmoid (0.0.4-1) plucky; urgency=medium
+
+  * Prasmoid update me has been renamed to prasmoid upgrade (shorter and clearer).
+  * The commands subcommand is now just command. You can manage custom commands with prasmoid command add/remove.
+  * Install script now gives clearer feedback while running.
+  * Logs show complex data more cleanly.
+  * Improved init command with better setup.
+
+ -- Clem Lorteau <clem@lorteau.fr>  Thu, 11 Sep 2025 19:20:27 -0700
+
 prasmoid (0.0.3-1) plucky; urgency=medium
 
   * Initial release (Closes: #xxxx)
