@@ -1,4 +1,4 @@
 #!/bin/sh
-echo "** Build failed, bringing up shell"
+echo "\n\n** Build failed, bringing up shell\n"
 apt-get install -y vim less fish > /dev/null
 /bin/fish < /dev/tty > /dev/tty 2> /dev/tty

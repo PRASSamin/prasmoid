@@ -1,16 +1,12 @@
-# last update 20250808
-
 name: prasmoid
 adopt-info: metadata
-base: core22 # current=core24, keeping a bit of backwards compatibility since prasmoid
-             # depends on nothing
-version: 'v0.0.3'
+base: core22
+version: 'v0.0.4'
 license: 'MIT'
 
 summary: The All in One Development Toolkit for KDE Plasmoids
 
-grade: stable # must be 'stable' to release into candidate/stable channels
-# confinement: devmode
+grade: stable
 confinement: strict
 
 apps:
@@ -25,22 +21,22 @@ apps:
 parts:
   repo:
     source: https://github.com/PRASSamin/prasmoid.git
-    source-tag: v0.0.3
-    plugin: dump #just copy files, nothing fancy
+    source-tag: v0.0.4
+    plugin: dump
     override-build: |
       mv logo.svg org.prasmoid.prasmoid.svg
       craftctl default
 
   binary:
-    source: https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid
-    source-checksum: sha256/72e4c2b772188ff7ac3ac1b210238a2b9aff1ef8a2844f11df999a44990dcc96
-    source-type: file #don't try to guess what to do with the source and do nothing but d/l files
+    source: https://github.com/PRASSamin/prasmoid/releases/download/v0.0.4/prasmoid
+    source-checksum: sha256/90b0db543e27c82aa32ad1b67410a37b375a82638b48a3301e774be10e44af93
+    source-type: file
     plugin: dump
     override-build: |
       chmod +x prasmoid
       craftctl default
     prime:
-      - prasmoid # copies the file to the snap's root where the "command" tag above will pick it up
+      - prasmoid
 
   metadata:
     plugin: dump
