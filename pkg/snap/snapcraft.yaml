@@ -7,16 +7,11 @@ license: 'MIT'
 summary: The All in One Development Toolkit for KDE Plasmoids
 
 grade: stable
-confinement: strict
+confinement: classic # for generating config and self updating
 
 apps:
   prasmoid:
     command: prasmoid
-    plugs:
-      - home #allow r/w in the user's home dir
-             #remember this if people are having issues writing somewhere else
-             #install with snap install --devmode --dangerous to allow all the regular's
-             #user's access
 
 parts:
   repo:
@@ -24,7 +19,7 @@ parts:
     source-tag: v0.0.4
     plugin: dump
     override-build: |
-      mv logo.svg org.prasmoid.prasmoid.svg
+      mv logo.svg io.github.prassamin.prasmoid.svg
       craftctl default
 
   binary:
@@ -43,4 +38,4 @@ parts:
     source-type: local
     source: .
     parse-info:
-      - org.prasmoid.prasmoid.metainfo.xml
+      - io.github.prassamin.prasmoid.metainfo.xml
