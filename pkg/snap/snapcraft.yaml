@@ -12,6 +12,8 @@ confinement: classic # for generating config and self updating
 apps:
   prasmoid:
     command: prasmoid
+    # plugs:
+    #   - home
 
 parts:
   repo:
@@ -32,6 +34,8 @@ parts:
       craftctl default
     prime:
       - prasmoid
+    build-attributes:
+      - enable-patchelf
 
   metadata:
     plugin: dump
