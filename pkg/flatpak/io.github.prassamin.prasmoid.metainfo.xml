@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="console-application">
-  <id>org.prasmoid.prasmoid</id>
+  <id>io.github.prassamin.prasmoid</id>
   
   <name>prasmoid</name>
   <url type="homepage">https://github.com/PRASSamin/prasmoid</url>
@@ -20,7 +20,7 @@
   </description>
   
   <icon type="remote">https://github.com/PRASSamin/prasmoid/blob/main/logo.svg</icon>
-  <icon type="stock">org.prasmoid.prasmoid</icon>
+  <icon type="stock">io.github.prassamin.prasmoid</icon>
   
   <categories>
     <category>Development</category>
@@ -32,6 +32,9 @@
   </provides>
 
   <releases>
+      <release version="v0.0.4" date="2025-09-12">
+            <url type="details">https://github.com/PRASSamin/prasmoid/releases/download/v0.0.4</url>
+        </release>
       <release version="v0.0.3" date="2025-08-10">
         <url type="details">https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3</url>
       </release>

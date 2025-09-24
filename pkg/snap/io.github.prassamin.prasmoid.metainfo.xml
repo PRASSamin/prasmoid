@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="console-application">
-    <id>org.prasmoid.prasmoid</id>
+    <id>io.github.prassamin.prasmoid</id>
 
     <name>prasmoid</name>
     <url type="homepage">https://github.com/PRASSamin/prasmoid</url>
@@ -17,7 +17,7 @@
     </description>
 
     <icon type="remote">https://github.com/PRASSamin/prasmoid/blob/main/logo.svg</icon>
-    <icon type="stock">org.prasmoid.prasmoid</icon>
+    <icon type="stock">io.github.prassamin.prasmoid</icon>
 
     <categories>
         <category>Development</category>
