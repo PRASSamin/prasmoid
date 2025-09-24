@@ -7,14 +7,13 @@ license: 'MIT'
 summary: The All in One Development Toolkit for KDE Plasmoids
 
 grade: stable
-confinement: classic # for generating config and self updating
+confinement: strict
 
 apps:
   prasmoid:
     command: prasmoid
-    # plugs:
-    #   - home
-
+    plugs:
+       - home #users will not be able to create projects outside of their home folder
 parts:
   repo:
     source: https://github.com/PRASSamin/prasmoid.git
