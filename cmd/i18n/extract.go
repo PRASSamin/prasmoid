@@ -15,9 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -35,30 +33,6 @@ var I18nExtractCmd = &cobra.Command{
 		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
-		}
-
-		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "gettext is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if !confirm {
-				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-					return
-				}
-			}
-
-			if confirm {
-				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install gettext:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
 		}
 
 		color.Cyan("Extracting translatable strings...")
@@ -99,6 +73,10 @@ func generatePoFiles(poDir string) error {
 
 		if _, err := osStat(poFile); os.IsNotExist(err) {
 			// .po file doesn't exist, create it from the template
+			if !utilsIsPackageInstalled("msginit") {
+				return fmt.Errorf("msginit is not installed. Please install it and try again")
+			}
+
 			fmt.Println(color.CyanString("Creating %s...", poFile))
 			cmd := execCommand("msginit", "--no-translator", "-i", potFile, "-o", poFile, "-l", lang)
 			if err := runCommand(cmd); err != nil {
@@ -109,6 +87,10 @@ func generatePoFiles(poDir string) error {
 			content = bytes.Replace(content, []byte("$__LANGUAGE__$"), []byte(lang), 1)
 			_ = osWriteFile(poFile, content, 0644)
 		} else {
+			if !utilsIsPackageInstalled("msgmerge") {
+				return fmt.Errorf("msgmerge is not installed. Please install it and try again")
+			}
+
 			// .po file exists, update it
 			fmt.Println(color.CyanString("Updating %s...", poFile))
 			cmd := execCommand("msgmerge", "--update", "--no-fuzzy-matching", poFile, potFile)
@@ -182,6 +164,10 @@ func runXGettext(poDir string) error {
 	if len(srcFiles) == 0 {
 		fmt.Println(color.YellowString("No translatable source files (.qml, .js) found."))
 		return nil
+	}
+
+	if !utilsIsPackageInstalled("xgettext") {
+		return fmt.Errorf("xgettext is not installed. Please install it and try again")
 	}
 
 	// Extract from source files

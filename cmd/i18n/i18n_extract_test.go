@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -65,6 +64,22 @@ func TestI18nExtractCommand(t *testing.T) {
 		_ = os.WriteFile(filepath.Join(qmlDir, "main.qml"), []byte(`Text { text: i18n("Hello") }`), 0644)
 		_ = I18nExtractCmd.Flags().Set("no-po", "false")
 
+		// Mock execCommand to prevent actual execution of external tools
+	oldExecCommand := execCommand
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+			// Create dummy files that the commands expect to exist or create
+			if name == "xgettext" {
+				for i, a := range arg {
+					if a == "-o" && i+1 < len(arg) {
+						_ = os.WriteFile(arg[i+1], []byte(`msgid "Hello"
+msgstr ""`), 0644)
+					}
+				}
+			}
+			return exec.Command("true")
+		}
+		defer func() { execCommand = oldExecCommand }()
+
 		// Act
 		I18nExtractCmd.Run(I18nExtractCmd, []string{})
 
@@ -87,6 +102,20 @@ func TestI18nExtractCommand(t *testing.T) {
 		_ = os.WriteFile(filepath.Join(qmlDir, "main.qml"), []byte(`Text { text: i18n("Hello") }`), 0644)
 		_ = I18nExtractCmd.Flags().Set("no-po", "true")
 
+		// Mock execCommand
+	oldExecCommand := execCommand
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+			if name == "xgettext" {
+				for i, a := range arg {
+					if a == "-o" && i+1 < len(arg) {
+						_ = os.WriteFile(arg[i+1], []byte("dummy pot content"), 0644)
+					}
+				}
+			}
+			return exec.Command("true")
+		}
+		defer func() { execCommand = oldExecCommand }()
+
 		// Act
 		I18nExtractCmd.Run(I18nExtractCmd, []string{})
 
@@ -95,83 +124,6 @@ func TestI18nExtractCommand(t *testing.T) {
 		enPoFile := filepath.Join(projectDir, "translations", "en.po")
 		assert.FileExists(t, potFile)
 		assert.NoFileExists(t, enPoFile)
-	})
-
-	t.Run("error on gettext missing", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		// Save & override PATH to raise error
-		oldIsPackageInstalled := utilsIsPackageInstalled
-		utilsIsPackageInstalled = func(packageName string) bool {
-			return false
-		}
-		t.Cleanup(func() { utilsIsPackageInstalled = oldIsPackageInstalled })
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		I18nExtractCmd.Run(I18nExtractCmd, []string{})
-		_ = w.Close()
-
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		output := buf.String()
-
-		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
-	})
-
-	t.Run("successfull install missing gettext package", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		oldIsValidPlasmoid := utilsIsValidPlasmoid
-		oldIsPackageInstalled := utilsIsPackageInstalled
-		oldInstallPackage := utilsInstallPackage
-		oldSurveyAskOne := surveyAskOne
-
-		t.Cleanup(func() {
-			utilsIsPackageInstalled = oldIsPackageInstalled
-			utilsIsValidPlasmoid = oldIsValidPlasmoid
-			utilsInstallPackage = oldInstallPackage
-			surveyAskOne = oldSurveyAskOne
-		})
-
-		utilsIsPackageInstalled = func(packageName string) bool {
-			return false
-		}
-		utilsIsValidPlasmoid = func() bool {
-			return true
-		}
-		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error {
-			return errors.New("install failed")
-		}
-		surveyAskOne = func(prompt survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true
-			return nil
-		}
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		I18nExtractCmd.Run(I18nExtractCmd, []string{})
-		_ = w.Close()
-
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		output := buf.String()
-
-		require.Contains(t, output, "Failed to install gettext")
 	})
 }
 
@@ -201,6 +153,13 @@ msgid "Hello"
 msgstr "Bonjour"`
 		_ = os.WriteFile(filepath.Join(translationsDir, "template.pot"), []byte(potContent), 0644)
 		_ = os.WriteFile(filepath.Join(translationsDir, "fr.po"), []byte(poContent), 0644)
+
+		// Mock execCommand for msgmerge
+	oldExecCommand := execCommand
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+			return exec.Command("true")
+		}
+		defer func() { execCommand = oldExecCommand }()
 
 		// Act
 		err := generatePoFiles(translationsDir)
@@ -403,10 +362,7 @@ func TestPostProcessPotFile(t *testing.T) {
 		defer cleanup()
 
 		path := "test.pot"
-		content := []byte(`charset=CHARSET
-SOME DESCRIPTIVE TITLE.
-Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
+		content := []byte(`charset=CHARSET\nSOME DESCRIPTIVE TITLE.\nCopyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER\nFIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		require.NoError(t, os.WriteFile(path, content, 0644))
 
 		postProcessPotFile(path, "MyApp", nil)
@@ -424,10 +380,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		defer cleanup()
 
 		path := "test.pot"
-		content := []byte(`charset=CHARSET
-SOME DESCRIPTIVE TITLE.
-Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
+		content := []byte(`charset=CHARSET\nSOME DESCRIPTIVE TITLE.\nCopyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER\nFIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		require.NoError(t, os.WriteFile(path, content, 0644))
 
 		authors := []interface{}{
@@ -449,10 +402,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		defer cleanup()
 
 		path := "test.pot"
-		content := []byte(`charset=CHARSET
-SOME DESCRIPTIVE TITLE.
-Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
+		content := []byte(`charset=CHARSET\nSOME DESCRIPTIVE TITLE.\nCopyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER\nFIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		require.NoError(t, os.WriteFile(path, content, 0644))
 
 		postProcessPotFile(path, "OtherApp", "not-a-list")
@@ -468,10 +418,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		defer cleanup()
 
 		path := "test.pot"
-		content := []byte(`charset=CHARSET
-SOME DESCRIPTIVE TITLE.
-Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
+		content := []byte(`charset=CHARSET\nSOME DESCRIPTIVE TITLE.\nCopyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER\nFIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 		require.NoError(t, os.WriteFile(path, content, 0644))
 
 		authors := []interface{}{
@@ -490,7 +437,7 @@ FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.`)
 func TestRunXGettext(t *testing.T) {
 	t.Run("fails when Name metadata is missing", func(t *testing.T) {
 		// Mock GetDataFromMetadata to return invalid name
-		oldGetData := GetDataFromMetadata
+	oldGetData := GetDataFromMetadata
 		GetDataFromMetadata = func(key string) (interface{}, error) {
 			if key == "Name" {
 				return nil, fmt.Errorf("missing")
@@ -556,7 +503,7 @@ func TestRunXGettext(t *testing.T) {
 		_ = os.WriteFile("main.qml", []byte(`Text { text: i18n("Hello") }`), 0644)
 
 		// Mock execCommand to fail
-		mockExecCommand(t, "xgettext")
+	mockExecCommand(t, "xgettext")
 
 		oldGetData := GetDataFromMetadata
 		GetDataFromMetadata = func(key string) (interface{}, error) {
@@ -583,8 +530,8 @@ func TestRunXGettext(t *testing.T) {
 		_ = os.WriteFile("main.qml", []byte(`Text { text: i18n("Hello") }`), 0644)
 
 		// Mock runCommand to succeed but we won’t create template.pot.new
-		oldRunCmd := runCommand
-		runCommand = func(cmd *exec.Cmd) error { return nil }
+	oldRunCmd := runCommand
+	runCommand = func(cmd *exec.Cmd) error { return nil }
 		t.Cleanup(func() { runCommand = oldRunCmd })
 
 		oldGetData := GetDataFromMetadata
@@ -614,8 +561,8 @@ func TestRunXGettext(t *testing.T) {
 		_ = os.WriteFile("main.qml", []byte(`Text { text: i18n("Hello") }`), 0644)
 
 		// Mock runCommand to simulate creating potFileNew
-		oldRunCmd := runCommand
-		runCommand = func(cmd *exec.Cmd) error {
+	oldRunCmd := runCommand
+	runCommand = func(cmd *exec.Cmd) error {
 			_ = os.WriteFile(filepath.Join(translations, "template.pot.new"), []byte(`dummy`), 0644)
 			return nil
 		}

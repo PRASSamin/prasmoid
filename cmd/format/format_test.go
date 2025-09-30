@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
@@ -300,7 +299,6 @@ func TestFormatCmdRun(t *testing.T) {
 
 	t.Run("Run format successfully", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
-		utilsIsPackageInstalled = func(name string) bool { return true }
 		defer cleanup()
 
 		// Capture stdout
@@ -319,119 +317,7 @@ func TestFormatCmdRun(t *testing.T) {
 		assert.Contains(t, output, "Formatted 1 files")
 	})
 
-	t.Run("qmlformat not installed, user confirms installation", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		// Mock functions
-		utilsIsPackageInstalled = func(name string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true
-			return nil
-		}
-		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error { return nil }
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		FormatCmd.Run(FormatCmd, []string{})
-
-		require.NoError(t, w.Close())
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-		output := buf.String()
-		assert.Contains(t, output, "qmlformat installed successfully")
-	})
-
-	t.Run("qmlformat not installed, user cancels installation", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		// Mock functions
-		utilsIsPackageInstalled = func(name string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = false
-			return nil
-		}
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		FormatCmd.Run(FormatCmd, []string{})
-
-		require.NoError(t, w.Close())
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-		output := buf.String()
-		assert.Contains(t, output, "Operation cancelled")
-	})
-
-	t.Run("qmlformat not installed, installation fails", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		// Mock functions
-		utilsIsPackageInstalled = func(name string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true
-			return nil
-		}
-		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error { return errors.New("install error") }
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		FormatCmd.Run(FormatCmd, []string{})
-
-		require.NoError(t, w.Close())
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-		output := buf.String()
-		assert.Contains(t, output, "Failed to install qmlformat")
-	})
-
-	t.Run("survey returns error", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		// Mock functions
-		utilsIsPackageInstalled = func(name string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			return errors.New("survey error")
-		}
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		FormatCmd.Run(FormatCmd, []string{})
-
-		require.NoError(t, w.Close())
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-		output := buf.String()
-		assert.NotContains(t, output, "qmlformat installed successfully")
-		assert.NotContains(t, output, "Operation cancelled")
-	})
+	
 }
 
 func TestPrettifyError(t *testing.T) {

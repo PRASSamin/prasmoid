@@ -1,11 +1,10 @@
-#!/bin/bash
-
+#!/bin/sh
 set -e
 
 # --- Helper Functions ---
-log_step() { echo -e "\033[0;36m→ $1\033[0m"; }
-log_done() { echo -e "\033[0;32m✔ $1\033[0m"; }
-log_fail() { echo -e "\033[0;31m✘ $1\033[0m"; exit 1; }
+log_step() { printf '\033[0;36m→ %s\033[0m\n' "$1"; }
+log_done() { printf '\033[0;32m✔ %s\033[0m\n' "$1"; }
+log_fail() { printf '\033[0;31m✘ %s\033[0m\n' "$1"; exit 1; }
 
 # --- Argument Parsing ---
 if [ "$#" -lt 1 ]; then
@@ -18,58 +17,63 @@ shift 1
 log_step "Checking for update..."
 
 LATEST_RELEASE_INFO=$(curl -s "https://api.github.com/repos/PRASSamin/prasmoid/releases/latest")
-if [ -z "$LATEST_RELEASE_INFO" ]; then
-    log_fail "Failed to fetch release info from GitHub."
-fi
+[ -z "$LATEST_RELEASE_INFO" ] && log_fail "Failed to fetch release info from GitHub."
 
 CURRENT_VERSION=$("$CURRENT_EXE" --version)
 RAW_CURRENT_VERSION=$(echo "$CURRENT_VERSION" | sed "s/-portable//")
 IS_PORTABLE=false
-if [[ "$CURRENT_VERSION" == *"-portable"* ]]; then
-    IS_PORTABLE=true
-fi
+case "$CURRENT_VERSION" in
+  *-portable*) IS_PORTABLE=true ;;
+esac
 
 ASSET_NAME="prasmoid"
-if $IS_PORTABLE; then
-    ASSET_NAME="prasmoid-portable"
-fi
+$IS_PORTABLE && ASSET_NAME="prasmoid-portable"
 
-SHA256_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
-if [[ -z "$SHA256_URL" ]]; then
-  log_fail "SHA256SUMS file missing in release. This is likely a problem with the release itself, not your setup. Please check the release page on GitHub for updates, or contact the maintainers (open an issue at https://github.com/PRASSamin/prasmoid/issues) for assistance."
-fi
+# --- Extract download URLs without jq ---
+extract_url() {
+    name=$1
+    echo "$LATEST_RELEASE_INFO" | awk -v a="$name" '
+        $0 ~ "\"name\": \""a"\"" {found=1}
+        found && $0 ~ "\"browser_download_url\"" {
+            gsub(/.*"browser_download_url": "|".*/, "", $0)
+            print $0
+            exit
+        }
+    '
+}
+
+extract_tag() {
+    echo "$LATEST_RELEASE_INFO" | awk -F '"' '/"tag_name":/ {gsub(/^v/, "", $4); print $4; exit}'
+}
+
+SHA256_URL=$(extract_url "SHA256SUMS")
+[ -z "$SHA256_URL" ] && log_fail "SHA256SUMS file missing in release."
 
 log_step "Fetching SHA256SUMS..."
-
 SHA256_CONTENT=$(curl -sL "$SHA256_URL")
-LATEST_HASH=$(echo "$SHA256_CONTENT" | grep " $ASSET_NAME$" | awk '{print $1}')
-if [[ -z "$LATEST_HASH" ]]; then
-  log_fail "Could not find hash for $ASSET_NAME in SHA256SUMS."
-fi
+
+LATEST_HASH=$(echo "$SHA256_CONTENT" | awk -v a="$ASSET_NAME" '$2 == a {print $1; exit}')
+[ -z "$LATEST_HASH" ] && log_fail "Could not find hash for $ASSET_NAME in SHA256SUMS."
 
 log_step "Calculating current binary hash..."
 CURRENT_HASH=$(sha256sum "$CURRENT_EXE" | awk '{print $1}')
 
-if [ "$CURRENT_HASH" == "$LATEST_HASH" ]; then
-    log_done "You are already using the latest version of Prasmoid ($RAW_CURRENT_VERSION.$LATEST_HASH)."
+if [ "$CURRENT_HASH" = "$LATEST_HASH" ]; then
+    log_done "You are already using the latest version of prasmoid ($RAW_CURRENT_VERSION.$LATEST_HASH)."
     exit 0
 fi
 
 log_step "New binary available. Downloading $ASSET_NAME..."
-
-DOWNLOAD_URL=$(echo "$LATEST_RELEASE_INFO" | jq -r ".assets[] | select(.name == \"$ASSET_NAME\") | .browser_download_url")
-if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
-    log_fail "Download URL for $ASSET_NAME not found."
-fi
+DOWNLOAD_URL=$(extract_url "$ASSET_NAME")
+[ -z "$DOWNLOAD_URL" ] && log_fail "Download URL for $ASSET_NAME not found."
 
 TEMP_FILE=$(mktemp)
-curl -L -o "$TEMP_FILE" "$DOWNLOAD_URL"
-if [ $? -ne 0 ]; then
+curl -L -o "$TEMP_FILE" "$DOWNLOAD_URL" || {
     rm -f "$TEMP_FILE"
     log_fail "Download failed."
-fi
+}
 
-LATEST_VERSION=$(echo "$LATEST_RELEASE_INFO" | jq -r ".tag_name" | sed "s/^v//")
+LATEST_VERSION=$(extract_tag)
 
 log_step "Verifying downloaded binary hash..."
 DOWNLOADED_HASH=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
@@ -88,8 +92,5 @@ log_step "Replacing old binary..."
 mv "$TEMP_FILE" "$CURRENT_EXE"
 
 log_done "Update complete $LATEST_VERSION ($LATEST_HASH)"
-
-# log_step "Relaunching CLI..."
-# exec "$CURRENT_EXE"
 
 exit 0

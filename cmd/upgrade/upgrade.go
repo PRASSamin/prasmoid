@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
@@ -31,31 +29,16 @@ var upgradeCmd = &cobra.Command{
 			return
 		}
 
-		if !utilsIsPackageInstalled(consts.CurlPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			confirmPrompt := &survey.Confirm{
-				Message: "curl is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if err := surveyAskOne(confirmPrompt, &confirmInstallation); err != nil {
-				fmt.Println(color.RedString("Failed to ask for curl installation: %v", err))
-				return
-			}
-
-			if confirmInstallation {
-				if err := utilsInstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install curl:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
-		}
+		
 
 		exePath, err := osExecutable()
 		if err != nil {
 			fmt.Println(color.RedString("Failed to get current executable path: %v", err))
+			return
+		}
+
+		if !utilsIsPackageInstalled("curl") {
+			fmt.Println(color.RedString("curl is not installed. Please install it and try again"))
 			return
 		}
 

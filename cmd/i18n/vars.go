@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -36,14 +35,9 @@ var (
 	}
 
 	// utils functions
-	GetDataFromMetadata       = utils.GetDataFromMetadata
-	utilsIsPackageInstalled   = utils.IsPackageInstalled
-	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
-	utilsInstallPackage       = utils.InstallPackage
-	utilsDetectPackageManager = utils.DetectPackageManager
-
-	// survey functions
-	surveyAskOne = survey.AskOne
+	GetDataFromMetadata  = utils.GetDataFromMetadata
+	utilsIsValidPlasmoid = utils.IsValidPlasmoid
+	utilsIsPackageInstalled = utils.IsPackageInstalled
 
 	// command runner
 	runCommand = func(cmd *exec.Cmd) error {

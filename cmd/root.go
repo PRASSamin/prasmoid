@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/PRASSamin/prasmoid/cmd/extendcli"
+	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/internal"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -65,6 +66,9 @@ var (
 	// internal
 	internalAppMetaDataVersion = internal.AppMetaData.Version
 
+	// utils
+	utilsIsPackageInstalled = utils.IsPackageInstalled
+
 	// for testing purposes
 	logPrintf = log.Printf
 )
@@ -102,12 +106,25 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	extendcliDiscoverAndRegisterCustomCommands(RootCmd, ConfigRC)
-
+	CheckDependenciesMissing()
 	CheckForUpdates()
 
 	err := rootCmdExecute()
 	if err != nil {
 		osExit(1)
+	}
+}
+
+var CheckDependenciesMissing = func() {
+	isMissing := false
+	for _, dep := range consts.Dependencies {
+		if !utilsIsPackageInstalled(dep) {
+			isMissing = true
+		}
+	}
+	if isMissing {
+		fmt.Println(color.YellowString("Some features will not work as expected because some dependencies are missing."))
+		fmt.Println(color.BlueString("- Please run `prasmoid fix` to install missing dependencies."))
 	}
 }
 
@@ -236,7 +253,7 @@ var isUpdateAvailable = func(latestTag string) bool {
 		return false
 	}
 
-	current := internalAppMetaDataVersion
+	current := strings.Split(internalAppMetaDataVersion, "-")[0]
 	return compareVersions(current, latestTag) < 0
 }
 
@@ -256,7 +273,7 @@ var printUpdateMessage = func(latest string) {
 	}
 
 	fmt.Println(star(bottom))
-	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", internalAppMetaDataVersion, latest))))
+	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", strings.Split(internalAppMetaDataVersion, "-")[0], latest))))
 	fmt.Println(star(printLine("Run `prasmoid upgrade` to update")))
 	fmt.Println(star(bottom))
 	fmt.Println()

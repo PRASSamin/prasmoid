@@ -17,7 +17,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/cmd"
 	"github.com/PRASSamin/prasmoid/cmd/link"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
@@ -52,11 +51,9 @@ var (
 	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
 	utilsIsLinked             = utils.IsLinked
 	utilsGetDevDest           = utils.GetDevDest
-	utilsIsPackageInstalled   = utils.IsPackageInstalled
-	utilsDetectPackageManager = utils.DetectPackageManager
-	utilsInstallPackage       = utils.InstallPackage
 	utilsGetDataFromMetadata  = utils.GetDataFromMetadata
 	utilsIsQmlFile            = utils.IsQmlFile
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
 
 	// link
 	linkLinkPlasmoid = link.LinkPlasmoid
@@ -85,7 +82,6 @@ var (
 	timeAfterFunc = time.AfterFunc
 
 	// confirmation
-	confirmInstallation bool
 	confirmLink         bool
 )
 
@@ -100,6 +96,10 @@ var PreviewCmd = &cobra.Command{
 	Short: "Enter plasmoid preview mode",
 	Long:  "Launch the plasmoid in preview mode for testing and development.",
 	Run: func(cmd *cobra.Command, args []string) {
+		if !utilsIsPackageInstalled("plasmoidviewer") {
+			fmt.Println(color.RedString("plasmoidviewer is not installed. Please install it and try again"))
+			return
+		}
 		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
@@ -131,26 +131,7 @@ var PreviewCmd = &cobra.Command{
 			}
 		}
 
-		if !utilsIsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			confirmPrompt := &survey.Confirm{
-				Message: "plasmoidviewer is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if err := surveyAskOne(confirmPrompt, &confirmInstallation); err != nil {
-				return
-			}
-
-			if confirmInstallation {
-				if err := utilsInstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install plasmoidviewer: %v", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
-		}
+		
 
 		if err := previewPlasmoid(watch); err != nil {
 			fmt.Println(color.RedString("Failed to preview plasmoid: %v", err))

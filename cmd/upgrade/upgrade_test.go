@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"testing"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,10 +50,6 @@ func TestCheckRoot(t *testing.T) {
 func TestUpgradeCmd(t *testing.T) {
 	// Save original functions and restore after test
 	originalCheckRoot := checkRoot
-	originalUtilsIsPackageInstalled := utilsIsPackageInstalled
-	originalUtilsDetectPackageManager := utilsDetectPackageManager
-	originalSurveyAskOne := surveyAskOne
-	originalUtilsInstallPackage := utilsInstallPackage
 	originalOsExecutable := osExecutable
 	originalExecCommand := execCommand
 	originalOsRemove := osRemove
@@ -62,10 +57,6 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Cleanup(func() {
 		checkRoot = originalCheckRoot
-		utilsIsPackageInstalled = originalUtilsIsPackageInstalled
-		utilsDetectPackageManager = originalUtilsDetectPackageManager
-		surveyAskOne = originalSurveyAskOne
-		utilsInstallPackage = originalUtilsInstallPackage
 		osExecutable = originalOsExecutable
 		execCommand = originalExecCommand
 		osRemove = originalOsRemove
@@ -105,95 +96,8 @@ func TestUpgradeCmd(t *testing.T) {
 		assert.Contains(t, buf.String(), "root check failed")
 	})
 
-	t.Run("curl not installed, user confirms, install succeeds, upgrade succeeds", func(t *testing.T) {
-		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true // User confirms
-			return nil
-		}
-		utilsInstallPackage = func(pm, pkg string, names map[string]string) error { return nil }
-		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
-		execCommand = func(name string, arg ...string) *exec.Cmd {
-			// Mock the command to succeed
-			return exec.Command("bash", "-c", "exit 0")
-		}
-		osRemove = func(name string) error { return nil }
-		rootGetCacheFilePath = func() string { return "/tmp/cache" }
-
-		buf, restoreOutput := captureOutput()
-
-		// Act
-		upgradeCmd.Run(nil, []string{})
-
-		// Assert
-		restoreOutput()
-		assert.NotContains(t, buf.String(), "Failed to install curl")
-		assert.NotContains(t, buf.String(), "Update failed")
-		assert.NotContains(t, buf.String(), "Warning: Failed to remove update cache file")
-	})
-
-	t.Run("curl not installed, user confirms, install fails", func(t *testing.T) {
-		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true // User confirms
-			return nil
-		}
-		utilsInstallPackage = func(pm, pkg string, names map[string]string) error { return errors.New("install failed") }
-
-		buf, restoreOutput := captureOutput()
-
-		// Act
-		upgradeCmd.Run(nil, []string{})
-
-		// Assert
-		restoreOutput()
-		assert.Contains(t, buf.String(), "Failed to install curl")
-	})
-
-	t.Run("curl not installed, user cancels", func(t *testing.T) {
-		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil } // Added mock for DetectPackageManager
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = false // User cancels
-			return nil
-		}
-
-		buf, restoreOutput := captureOutput()
-
-		// Act
-		upgradeCmd.Run(nil, []string{})
-
-		// Assert
-		restoreOutput()
-		assert.Contains(t, buf.String(), "Operation cancelled.")
-	})
-
-	t.Run("curl not installed, ask fails", func(t *testing.T) {
-		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return false }
-		utilsDetectPackageManager = func() (string, error) { return "apt", nil } // Added mock for DetectPackageManager
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			return errors.New("ask failed") // survey.AskOne returns error
-		}
-
-		buf, restoreOutput := captureOutput()
-
-		// Act
-		upgradeCmd.Run(nil, []string{})
-
-		// Assert
-		restoreOutput()
-		assert.Contains(t, buf.String(), "Failed to ask for curl installation: ask failed")
-	})
-
 	t.Run("os.Executable fails", func(t *testing.T) {
 		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return true } // Assume curl is installed
 		osExecutable = func() (string, error) { return "", errors.New("exec error") }
 
 		buf, restoreOutput := captureOutput()
@@ -208,7 +112,6 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("command.Run fails", func(t *testing.T) {
 		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return true } // Assume curl is installed
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to fail
@@ -227,7 +130,6 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("os.Remove fails", func(t *testing.T) {
 		// Arrange
-		utilsIsPackageInstalled = func(pkg string) bool { return true } // Assume curl is installed
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to succeed

@@ -441,27 +441,11 @@ func TestCreateMetadataFile(t *testing.T) {
 }
 
 func TestInitPlasmoid(t *testing.T) {
-	t.Run("fails if install dependencies fails", func(t *testing.T) {
-		_, cleanup := SetupTempDir(t)
-		defer cleanup()
-
-		oldInstall := utilsInstallDependencies
-		utilsInstallDependencies = func() error { return errors.New("install error") }
-		defer func() { utilsInstallDependencies = oldInstall }()
-
-		err := InitPlasmoid()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "install error")
-	})
-
 	t.Run("fails if create file from template fails", func(t *testing.T) {
 		_, cleanup := SetupTempDir(t)
 		defer cleanup()
 
 		// Mock dependencies
-		oldInstall := utilsInstallDependencies
-		utilsInstallDependencies = func() error { return nil }
-		defer func() { utilsInstallDependencies = oldInstall }()
 		oldCreate := CreateFileFromTemplate
 		CreateFileFromTemplate = func(relPath, contentTmpl string) error {
 			return errors.New("template error")
@@ -477,9 +461,6 @@ func TestInitPlasmoid(t *testing.T) {
 		_, cleanup := SetupTempDir(t)
 		defer cleanup()
 		// Mock dependencies
-		oldInstall := utilsInstallDependencies
-		utilsInstallDependencies = func() error { return nil }
-		defer func() { utilsInstallDependencies = oldInstall }()
 		oldCreateMeta := createMetadataFile
 		createMetadataFile = func() error { return errors.New("metadata error") }
 		defer func() { createMetadataFile = oldCreateMeta }()
@@ -496,9 +477,6 @@ func TestInitPlasmoid(t *testing.T) {
 		_, cleanup := SetupTempDir(t)
 		defer cleanup()
 		// Mock dependencies
-		oldInstall := utilsInstallDependencies
-		utilsInstallDependencies = func() error { return nil }
-		defer func() { utilsInstallDependencies = oldInstall }()
 		oldCreateMeta := createMetadataFile
 		createMetadataFile = func() error { return nil }
 		defer func() { createMetadataFile = oldCreateMeta }()
@@ -526,9 +504,6 @@ func TestInitPlasmoid(t *testing.T) {
 		defer func() { osSymlink = oldSymlink }()
 
 		// Mock other dependencies to succeed
-		oldInstall := utilsInstallDependencies
-		utilsInstallDependencies = func() error { return nil }
-		defer func() { utilsInstallDependencies = oldInstall }()
 		oldCreateMeta := createMetadataFile
 		createMetadataFile = func() error { return nil }
 		defer func() { createMetadataFile = oldCreateMeta }()

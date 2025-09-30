@@ -32,15 +32,54 @@ While the core structure of KDE Plasma plasmoids is straightforward, the surroun
 
 One of its most revolutionary features is a **built-in, zero-dependency JavaScript runtime**. This allows you to extend the CLI with your own custom commands, automating any workflow imaginable, directly within your project – no Node.js installation required!
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Installation
 
-Prasmoid is designed for quick and easy installation. Choose your preferred method:
+Prasmoid is designed for quick and easy installation. You can use the provided installer script or install dependencies manually.
 
-> [!IMPORTANT]
-> The installer script requires jq to be installed for parsing GitHub API responses.
-> Install it via `sudo apt install jq`, `sudo dnf install jq`, `sudo pacman -S jq` depending on your distro.
+---
+
+### 🛠 Dependencies
+
+Prasmoid depends on the following tools being available on your system:
+
+- **plasmoidviewer** – for testing and running plasmoids  
+- **qmlformat** – for formatting QML files  
+- **curl** – for fetching release assets  
+- **gettext** – for translation tools (`xgettext`, `msgmerge`, etc.)  
+
+> [!NOTE]  
+> Package names may differ depending on your Linux distribution.  
+> On some systems, these tools are bundled in development kits such as **Plasma SDK** or **Qt tools**.  
+> If the installer cannot resolve them automatically, please install the tools manually using your package manager.
+
+> [!IMPORTANT]  
+> Want to extend installer support for your distro?  
+> Please [open an issue](https://github.com/PRASSamin/prasmoid/issues) or submit a PR.  
+> We just need a regular user of your distro to help test and add support.
+
+---
+
+### 📦 Manual Dependency Installation (per distro)
+
+If you prefer to install dependencies manually (instead of using the installer), here are the commands for supported package managers:  
+
+```bash
+# Debian/Ubuntu
+sudo apt install -y curl qt6-tools-dev plasma-sdk gettext
+
+# Fedora
+sudo dnf install -y curl qmlformat plasma-sdk gettext
+
+# Arch Linux
+sudo pacman -Sy --noconfirm curl qt6-declarative plasma-sdk gettext
+sudo ln -s /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+
+# Alpine
+sudo apk add curl qt6-qttools-dev plasma-sdk gettext
+sudo ln -s /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+```
 
 #### Recommended: Standard Build (Native)
 
@@ -216,8 +255,8 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `changeset add`     | Creates a new changeset with version bump and summary.                  | `prasmoid changeset add [-b <type>] [-s <summary>]` <br> `-b, --bump`: `patch`, `minor`, or `major`. <br> `-s, --summary`: Changelog summary. |
 | `changeset apply`   | Applies pending changesets to `metadata.json` and `CHANGELOG.md`.       | `prasmoid changeset apply`                                                                                                                    |
 | `command`           | Manages custom JavaScript CLI commands.                                 | See subcommands below.                                                                                                                        |
-| `command add`       | Adds a new custom JS command in `.prasmoid/commands/`.                  | `prasmoid command add [-n <name>]` <br> `-n, --name`: Command name.                                                                          |
-| `command remove`    | Removes a custom command.                                               | `prasmoid command remove [-n <name>]` <br> `-n, --name`: Command name.                                                                       |
+| `command add`       | Adds a new custom JS command in `.prasmoid/commands/`.                  | `prasmoid command add [-n <name>]` <br> `-n, --name`: Command name.                                                                           |
+| `command remove`    | Removes a custom command.                                               | `prasmoid command remove [-n <name>]` <br> `-n, --name`: Command name.                                                                        |
 | `i18n`              | Handles internationalization tasks.                                     | See subcommands below.                                                                                                                        |
 | `i18n extract`      | Extracts strings for translation from metadata and QML files.           | `prasmoid i18n extract` <br> `--no-po`: Skip `.po` generation.                                                                                |
 | `i18n compile`      | Compiles `.po` files into `.mo` files for use in plasmoids.             | `prasmoid i18n compile` <br> `-s, --silent`: Suppress output.                                                                                 |

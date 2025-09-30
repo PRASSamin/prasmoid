@@ -11,9 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
@@ -35,30 +33,6 @@ var I18nCompileCmd = &cobra.Command{
 		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
-		}
-
-		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "gettext is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if !confirm {
-				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-					return
-				}
-			}
-
-			if confirm {
-				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install gettext:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
 		}
 
 		if !silent {
@@ -123,6 +97,10 @@ func CompileI18n(config types.Config, silent bool) error {
 		// Create the destination directory
 		if err := osMkdirAll(installDir, 0755); err != nil {
 			return fmt.Errorf("could not create directory %s: %w", installDir, err)
+		}
+
+		if !utilsIsPackageInstalled("msgfmt") {
+			return fmt.Errorf("msgfmt is not installed. Please install it and try again")
 		}
 
 		// Run msgfmt

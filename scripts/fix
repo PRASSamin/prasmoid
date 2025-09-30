@@ -1,0 +1,81 @@
+#!/bin/sh
+set -e
+
+# --- Logging ---
+log_step() { printf '\033[0;36m→ %s\033[0m\n' "$1"; }
+log_done() { printf '\033[0;32m✔ %s\033[0m\n' "$1"; }
+log_warn() { printf '\033[0;33m! %s\033[0m\n' "$1"; }
+log_fail() { printf '\033[0;31m✘ %s\033[0m\n' "$1"; exit 1; }
+
+# --- Detect Package Manager ---
+detect_pkg_manager() {
+    if command -v apt >/dev/null 2>&1; then
+        echo "apt"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "dnf"
+    elif command -v yum >/dev/null 2>&1; then
+        echo "yum"
+    elif command -v zypper >/dev/null 2>&1; then
+        echo "zypper"
+    elif command -v pacman >/dev/null 2>&1; then
+        echo "pacman"
+    elif command -v apk >/dev/null 2>&1; then
+        echo "apk"
+    elif command -v nix-env >/dev/null 2>&1; then
+        echo "nix"
+    else
+        echo "null"
+    fi
+}
+
+install_deps() {
+    pm=$1
+    if [ "$pm" = "null" ]; then
+        log_warn "Unsupported package manager. Automatic dependency installation is not supported."
+        log_warn "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+        log_warn "If you’d like to help extend the fix script for your package manager, please reach out."
+        log_warn "I currently don’t have enough experience with your package manager, so contributions from users are welcome."
+        log_warn "You can contact me here: https://github.com/PRASSamin/prasmoid/issues"
+        return
+    fi
+    
+    log_step "Installing dependencies using $pm..."
+
+    case "$pm" in
+        apt)
+            sudo apt install -y curl qt6-tools-dev plasma-sdk gettext
+            ;;
+        dnf|yum)
+            sudo $pm install -y curl qmlformat plasma-sdk gettext
+            ;;
+        zypper)
+            log_warn "Zypper/openSUSE detected. Automatic dependency installation is not supported."
+            log_warn "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+            log_warn "If you’d like, you can contact me to help extend the fix script for openSUSE."
+            log_warn "I currently don’t have openSUSE experience, so I need a user familiar with it to contribute."
+            log_warn "You can reach me at: https://github.com/PRASSamin/prasmoid/issues"
+            ;;
+        pacman)
+            sudo pacman -Sy --noconfirm curl qt6-declarative plasma-sdk gettext
+            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            ;;
+        apk)
+            sudo apk add curl qt6-qttools-dev plasma-sdk gettext
+            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            ;;
+        nix)
+            log_warn "Nix environment detected. Automatic dependency installation is not supported."
+            log_warn "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+            log_warn "If you’d like to help extend the fix script for Nix, please reach out."
+            log_warn "I currently don’t have enough Nix experience, so contributions from Nix users are welcome."
+            log_warn "You can contact me here: https://github.com/PRASSamin/prasmoid/issues"
+            ;;
+        *)
+    esac
+
+    log_done "Dependencies installed"
+}
+
+PM=$(detect_pkg_manager)
+install_deps "$PM"
+exit 0

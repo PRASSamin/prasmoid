@@ -1,97 +1,175 @@
-#!/bin/bash
-
+#!/bin/sh
 set -e
 
-# --- Helper Functions ---
-formatted_size() {
-  local bytes=$1
-  local units=("B" "KB" "MB" "GB" "TB" "PB")
-  local i=0
+# --- Logging ---
+log_step() { printf '\033[0;36m→ %s\033[0m\n' "$1"; }
+log_done() { printf '\033[0;32m✔ %s\033[0m\n' "$1"; }
+log_warn() { printf '\033[0;33m! %s\033[0m\n' "$1"; }
+log_fail() { printf '\033[0;31m✘ %s\033[0m\n' "$1"; exit 1; }
 
-  while (( bytes >= 1024 && i < ${#units[@]} - 1 )); do
-    bytes=$(( bytes / 1024 ))
-    (( i++ ))
-  done
-
-  echo "${bytes} ${units[$i]}"
+# --- Detect Package Manager ---
+detect_pkg_manager() {
+    if command -v apt >/dev/null 2>&1; then
+        echo "apt"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "dnf"
+    elif command -v yum >/dev/null 2>&1; then
+        echo "yum"
+    elif command -v zypper >/dev/null 2>&1; then
+        echo "zypper"
+    elif command -v pacman >/dev/null 2>&1; then
+        echo "pacman"
+    elif command -v apk >/dev/null 2>&1; then
+        echo "apk"
+    elif command -v nix-env >/dev/null 2>&1; then
+        echo "nix"
+    else
+        echo "null"
+    fi
 }
-log_step() { echo -e "\033[0;36m→ $1\033[0m"; }
-log_done() { echo -e "\033[0;32m✔ $1\033[0m"; }
-log_fail() { echo -e "\033[0;31m✘ $1\033[0m"; exit 1; }
 
-# Get all release assets
-ASSETS=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/latest" | jq '.assets')
+# --- Install Dependencies ---
+install_deps() {
+    if [ "$1" = "null" ]; then
+      log_step "Unsupported package manager: $pm. Automatic dependency installation is not supported."
+      log_step "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+      log_step "If you’d like to help extend this installer for $pm, please reach out."
+      log_step "I currently don’t have enough $pm experience, so contributions from $pm users are welcome."
+      log_step "You can contact me here: https://github.com/PRASSamin/prasmoid/issues"
+      log_step "Prasmoid will continue installing, but some features may not work until dependencies are installed."
+      return
+    fi
 
-# Extract URLs for both binaries
-NORMAL_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .browser_download_url')
-PORTABLE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .browser_download_url')
+    pm=$1
+    log_step "Installing dependencies using $pm..."
 
-# Get sizes
-NORMAL_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid") | .size')
-PORTABLE_SIZE=$(echo "$ASSETS" | jq -r '.[] | select(.name == "prasmoid-portable") | .size')
+    case "$pm" in
+        apt)
+            sudo apt install -y curl qt6-tools-dev plasma-sdk gettext
+            ;;
+        dnf|yum)
+            sudo $pm install -y curl qmlformat plasma-sdk gettext
+            ;;
+        zypper)
+            log_warn "Zypper/openSUSE detected. Automatic dependency installation is not supported."
+            log_warn "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+            log_warn "If you’d like, you can contact me to help extend this installer for openSUSE."
+            log_warn "I currently don’t have openSUSE experience, so I need a user familiar with it to contribute."
+            log_warn "You can reach me at: https://github.com/PRASSamin/prasmoid/issues"
+            log_warn "Prasmoid will continue installing, but some features may not work until dependencies are installed."
+            ;;
+        pacman)
+            sudo pacman -Sy --noconfirm curl qt6-declarative plasma-sdk gettext
+            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            ;;
+        apk)
+            sudo apk add curl qt6-qttools-dev plasma-sdk gettext
+            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            ;;
+        nix)
+            log_warn "Nix environment detected. Automatic dependency installation is not supported."
+            log_warn "Please install the required dependencies manually: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
+            log_warn "If you’d like to help extend this installer for Nix, please reach out."
+            log_warn "I currently don’t have enough Nix experience, so contributions from Nix users are welcome."
+            log_warn "You can contact me here: https://github.com/PRASSamin/prasmoid/issues"
+            log_warn "Prasmoid will continue installing, but some features may not work until dependencies are installed."
+            ;;
+        *)
+    esac
 
-# Get URLs for checksums file
-SHA256_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url')
-if [[ -z "$SHA256_URL" ]]; then
-  log_fail "Error: SHA256SUMS file is missing from the release assets. Cannot continue."
-fi
+    log_done "Dependencies installed"
+}
 
-# Handle user input based on TTY availability
-if [[ -t 0 ]]; then
-  echo "Please select which version to install:"
-  echo "1) Prasmoid ($(formatted_size $NORMAL_SIZE))"
-  echo "2) Prasmoid-portable ($(formatted_size $PORTABLE_SIZE)) (Recommended for minimal systems e.g. Alpine, NixOS, etc.)"
-  read -p "Enter your choice (1 or 2): " choice
+# --- Main Script ---
+PM=$(detect_pkg_manager)
+install_deps "$PM"
+
+# --- Get GitHub release info ---
+RELEASE_JSON=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/latest")
+
+extract_url() {
+    asset=$1
+    echo "$RELEASE_JSON" | awk -v a="$asset" '
+        $0 ~ "\"name\": \""a"\"" {found=1}
+        found && $0 ~ "\"browser_download_url\"" {
+            gsub(/.*"browser_download_url": "|".*/, "", $0)
+            print $0
+            exit
+        }
+    '
+}
+
+extract_size() {
+    asset=$1
+    echo "$RELEASE_JSON" | awk -v a="$asset" '
+        $0 ~ "\"name\": \""a"\"" {found=1}
+        found && $0 ~ "\"size\"" {
+            gsub(/[^0-9]/, "", $0)
+            print $0
+            exit
+        }
+    '
+}
+
+NORMAL_URL=$(extract_url "prasmoid")
+PORTABLE_URL=$(extract_url "prasmoid-portable")
+SHA256_URL=$(extract_url "SHA256SUMS")
+NORMAL_SIZE=$(extract_size "prasmoid")
+PORTABLE_SIZE=$(extract_size "prasmoid-portable")
+
+[ -z "$SHA256_URL" ] && log_fail "SHA256SUMS file missing in release assets."
+
+# --- Select binary ---
+if [ -t 0 ]; then
+    echo "Please select which version to install:"
+    echo "1) Prasmoid $(($NORMAL_SIZE / 1024 / 1024)) MB"
+    echo "2) Prasmoid-portable $(($PORTABLE_SIZE / 1024 / 1024)) MB (Recommended for Alpine, NixOS, etc.)"
+    printf "Enter choice (1 or 2): "
+    read choice
 else
-  choice="${1:-1}"  # Default to 1 if no arg is passed
+    choice="${1:-1}"
 fi
 
-# Validate choice
-if [[ "$choice" != "1" && "$choice" != "2" ]]; then
-  log_fail "Invalid choice! Please enter 1 or 2."
-fi
-
-# Select appropriate binary
-if [[ "$choice" == "1" ]]; then
-  DOWNLOAD_URL="$NORMAL_URL"
-  BINARY_NAME="prasmoid"
+if [ "$choice" = "1" ]; then
+    DOWNLOAD_URL="$NORMAL_URL"
+    BINARY_NAME="prasmoid"
 else
-  DOWNLOAD_URL="$PORTABLE_URL"
-  BINARY_NAME="prasmoid-portable"
+    DOWNLOAD_URL="$PORTABLE_URL"
+    BINARY_NAME="prasmoid-portable"
 fi
 
-# Download binary
-echo "Downloading $BINARY_NAME..."
+# --- Download ---
+log_step "Downloading $BINARY_NAME..."
 curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
 
-# Verify download
-if [[ ! -f "$BINARY_NAME" ]]; then
-  log_fail "Download failed!"
-fi
+# --- Verify checksum ---
+TMPDIR="${TMPDIR:-/tmp}"
+TMPFILE=$(mktemp "$TMPDIR/prasmoid-XXXXXX")
+curl -L "$SHA256_URL" -o "$TMPFILE"
 
-if curl -L "$SHA256_URL" | sha256sum -c --ignore-missing --status - ; then
-  log_done "Checksum passed"
-else
-  log_fail "Checksum failed!"
-fi
+EXPECTED_CHECKSUM=$(awk -v bin="$BINARY_NAME" '$2 == bin {print $1}' "$TMPFILE")
+ACTUAL_CHECKSUM=$(sha256sum "$BINARY_NAME" | awk '{print $1}')
 
+[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ] && log_fail "Checksum failed! Expected: $EXPECTED_CHECKSUM, Got: $ACTUAL_CHECKSUM"
+log_done "Checksum passed"
+
+rm -f "$TMPFILE"
 chmod +x "$BINARY_NAME"
 
-# Detect if running as root, else use sudo
-if [[ "$EUID" -ne 0 ]]; then
-  log_step "Installing to /usr/bin using sudo..."
-  sudo cp "$BINARY_NAME" /usr/bin/prasmoid
+# --- Install ---
+if [ "$(id -u)" -ne 0 ]; then
+    log_step "Installing to /usr/bin using sudo..."
+    sudo cp "$BINARY_NAME" /usr/bin/prasmoid
 else
-  log_step "Installing to /usr/bin..."
-  cp "$BINARY_NAME" /usr/bin/prasmoid
+    log_step "Installing to /usr/bin..."
+    cp "$BINARY_NAME" /usr/bin/prasmoid
 fi
 
 rm "$BINARY_NAME"
 
-# Final check
-if [[ ! -f "/usr/bin/prasmoid" ]]; then
-  log_fail "Installation failed!"
-fi
+[ ! -f "/usr/bin/prasmoid" ] && log_fail "Installation failed!"
 
 log_done "$BINARY_NAME installed successfully!"
-echo -e "\Run it anytime with: prasmoid"
+
+echo ""
+echo "Run it anytime with: prasmoid"
