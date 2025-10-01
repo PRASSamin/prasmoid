@@ -34,7 +34,7 @@ build() {
 		-buildmode=pie \
 		-mod=readonly \
 		-modcacherw \
-		-ldflags "-s -w -X github.com/PRASSamin/prasmoid/internal.Version=$pkgver" -o prasmoid ./src
+		-ldflags "-s -w -X github.com/PRASSamin/prasmoid/internal.Version=${pkgver}" -o prasmoid ./src
 }
 
 package() {
