@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
+	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -409,110 +409,35 @@ func TestLoadConfigRC(t *testing.T) {
 	})
 }
 
-
-func TestEnsureBinaryLinked(t *testing.T) {
-	originalExecLookPath := execLookPath
-	originalExecCommand := execCommand
-	originalOsLstat := osLstat
-	originalOsSymlink := osSymlink
-	defer func() {
-		execLookPath = originalExecLookPath
-		execCommand = originalExecCommand
-		osLstat = originalOsLstat
-		osSymlink = originalOsSymlink
-	}()
-
-	t.Run("binary already in path", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "/usr/bin/my-bin", nil
-		}
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
+// TestCheckRoot tests the checkRoot function
+func TestCheckRoot(t *testing.T) {
+	originalUserCurrent := userCurrent
+	t.Cleanup(func() {
+		userCurrent = originalUserCurrent
 	})
 
-	t.Run("binary found and symlinked", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
+	t.Run("user is root", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return &user.User{Uid: "0"}, nil
 		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, os.ErrNotExist
-		}
-		var symlinkCalled bool
-		osSymlink = func(oldname, newname string) error {
-			symlinkCalled = true
-			assert.Equal(t, "/opt/my-bin/my-bin", oldname)
-			assert.Equal(t, "/usr/local/bin/my-bin", newname)
-			return nil
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
-		assert.True(t, symlinkCalled)
+		assert.NoError(t, CheckRoot())
 	})
 
-	t.Run("binary found but symlink exists", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
+	t.Run("user is not root", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return &user.User{Uid: "1000"}, nil
 		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, nil // file exists
-		}
-		var symlinkCalled bool
-		osSymlink = func(oldname, newname string) error {
-			symlinkCalled = true
-			return nil
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
-		assert.False(t, symlinkCalled)
-	})
-
-	t.Run("binary not found", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "") // empty output
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
+		err := CheckRoot()
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "the requested operation requires superuser privileges")
 	})
 
-	t.Run("find command fails", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
+	t.Run("user.Current returns error", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return nil, errors.New("user error")
 		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("false") // command that fails
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
+		err := CheckRoot()
 		assert.Error(t, err)
-	})
-
-	t.Run("symlink fails", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, os.ErrNotExist
-		}
-		osSymlink = func(oldname, newname string) error {
-			return errors.New("symlink error")
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get current user")
 	})
 }

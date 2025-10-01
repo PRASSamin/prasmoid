@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -14,15 +15,12 @@ import (
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/internal/runtime"
 	"github.com/PRASSamin/prasmoid/types"
-	"github.com/fatih/color"
 )
 
 var (
 	surveyAskOne = survey.AskOne
-	execCommand  = exec.Command
 	execLookPath = exec.LookPath
-	osLstat      = os.Lstat
-	osSymlink    = os.Symlink
+	userCurrent  = user.Current
 )
 
 // check if plasmoid is linked
@@ -206,37 +204,6 @@ var GetBinPath = func() (string, error) {
 	return "", fmt.Errorf("no supported bin path found: %+v", defaultCandidates)
 }
 
-// ensureBinaryLinked looks for a binary and symlinks it into our binPath.
-var ensureBinaryLinked = func(binName, binPath string) error {
-	if _, err := execLookPath(binName); err == nil {
-		return nil // already found in PATH
-	}
-
-	color.Yellow("Binary %s not in PATH, searching manually...", binName)
-	findCmd := execCommand("sudo", "find", "/", "-type", "f", "-name", binName)
-	out, err := findCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to locate %s binary: %v", binName, err)
-	}
-
-	path := strings.TrimSpace(strings.Split(string(out), "\n")[0])
-	if path == "" {
-		return fmt.Errorf("%s not found on system", binName)
-	}
-
-	link := filepath.Join(binPath, binName)
-	if _, err := osLstat(link); err == nil {
-		color.Yellow("Warning: symlink already exists at %s, skipping...", link)
-		return nil
-	}
-
-	if err := osSymlink(path, link); err != nil {
-		return fmt.Errorf("failed to create symlink: %v", err)
-	}
-
-	return nil
-}
-
 func IsValidPlasmoid() bool {
 	if _, err := os.Stat("metadata.json"); os.IsNotExist(err) {
 		return false
@@ -356,4 +323,16 @@ func AskForLocales(defaultLocales ...[]string) []string {
 
 func IsQmlFile(filename string) bool {
 	return strings.HasSuffix(filename, ".qml")
+}
+
+var CheckRoot = func() error {
+	currentUser, err := userCurrent()
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %v", err)
+	}
+
+	if currentUser.Uid != "0" {
+		return fmt.Errorf("the requested operation requires superuser privileges. use `sudo %s`", strings.Join(os.Args[0:], " "))
+	}
+	return nil
 }

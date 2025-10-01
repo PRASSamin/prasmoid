@@ -6,50 +6,17 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/user"
 	"testing"
 
+	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCheckRoot tests the checkRoot function
-func TestCheckRoot(t *testing.T) {
-	originalUserCurrent := userCurrent
-	t.Cleanup(func() {
-		userCurrent = originalUserCurrent
-	})
-
-	t.Run("user is root", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return &user.User{Uid: "0"}, nil
-		}
-		assert.NoError(t, checkRoot())
-	})
-
-	t.Run("user is not root", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return &user.User{Uid: "1000"}, nil
-		}
-		err := checkRoot()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "the requested operation requires superuser privileges")
-	})
-
-	t.Run("user.Current returns error", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return nil, errors.New("user error")
-		}
-		err := checkRoot()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get current user")
-	})
-}
-
 // TestUpgradeCmd tests the upgradeCmd.Run function
 func TestUpgradeCmd(t *testing.T) {
 	// Save original functions and restore after test
-	originalCheckRoot := checkRoot
+	originalCheckRoot := utils.CheckRoot
 	originalOsExecutable := osExecutable
 	originalExecCommand := execCommand
 	originalOsRemove := osRemove
@@ -57,7 +24,7 @@ func TestUpgradeCmd(t *testing.T) {
 	originalUtilsIsPackageInstalled := utilsIsPackageInstalled
 
 	t.Cleanup(func() {
-		checkRoot = originalCheckRoot
+		utilsCheckRoot = originalCheckRoot
 		osExecutable = originalOsExecutable
 		execCommand = originalExecCommand
 		osRemove = originalOsRemove
@@ -66,7 +33,7 @@ func TestUpgradeCmd(t *testing.T) {
 	})
 
 	// Mock checkRoot to always succeed by default for upgradeCmd tests
-	checkRoot = func() error { return nil }
+	utilsCheckRoot = func() error { return nil }
 
 	// Helper to capture stdout
 	captureOutput := func() (*bytes.Buffer, func()) {
@@ -101,8 +68,8 @@ func TestUpgradeCmd(t *testing.T) {
 	t.Run("checkRoot fails", func(t *testing.T) {
 		// Arrange
 		utilsIsPackageInstalled = func(pkg string) bool { return true }
-		checkRoot = func() error { return errors.New("root check failed") }
-		defer func() { checkRoot = func() error { return nil } }()
+		utilsCheckRoot = func() error { return errors.New("root check failed") }
+		defer func() { utilsCheckRoot = func() error { return nil } }()
 
 		buf, restoreOutput := captureOutput()
 

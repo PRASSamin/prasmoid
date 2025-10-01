@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/user"
 	"testing"
 
 	"github.com/fatih/color"
@@ -16,12 +15,12 @@ import (
 func TestCliFixCmd(t *testing.T) {
 	// Save original functions
 	originalUtilsIsPackageInstalled := utilsIsPackageInstalled
-	originalCheckRoot := checkRoot
+	originalCheckRoot := utilsCheckRoot
 	originalExecCommand := execCommand
 
 	t.Cleanup(func() {
 		utilsIsPackageInstalled = originalUtilsIsPackageInstalled
-		checkRoot = originalCheckRoot
+		utilsCheckRoot = originalCheckRoot
 		execCommand = originalExecCommand
 	})
 
@@ -57,7 +56,7 @@ func TestCliFixCmd(t *testing.T) {
 	t.Run("checkRoot fails", func(t *testing.T) {
 		// Arrange
 		utilsIsPackageInstalled = func(pkg string) bool { return true }
-		checkRoot = func() error { return errors.New("not root") }
+		utilsCheckRoot = func() error { return errors.New("not root") }
 		buf, restore := captureOutput()
 
 		// Act
@@ -72,7 +71,7 @@ func TestCliFixCmd(t *testing.T) {
 	t.Run("exec command fails", func(t *testing.T) {
 		// Arrange
 		utilsIsPackageInstalled = func(pkg string) bool { return true }
-		checkRoot = func() error { return nil }
+		utilsCheckRoot = func() error { return nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			return exec.Command("bash", "-c", "exit 1")
 		}
@@ -90,7 +89,7 @@ func TestCliFixCmd(t *testing.T) {
 	t.Run("exec command succeeds", func(t *testing.T) {
 		// Arrange
 		utilsIsPackageInstalled = func(pkg string) bool { return true }
-		checkRoot = func() error { return nil }
+		utilsCheckRoot = func() error { return nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			return exec.Command("true")
 		}
@@ -103,37 +102,5 @@ func TestCliFixCmd(t *testing.T) {
 		restore()
 		output := buf.String()
 		assert.NotContains(t, output, "Fix failed")
-	})
-}
-
-func TestCheckRoot(t *testing.T) {
-	originalUserCurrent := userCurrent
-	t.Cleanup(func() {
-		userCurrent = originalUserCurrent
-	})
-
-	t.Run("user is root", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return &user.User{Uid: "0"}, nil
-		}
-		assert.NoError(t, checkRoot())
-	})
-
-	t.Run("user is not root", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return &user.User{Uid: "1000"}, nil
-		}
-		err := checkRoot()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "requires superuser privileges")
-	})
-
-	t.Run("user.Current returns error", func(t *testing.T) {
-		userCurrent = func() (*user.User, error) {
-			return nil, errors.New("user error")
-		}
-		err := checkRoot()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get current user")
 	})
 }

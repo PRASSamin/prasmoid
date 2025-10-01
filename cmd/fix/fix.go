@@ -8,7 +8,6 @@ package fix
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ var cliFixCmd = &cobra.Command{
 			return
 		}
 
-		if err := checkRoot(); err != nil {
+		if err := utilsCheckRoot(); err != nil {
 			fmt.Println(color.RedString(err.Error()))
 			return
 		}
@@ -50,16 +49,4 @@ var cliFixCmd = &cobra.Command{
 			fmt.Println(color.RedString("Fix failed: %v", err))
 		}
 	},
-}
-
-var checkRoot = func() error {
-	currentUser, err := userCurrent()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %v", err)
-	}
-
-	if currentUser.Uid != "0" {
-		return fmt.Errorf("the requested operation requires superuser privileges. use `sudo %s`", strings.Join(os.Args[0:], " "))
-	}
-	return nil
 }

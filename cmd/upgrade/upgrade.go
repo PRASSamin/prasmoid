@@ -8,7 +8,6 @@ package upgrade
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ var upgradeCmd = &cobra.Command{
 			return
 		}
 
-		if err := checkRoot(); err != nil {
+		if err := utilsCheckRoot(); err != nil {
 			fmt.Println(color.RedString(err.Error()))
 			return
 		}
@@ -61,16 +60,4 @@ var upgradeCmd = &cobra.Command{
 			fmt.Println(color.YellowString("Warning: Failed to remove update cache file: %v\n", err))
 		}
 	},
-}
-
-var checkRoot = func() error {
-	currentUser, err := userCurrent()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %v", err)
-	}
-
-	if currentUser.Uid != "0" {
-		return fmt.Errorf("the requested operation requires superuser privileges. use `sudo %s`", strings.Join(os.Args[0:], " "))
-	}
-	return nil
 }
