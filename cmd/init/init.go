@@ -90,7 +90,7 @@ var InitCmd = &cobra.Command{
 			return
 		}
 
-		if Config.InitGit {
+		if Config.InitGit && utilsIsPackageInstalled("git") {
 			if err := initializeGitRepo(); err != nil {
 				fmt.Println(color.YellowString("Could not initialize git repository: %v", err))
 			} else {
@@ -176,11 +176,11 @@ var gatherProjectConfig = func() error {
 	Config.Locales = utilsAskForLocales()
 
 	// Check for git and ask to initialize
-	if utilsIsPackageInstalled("git") {
-		gitQuestion := &survey.Confirm{
+	gitQuestion := &survey.Confirm{
 			Message: "Initialize a git repository?",
 			Default: true,
-		}
+	}
+	if utilsIsPackageInstalled("git") {
 		if err := surveyAskOne(gitQuestion, &Config.InitGit); err != nil {
 			return err
 		}
@@ -214,10 +214,6 @@ func validateProjectName(ans interface{}) error {
 }
 
 var InitPlasmoid = func() error {
-	if err := utilsInstallDependencies(); err != nil {
-		return err
-	}
-
 	// Create project files from templates
 	for relPath, content := range FileTemplates {
 		if err := CreateFileFromTemplate(relPath, content); err != nil {
@@ -238,7 +234,13 @@ var InitPlasmoid = func() error {
 	// Create custom commands directory
 	_ = osMkdirAll(filepath.Join(Config.Path, ".prasmoid/commands"), 0755)
 
-	dest := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids", Config.ID)
+	plasmoidDir := filepath.Join(os.Getenv("HOME"), ".local/share/plasma/plasmoids")
+
+	if _, err := osStat(plasmoidDir); os.IsNotExist(err) {
+		_ = osMkdirAll(plasmoidDir, 0755)
+	}
+
+	dest := filepath.Join(plasmoidDir, Config.ID)
 
 	// Remove if exists
 	_ = osRemoveAll(dest)
@@ -363,7 +365,7 @@ func printNextSteps() {
 	if Config.Name != "." {
 		fmt.Printf("1. %s\n", cyan("cd ", Config.Name))
 	}
-	fmt.Printf("2. %s\n", cyan("plasmoid preview"))
+	fmt.Printf("2. %s\n", cyan("prasmoid preview"))
 }
 
 func clearLine() {

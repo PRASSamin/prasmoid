@@ -8,10 +8,7 @@ package upgrade
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
@@ -19,38 +16,27 @@ import (
 )
 
 func init() {
+	if utilsIsPackageInstalled("curl") {
+		upgradeCmd.Short = "Upgrade to latest version of Prasmoid CLI."
+	} else {
+		upgradeCmd.Short = fmt.Sprintf("Upgrade to latest version of Prasmoid CLI %s", color.RedString("(disabled)"))
+	}
+	upgradeCmd.GroupID = "cli"
 	root.RootCmd.AddCommand(upgradeCmd)
 }
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrade to latest version of Prasmoid CLI.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := checkRoot(); err != nil {
-			fmt.Println(color.RedString(err.Error()))
+		if !utilsIsPackageInstalled("curl") {
+			fmt.Println(color.RedString("upgrade command is disabled due to missing dependencies."))
+			fmt.Println(color.BlueString("Please install curl and try again."))
 			return
 		}
 
-		if !utilsIsPackageInstalled(consts.CurlPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			confirmPrompt := &survey.Confirm{
-				Message: "curl is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if err := surveyAskOne(confirmPrompt, &confirmInstallation); err != nil {
-				fmt.Println(color.RedString("Failed to ask for curl installation: %v", err))
-				return
-			}
-
-			if confirmInstallation {
-				if err := utilsInstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install curl:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
+		if err := utilsCheckRoot(); err != nil {
+			fmt.Println(color.RedString(err.Error()))
+			return
 		}
 
 		exePath, err := osExecutable()
@@ -59,7 +45,7 @@ var upgradeCmd = &cobra.Command{
 			return
 		}
 
-		cmdStr := fmt.Sprintf("curl -sSL %s | bash -s %s", scriptURL, exePath)
+		cmdStr := fmt.Sprintf("sudo curl -sSL %s | bash -s %s", scriptURL, exePath)
 
 		command := execCommand("bash", "-c", cmdStr)
 		command.Stdout = os.Stdout
@@ -74,16 +60,4 @@ var upgradeCmd = &cobra.Command{
 			fmt.Println(color.YellowString("Warning: Failed to remove update cache file: %v\n", err))
 		}
 	},
-}
-
-var checkRoot = func() error {
-	currentUser, err := userCurrent()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %v", err)
-	}
-
-	if currentUser.Uid != "0" {
-		return fmt.Errorf("the requested operation requires superuser privileges. use `sudo %s`", strings.Join(os.Args[0:], " "))
-	}
-	return nil
 }

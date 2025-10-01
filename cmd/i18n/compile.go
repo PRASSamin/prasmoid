@@ -11,9 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
@@ -25,40 +23,27 @@ var silent bool
 func init() {
 	I18nCompileCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Do not show progress messages")
 
+	if utilsIsPackageInstalled("msgfmt") {
+		I18nCompileCmd.Short = "Compile .po files to binary .mo files"
+	} else {
+		I18nCompileCmd.Short = fmt.Sprintf("Compile .po files to binary .mo files %s", color.RedString("(disabled)"))
+	}
+
 	I18nCmd.AddCommand(I18nCompileCmd)
 }
 
 var I18nCompileCmd = &cobra.Command{
 	Use:   "compile",
-	Short: "Compile .po files to binary .mo files",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utilsIsValidPlasmoid() {
-			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
+		if !utilsIsPackageInstalled("msgfmt") {
+			fmt.Println(color.RedString("compile command is disabled due to missing msgfmt dependency."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install it."))
 			return
 		}
 
-		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "gettext is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if !confirm {
-				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-					return
-				}
-			}
-
-			if confirm {
-				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install gettext:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
+		if !utilsIsValidPlasmoid() {
+			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
+			return
 		}
 
 		if !silent {

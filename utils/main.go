@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -14,16 +15,12 @@ import (
 	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/internal/runtime"
 	"github.com/PRASSamin/prasmoid/types"
-	"github.com/fatih/color"
 )
 
 var (
 	surveyAskOne = survey.AskOne
-	execCommand  = exec.Command
 	execLookPath = exec.LookPath
-	osLstat      = os.Lstat
-	osSymlink    = os.Symlink
-	getBinPath   = GetBinPath
+	userCurrent  = user.Current
 )
 
 // check if plasmoid is linked
@@ -183,24 +180,6 @@ func UpdateMetadata(key string, value interface{}, sectionOpt ...string) error {
 	return nil
 }
 
-var supportedPackageManagers = map[string]string{
-	"apt":     "apt",
-	"dnf":     "dnf",
-	"pacman":  "pacman",
-	"nix-env": "nix",
-}
-
-// Detect package manager
-var DetectPackageManager = func() (string, error) {
-	for binary, pm := range supportedPackageManagers {
-		_, err := execLookPath(binary)
-		if err == nil {
-			return pm, nil
-		}
-	}
-	return "", fmt.Errorf("no supported package manager found: %+v", supportedPackageManagers)
-}
-
 var GetBinPath = func() (string, error) {
 	defaultCandidates := []string{
 		"/usr/bin",
@@ -223,110 +202,6 @@ var GetBinPath = func() (string, error) {
 	}
 
 	return "", fmt.Errorf("no supported bin path found: %+v", defaultCandidates)
-}
-
-var InstallPackage = func(pm, binName string, pkgNames map[string]string) error {
-	binPath, err := getBinPath()
-	if err != nil {
-		return fmt.Errorf("failed to get bin path: %v", err)
-	}
-
-	pkgName, ok := pkgNames[pm]
-	if !ok {
-		return fmt.Errorf("unsupported package manager: %s", pm)
-	}
-
-	var cmd *exec.Cmd
-	switch pm {
-	case "nix":
-		cmd = execCommand("nix-env", "-iA", pkgName)
-	case "pacman":
-		cmd = execCommand("sudo", "pacman", "-S", "--noconfirm", pkgName)
-	default:
-		cmd = execCommand("sudo", pm, "install", "-y", pkgName)
-	}
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		color.Yellow("Warning: install command exited with error: %v", err)
-	}
-
-	if err := ensureBinaryLinked(binName, binPath); err != nil {
-		return err
-	}
-
-	color.Green("%s installed!", binName)
-	return nil
-}
-
-// ensureBinaryLinked looks for a binary and symlinks it into our binPath.
-var ensureBinaryLinked = func(binName, binPath string) error {
-	if _, err := execLookPath(binName); err == nil {
-		return nil // already found in PATH
-	}
-
-	color.Yellow("Binary %s not in PATH, searching manually...", binName)
-	findCmd := execCommand("sudo", "find", "/", "-type", "f", "-name", binName)
-	out, err := findCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to locate %s binary: %v", binName, err)
-	}
-
-	path := strings.TrimSpace(strings.Split(string(out), "\n")[0])
-	if path == "" {
-		return fmt.Errorf("%s not found on system", binName)
-	}
-
-	link := filepath.Join(binPath, binName)
-	if _, err := osLstat(link); err == nil {
-		color.Yellow("Warning: symlink already exists at %s, skipping...", link)
-		return nil
-	}
-
-	if err := osSymlink(path, link); err != nil {
-		return fmt.Errorf("failed to create symlink: %v", err)
-	}
-
-	return nil
-}
-
-func InstallDependencies() error {
-	pm, err := DetectPackageManager()
-	if err != nil {
-		return err
-	}
-
-	if !IsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
-		color.Yellow("Installing qmlformat...")
-		if err := InstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName); err != nil {
-			return err
-		}
-	}
-
-	if !IsPackageInstalled(consts.PlasmoidPreviewPackageName["binary"]) {
-		color.Yellow("Installing plasmoidviewer...")
-		if err := InstallPackage(pm, consts.PlasmoidPreviewPackageName["binary"], consts.PlasmoidPreviewPackageName); err != nil {
-			return err
-		}
-	}
-
-	if !IsPackageInstalled(consts.GettextPackageName["binary"]) {
-		color.Yellow("Installing gettext...")
-		if err := InstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-			return err
-		}
-	}
-
-	if !IsPackageInstalled(consts.CurlPackageName["binary"]) {
-		color.Yellow("Installing curl...")
-		if err := InstallPackage(pm, consts.CurlPackageName["binary"], consts.CurlPackageName); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func IsValidPlasmoid() bool {
@@ -448,4 +323,16 @@ func AskForLocales(defaultLocales ...[]string) []string {
 
 func IsQmlFile(filename string) bool {
 	return strings.HasSuffix(filename, ".qml")
+}
+
+var CheckRoot = func() error {
+	currentUser, err := userCurrent()
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %v", err)
+	}
+
+	if currentUser.Uid != "0" {
+		return fmt.Errorf("the requested operation requires superuser privileges. use `sudo %s`", strings.Join(os.Args[0:], " "))
+	}
+	return nil
 }

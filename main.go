@@ -16,10 +16,10 @@ import (
 	_ "github.com/PRASSamin/prasmoid/cmd/link"
 	_ "github.com/PRASSamin/prasmoid/cmd/preview"
 	_ "github.com/PRASSamin/prasmoid/cmd/regen"
-	_ "github.com/PRASSamin/prasmoid/cmd/setup"
 	_ "github.com/PRASSamin/prasmoid/cmd/uninstall"
 	_ "github.com/PRASSamin/prasmoid/cmd/unlink"
 	_ "github.com/PRASSamin/prasmoid/cmd/upgrade"
+	_ "github.com/PRASSamin/prasmoid/cmd/fix"
 )
 
 func main() {

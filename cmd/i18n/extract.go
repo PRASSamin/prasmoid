@@ -15,9 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	root "github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -25,40 +23,28 @@ import (
 
 func init() {
 	I18nExtractCmd.Flags().Bool("no-po", false, "Skip .po file generation")
+
+	if utilsIsPackageInstalled("msginit") && utilsIsPackageInstalled("msgmerge") && utilsIsPackageInstalled("xgettext") {
+		I18nExtractCmd.Short = "Extract translatable strings from source files"
+	} else {
+		I18nExtractCmd.Short = fmt.Sprintf("Extract translatable strings from source files %s", color.RedString("(disabled)"))
+	}
+
 	I18nCmd.AddCommand(I18nExtractCmd)
 }
 
 var I18nExtractCmd = &cobra.Command{
 	Use:   "extract",
-	Short: "Extract translatable strings from source files",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !utilsIsValidPlasmoid() {
-			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
+		if !utilsIsPackageInstalled("msginit") || !utilsIsPackageInstalled("msgmerge") || !utilsIsPackageInstalled("xgettext") {
+			fmt.Println(color.RedString("extract command is disabled due to missing dependencies."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install them."))
 			return
 		}
 
-		if !utilsIsPackageInstalled(consts.GettextPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "gettext is not installed. Do you want to install it first?",
-				Default: true,
-			}
-			if !confirm {
-				if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-					return
-				}
-			}
-
-			if confirm {
-				if err := utilsInstallPackage(pm, consts.GettextPackageName["binary"], consts.GettextPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install gettext:", err))
-					return
-				}
-			} else {
-				fmt.Println("Operation cancelled.")
-				return
-			}
+		if !utilsIsValidPlasmoid() {
+			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
+			return
 		}
 
 		color.Cyan("Extracting translatable strings...")

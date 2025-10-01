@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
+	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -318,51 +318,6 @@ func TestIsInstalled(t *testing.T) {
 	})
 }
 
-func TestDetectPackageManager(t *testing.T) {
-	setup := func(t *testing.T, executables ...string) {
-		tmpDir := t.TempDir()
-		for _, exec := range executables {
-			err := os.WriteFile(filepath.Join(tmpDir, exec), []byte("#!/bin/sh\n"), 0755)
-			require.NoError(t, err)
-		}
-		t.Setenv("PATH", tmpDir)
-	}
-
-	t.Run("detect apt", func(t *testing.T) {
-		setup(t, "apt")
-		pm, err := DetectPackageManager()
-		assert.NoError(t, err)
-		assert.Equal(t, "apt", pm)
-	})
-
-	t.Run("detect dnf", func(t *testing.T) {
-		setup(t, "dnf")
-		pm, err := DetectPackageManager()
-		assert.NoError(t, err)
-		assert.Equal(t, "dnf", pm)
-	})
-
-	t.Run("detect pacman", func(t *testing.T) {
-		setup(t, "pacman")
-		pm, err := DetectPackageManager()
-		assert.NoError(t, err)
-		assert.Equal(t, "pacman", pm)
-	})
-
-	t.Run("detect nix-env", func(t *testing.T) {
-		setup(t, "nix-env")
-		pm, err := DetectPackageManager()
-		assert.NoError(t, err)
-		assert.Equal(t, "nix", pm)
-	})
-
-	t.Run("no supported pm found", func(t *testing.T) {
-		setup(t)
-		_, err := DetectPackageManager()
-		assert.Error(t, err)
-	})
-}
-
 func TestIsPackageInstalled(t *testing.T) {
 	setup := func(t *testing.T, executables ...string) {
 		tmpDir := t.TempDir()
@@ -454,247 +409,35 @@ func TestLoadConfigRC(t *testing.T) {
 	})
 }
 
-func TestInstallDependencies(t *testing.T) {
-	originalDetectPackageManager := DetectPackageManager
-	originalIsPackageInstalled := IsPackageInstalled
-	originalInstallPackage := InstallPackage
-	defer func() {
-		DetectPackageManager = originalDetectPackageManager
-		IsPackageInstalled = originalIsPackageInstalled
-		InstallPackage = originalInstallPackage
-	}()
-
-	t.Run("all packages installed", func(t *testing.T) {
-		DetectPackageManager = func() (string, error) { return "apt", nil }
-		IsPackageInstalled = func(name string) bool { return true }
-		var installCalled bool
-		InstallPackage = func(pm, binName string, pkgNames map[string]string) error { installCalled = true; return nil }
-
-		err := InstallDependencies()
-		assert.NoError(t, err)
-		assert.False(t, installCalled)
+// TestCheckRoot tests the checkRoot function
+func TestCheckRoot(t *testing.T) {
+	originalUserCurrent := userCurrent
+	t.Cleanup(func() {
+		userCurrent = originalUserCurrent
 	})
 
-	t.Run("none of packages installed", func(t *testing.T) {
-		DetectPackageManager = func() (string, error) { return "apt", nil }
-		IsPackageInstalled = func(name string) bool { return false }
-		var installCalled bool
-		InstallPackage = func(pm, binName string, pkgNames map[string]string) error { installCalled = true; return nil }
-
-		err := InstallDependencies()
-		assert.NoError(t, err)
-		assert.True(t, installCalled)
+	t.Run("user is root", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return &user.User{Uid: "0"}, nil
+		}
+		assert.NoError(t, CheckRoot())
 	})
 
-	t.Run("qmlformat not installed", func(t *testing.T) {
-		DetectPackageManager = func() (string, error) { return "apt", nil }
-		IsPackageInstalled = func(name string) bool { return name != "qmlformat" }
-		var qmlformatInstallCalled bool
-		InstallPackage = func(pm, binName string, pkgNames map[string]string) error {
-			if binName == "qmlformat" {
-				qmlformatInstallCalled = true
-			}
-			return nil
+	t.Run("user is not root", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return &user.User{Uid: "1000"}, nil
 		}
-
-		err := InstallDependencies()
-		assert.NoError(t, err)
-		assert.True(t, qmlformatInstallCalled)
-	})
-
-	t.Run("installation fails", func(t *testing.T) {
-		DetectPackageManager = func() (string, error) { return "apt", nil }
-		IsPackageInstalled = func(name string) bool { return false }
-		expectedErr := errors.New("install error")
-		InstallPackage = func(pm, binName string, pkgNames map[string]string) error {
-			return expectedErr
-		}
-
-		err := InstallDependencies()
-		assert.Equal(t, expectedErr, err)
-	})
-}
-
-func TestEnsureBinaryLinked(t *testing.T) {
-	originalExecLookPath := execLookPath
-	originalExecCommand := execCommand
-	originalOsLstat := osLstat
-	originalOsSymlink := osSymlink
-	defer func() {
-		execLookPath = originalExecLookPath
-		execCommand = originalExecCommand
-		osLstat = originalOsLstat
-		osSymlink = originalOsSymlink
-	}()
-
-	t.Run("binary already in path", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "/usr/bin/my-bin", nil
-		}
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
-	})
-
-	t.Run("binary found and symlinked", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, os.ErrNotExist
-		}
-		var symlinkCalled bool
-		osSymlink = func(oldname, newname string) error {
-			symlinkCalled = true
-			assert.Equal(t, "/opt/my-bin/my-bin", oldname)
-			assert.Equal(t, "/usr/local/bin/my-bin", newname)
-			return nil
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
-		assert.True(t, symlinkCalled)
-	})
-
-	t.Run("binary found but symlink exists", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, nil // file exists
-		}
-		var symlinkCalled bool
-		osSymlink = func(oldname, newname string) error {
-			symlinkCalled = true
-			return nil
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.NoError(t, err)
-		assert.False(t, symlinkCalled)
-	})
-
-	t.Run("binary not found", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "") // empty output
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
+		err := CheckRoot()
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "the requested operation requires superuser privileges")
 	})
 
-	t.Run("find command fails", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
+	t.Run("user.Current returns error", func(t *testing.T) {
+		userCurrent = func() (*user.User, error) {
+			return nil, errors.New("user error")
 		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("false") // command that fails
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
+		err := CheckRoot()
 		assert.Error(t, err)
-	})
-
-	t.Run("symlink fails", func(t *testing.T) {
-		execLookPath = func(file string) (string, error) {
-			return "", errors.New("not found")
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("echo", "/opt/my-bin/my-bin")
-		}
-		osLstat = func(name string) (os.FileInfo, error) {
-			return nil, os.ErrNotExist
-		}
-		osSymlink = func(oldname, newname string) error {
-			return errors.New("symlink error")
-		}
-
-		err := ensureBinaryLinked("my-bin", "/usr/local/bin")
-		assert.Error(t, err)
-	})
-}
-
-func TestInstallPackage(t *testing.T) {
-	originalGetBinPath := getBinPath
-	originalExecCommand := execCommand
-	originalEnsureBinaryLinked := ensureBinaryLinked
-	defer func() {
-		getBinPath = originalGetBinPath
-		execCommand = originalExecCommand
-		ensureBinaryLinked = originalEnsureBinaryLinked
-	}()
-
-	t.Run("success for apt", func(t *testing.T) {
-		getBinPath = func() (string, error) {
-			return "/usr/local/bin", nil
-		}
-		var cmdArgs []string
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			cmdArgs = append([]string{name}, args...)
-			return exec.Command("true")
-		}
-		ensureBinaryLinked = func(binName, binPath string) error {
-			return nil
-		}
-
-		err := InstallPackage("apt", "my-bin", map[string]string{"apt": "my-pkg"})
-		assert.NoError(t, err)
-		assert.Equal(t, []string{"sudo", "apt", "install", "-y", "my-pkg"}, cmdArgs)
-	})
-
-	t.Run("success for pacman", func(t *testing.T) {
-		getBinPath = func() (string, error) {
-			return "/usr/local/bin", nil
-		}
-		var cmdArgs []string
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			cmdArgs = append([]string{name}, args...)
-			return exec.Command("true")
-		}
-		ensureBinaryLinked = func(binName, binPath string) error {
-			return nil
-		}
-
-		err := InstallPackage("pacman", "my-bin", map[string]string{"pacman": "my-pkg"})
-		assert.NoError(t, err)
-		assert.Equal(t, []string{"sudo", "pacman", "-S", "--noconfirm", "my-pkg"}, cmdArgs)
-	})
-
-	t.Run("getBinPath fails", func(t *testing.T) {
-		getBinPath = func() (string, error) {
-			return "", errors.New("getBinPath error")
-		}
-		err := InstallPackage("apt", "my-bin", map[string]string{"apt": "my-pkg"})
-		assert.Error(t, err)
-	})
-
-	t.Run("unsupported package manager", func(t *testing.T) {
-		getBinPath = func() (string, error) {
-			return "/usr/local/bin", nil
-		}
-		err := InstallPackage("yum", "my-bin", map[string]string{"apt": "my-pkg"})
-		assert.Error(t, err)
-	})
-
-	t.Run("ensureBinaryLinked fails", func(t *testing.T) {
-		getBinPath = func() (string, error) {
-			return "/usr/local/bin", nil
-		}
-		execCommand = func(name string, args ...string) *exec.Cmd {
-			return exec.Command("true")
-		}
-		ensureBinaryLinked = func(binName, binPath string) error {
-			return errors.New("ensureBinaryLinked error")
-		}
-		err := InstallPackage("apt", "my-bin", map[string]string{"apt": "my-pkg"})
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get current user")
 	})
 }

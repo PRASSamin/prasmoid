@@ -25,6 +25,33 @@ func TestPreviewCmdRun(t *testing.T) {
 	previewTestMutex.Lock()
 	defer previewTestMutex.Unlock()
 
+	t.Run("plasmoidviewer not installed", func(t *testing.T) {
+		// Arrange
+		_, _, cleanup := tests.SetupTestEnvironment(t)
+		defer cleanup()
+
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		// Capture output
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		// Act
+		PreviewCmd.Run(PreviewCmd, []string{})
+		_ = w.Close()
+
+		// Assert
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		assert.Contains(t, buf.String(), "preview command is disabled due to missing dependencies.")
+	})
+
+
 	originalPreviewPlasmoid := previewPlasmoid
 	defer func() {
 		previewPlasmoid = originalPreviewPlasmoid
@@ -34,8 +61,8 @@ func TestPreviewCmdRun(t *testing.T) {
 	setupMocks := func() {
 		utilsIsValidPlasmoid = func() bool { return true }
 		utilsIsLinked = func() bool { return true }
-		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		previewPlasmoid = func(watch bool) error { return nil }
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 	}
 
 	t.Run("invalid plasmoid", func(t *testing.T) {
@@ -60,40 +87,6 @@ func TestPreviewCmdRun(t *testing.T) {
 		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		assert.Contains(t, buf.String(), "Current directory is not a valid plasmoid.")
-	})
-
-	t.Run("failed plasmaviewer install", func(t *testing.T) {
-		// Arrange
-		_, _, cleanup := tests.SetupTestEnvironment(t)
-		defer cleanup()
-		setupMocks()
-		orgUtilsIsPackageInstalled := utilsIsPackageInstalled
-		orgUtilsIsLinked := utilsIsLinked
-		orgUtilsInstallPackage := utilsInstallPackage
-		orgSurveyAskOne := surveyAskOne
-
-		utilsIsPackageInstalled = func(name string) bool { return false }
-		utilsIsLinked = func() bool { return true }
-		utilsInstallPackage = func(pm, pkg string, names map[string]string) error { return errors.New("install error") }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error { return nil }
-		defer func() { utilsIsPackageInstalled = orgUtilsIsPackageInstalled }()
-		defer func() { utilsIsLinked = orgUtilsIsLinked }()
-		defer func() { utilsInstallPackage = orgUtilsInstallPackage }()
-		defer func() { surveyAskOne = orgSurveyAskOne }()
-
-		orgStdout := os.Stdout
-		defer func() { os.Stdout = orgStdout }()
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		color.Output = w
-
-		confirmInstallation = true
-		PreviewCmd.Run(PreviewCmd, []string{})
-		_ = w.Close()
-
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		assert.Contains(t, buf.String(), "Failed to install plasmoidviewer:")
 	})
 
 	t.Run("failed to link", func(t *testing.T) {
@@ -175,30 +168,6 @@ func TestPreviewCmdRun(t *testing.T) {
 
 		// Assert
 		assert.False(t, linkCalled, "LinkPlasmoid should not have been called")
-	})
-
-	t.Run("viewer not installed, user confirms install", func(t *testing.T) {
-		// Arrange
-		_, _, cleanup := tests.SetupTestEnvironment(t)
-		defer cleanup()
-		setupMocks()
-		utilsIsPackageInstalled = func(pkg string) bool { return false }
-		surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true
-			return nil
-		}
-		var installCalled bool
-		utilsInstallPackage = func(pm, pkg string, names map[string]string) error {
-			installCalled = true
-			return nil
-		}
-		previewPlasmoid = func(watch bool) error { return nil }
-
-		// Act
-		PreviewCmd.Run(PreviewCmd, []string{})
-
-		// Assert
-		assert.True(t, installCalled, "InstallPackage should have been called")
 	})
 
 	t.Run("previewPlasmoid fails", func(t *testing.T) {

@@ -12,9 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/cmd"
-	"github.com/PRASSamin/prasmoid/consts"
 	"github.com/PRASSamin/prasmoid/utils"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
@@ -41,12 +39,9 @@ func (w *watcherWrapper) Errors() chan error {
 }
 
 var (
-	utilsIsPackageInstalled   = utils.IsPackageInstalled
 	utilsIsValidPlasmoid      = utils.IsValidPlasmoid
-	utilsDetectPackageManager = utils.DetectPackageManager
-	surveyAskOne              = survey.AskOne
 	utilsIsQmlFile            = utils.IsQmlFile
-	utilsInstallPackage       = utils.InstallPackage
+	utilsIsPackageInstalled   = utils.IsPackageInstalled
 	execCommand               = exec.Command
 	// for testing
 	filepathWalk  = filepath.Walk
@@ -66,40 +61,30 @@ var dir string
 func init() {
 	FormatCmd.Flags().BoolVarP(&watch, "watch", "w", false, "watch for changes")
 	FormatCmd.Flags().StringVarP(&dir, "dir", "d", "./contents", "directory to format")
+	
+	if utilsIsPackageInstalled("qmlformat") {
+		FormatCmd.Short = "Prettify QML files"
+	} else {
+		FormatCmd.Short = fmt.Sprintf("Prettify QML files %s", color.RedString("(disabled)"))
+	}
+
 	cmd.RootCmd.AddCommand(FormatCmd)
 }
 
 // FormatCmd represents the format command
 var FormatCmd = &cobra.Command{
 	Use:   "format",
-	Short: "Prettify QML files",
 	Long:  "Automatically format QML source files to ensure consistent style and readability.",
 	Run: func(cmd *cobra.Command, args []string) {
+		if !utilsIsPackageInstalled("qmlformat") {
+			fmt.Println(color.YellowString("format command is disabled due to missing qmlformat dependency."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install it."))
+			return
+		}
+
 		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
-		}
-		if !utilsIsPackageInstalled(consts.QmlFormatPackageName["binary"]) {
-			pm, _ := utilsDetectPackageManager()
-			var confirm bool
-			confirmPrompt := &survey.Confirm{
-				Message: "qmlformat is not installed. Do you want to install it?",
-				Default: true,
-			}
-			if err := surveyAskOne(confirmPrompt, &confirm); err != nil {
-				return
-			}
-
-			if confirm {
-				if err := utilsInstallPackage(pm, consts.QmlFormatPackageName["binary"], consts.QmlFormatPackageName); err != nil {
-					fmt.Println(color.RedString("Failed to install qmlformat."))
-					return
-				}
-				fmt.Println(color.GreenString("qmlformat installed successfully."))
-			} else {
-				fmt.Println(color.YellowString("Operation cancelled."))
-				return
-			}
 		}
 
 		crrPath, _ := os.Getwd()

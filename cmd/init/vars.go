@@ -29,10 +29,9 @@ var (
 	execCommand = exec.Command
 
 	// utils
-	utilsAskForLocales       = utils.AskForLocales
 	utilsIsPackageInstalled  = utils.IsPackageInstalled
-	utilsInstallDependencies = utils.InstallDependencies
-
+	utilsAskForLocales       = utils.AskForLocales
+	
 	// json
 	jsonMarshalIndent = json.MarshalIndent
 

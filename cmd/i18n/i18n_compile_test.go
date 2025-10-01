@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/PRASSamin/prasmoid/tests"
 	"github.com/PRASSamin/prasmoid/types"
 	"github.com/PRASSamin/prasmoid/utils"
@@ -20,10 +19,52 @@ import (
 )
 
 func TestI18nCompileCommand(t *testing.T) {
+	t.Run("msgfmt not installed", func(t *testing.T) {
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		I18nCompileCmd.Run(I18nCompileCmd, []string{})
+		_ = w.Close()
+
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		output := buf.String()
+		assert.Contains(t, output, "compile command is disabled due to missing msgfmt dependency.")
+	})
 	// Set up a temporary project
 	t.Run("successfully compiles .po files", func(t *testing.T) {
 		projectDir, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
+
+		// Mock execCommand to create the expected .mo file
+		oldExecCommand := execCommand
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			if name == "msgfmt" {
+				var outputFile string
+				for i, a := range arg {
+					if a == "-o" && i+1 < len(arg) {
+						outputFile = arg[i+1]
+						break
+					}
+				}
+				if outputFile != "" {
+					_ = os.MkdirAll(filepath.Dir(outputFile), 0755)
+					_ = os.WriteFile(outputFile, []byte("dummy mo file"), 0644)
+				}
+			}
+			return exec.Command("true")
+		}
+		defer func() { execCommand = oldExecCommand }()
 
 		// Create a dummy config
 		config := types.Config{
@@ -82,83 +123,6 @@ msgstr "Hello World"
 		output := buf.String()
 		assert.Contains(t, output, "Current directory is not a valid plasmoid")
 	})
-
-	t.Run("error on gettext missing", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		oldIsPackageInstalled := utilsIsPackageInstalled
-		utilsIsPackageInstalled = func(packageName string) bool {
-			return false
-		}
-		t.Cleanup(func() { utilsIsPackageInstalled = oldIsPackageInstalled })
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		I18nCompileCmd.Run(I18nCompileCmd, []string{})
-		_ = w.Close()
-
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		output := buf.String()
-
-		require.Contains(t, output, "mgettext is not installed. Do you want to install it first?")
-	})
-
-	t.Run("successfull install missing gettext package", func(t *testing.T) {
-		_, cleanup := tests.SetupTestProject(t)
-		defer cleanup()
-
-		oldIsValidPlasmoid := utilsIsValidPlasmoid
-		oldIsPackageInstalled := utilsIsPackageInstalled
-		oldInstallPackage := utilsInstallPackage
-		oldSurveyAskOne := surveyAskOne
-
-		t.Cleanup(func() {
-			utilsIsPackageInstalled = oldIsPackageInstalled
-			utilsIsValidPlasmoid = oldIsValidPlasmoid
-			utilsInstallPackage = oldInstallPackage
-			surveyAskOne = oldSurveyAskOne
-		})
-
-		utilsIsPackageInstalled = func(packageName string) bool {
-			return false
-		}
-		utilsIsValidPlasmoid = func() bool {
-			return true
-		}
-		utilsInstallPackage = func(pm string, binName string, pkgNames map[string]string) error {
-			return errors.New("install failed")
-		}
-		surveyAskOne = func(prompt survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
-			*(response.(*bool)) = true
-			return nil
-		}
-
-		// Capture stdout
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		I18nCompileCmd.Run(I18nCompileCmd, []string{})
-		_ = w.Close()
-
-		os.Stdout = oldStdout
-		color.Output = os.Stdout
-
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		output := buf.String()
-
-		require.Contains(t, output, "Failed to install gettext")
-	})
-
 }
 
 func TestCompileI18n(t *testing.T) {

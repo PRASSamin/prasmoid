@@ -37,10 +37,9 @@ install_deps() {
         log_step "https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
         log_warn "If you’d like to help extend the fix script for your package manager, please reach out."
         log_step "https://github.com/PRASSamin/prasmoid/issues"
-        log_warn "Prasmoid will continue installing, but some features may not work until dependencies are installed."
         return
     fi
-
+    
     log_step "Installing dependencies using $pm..."
 
     case "$pm" in
@@ -56,7 +55,6 @@ install_deps() {
             log_step "https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
             log_warn "If you’d like to help extend the fix script for $pm, please reach out."
             log_step "https://github.com/PRASSamin/prasmoid/issues"
-            log_warn "Prasmoid will continue installing, but some features may not work until dependencies are installed."
             return
             ;;
         pacman)
@@ -72,7 +70,6 @@ install_deps() {
             log_step "Dependencies info: https://github.com/PRASSamin/prasmoid/blob/main/README.md#dependencies"
             log_warn "If you’d like to help extend the fix script for $pm, please reach out."
             log_step "https://github.com/PRASSamin/prasmoid/issues"
-            log_warn "Prasmoid will continue installing, but some features may not work until dependencies are installed."
             return
             ;;
     esac
@@ -83,93 +80,4 @@ install_deps() {
 # --- Main ---
 install_deps "$(detect_pkg_manager)"
 
-
-# --- Get GitHub release info ---
-RELEASE_JSON=$(curl -s "https://api.github.com/repos/prassamin/prasmoid/releases/latest")
-
-extract_url() {
-    asset=$1
-    echo "$RELEASE_JSON" | awk -v a="$asset" '
-        $0 ~ "\"name\": \""a"\"" {found=1}
-        found && $0 ~ "\"browser_download_url\"" {
-            gsub(/.*"browser_download_url": "|".*/, "", $0)
-            print $0
-            exit
-        }
-    '
-}
-
-extract_size() {
-    asset=$1
-    echo "$RELEASE_JSON" | awk -v a="$asset" '
-        $0 ~ "\"name\": \""a"\"" {found=1}
-        found && $0 ~ "\"size\"" {
-            gsub(/[^0-9]/, "", $0)
-            print $0
-            exit
-        }
-    '
-}
-
-NORMAL_URL=$(extract_url "prasmoid")
-PORTABLE_URL=$(extract_url "prasmoid-portable")
-SHA256_URL=$(extract_url "SHA256SUMS")
-NORMAL_SIZE=$(extract_size "prasmoid")
-PORTABLE_SIZE=$(extract_size "prasmoid-portable")
-
-[ -z "$SHA256_URL" ] && log_fail "SHA256SUMS file missing in release assets."
-
-# --- Select binary ---
-if [ -t 0 ]; then
-    echo "Please select which version to install:"
-    echo "1) Prasmoid $(($NORMAL_SIZE / 1024 / 1024)) MB"
-    echo "2) Prasmoid-portable $(($PORTABLE_SIZE / 1024 / 1024)) MB (Recommended for Alpine, NixOS, etc.)"
-    printf "Enter choice (1 or 2): "
-    read choice
-else
-    choice="${1:-1}"
-fi
-
-if [ "$choice" = "1" ]; then
-    DOWNLOAD_URL="$NORMAL_URL"
-    BINARY_NAME="prasmoid"
-else
-    DOWNLOAD_URL="$PORTABLE_URL"
-    BINARY_NAME="prasmoid-portable"
-fi
-
-# --- Download ---
-log_step "Downloading $BINARY_NAME..."
-curl -L "$DOWNLOAD_URL" -o "$BINARY_NAME"
-
-# --- Verify checksum ---
-TMPDIR="${TMPDIR:-/tmp}"
-TMPFILE=$(mktemp "$TMPDIR/prasmoid-XXXXXX")
-curl -L "$SHA256_URL" -o "$TMPFILE"
-
-EXPECTED_CHECKSUM=$(awk -v bin="$BINARY_NAME" '$2 == bin {print $1}' "$TMPFILE")
-ACTUAL_CHECKSUM=$(sha256sum "$BINARY_NAME" | awk '{print $1}')
-
-[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ] && log_fail "Checksum failed! Expected: $EXPECTED_CHECKSUM, Got: $ACTUAL_CHECKSUM"
-log_done "Checksum passed"
-
-rm -f "$TMPFILE"
-chmod +x "$BINARY_NAME"
-
-# --- Install ---
-if [ "$(id -u)" -ne 0 ]; then
-    log_step "Installing to /usr/bin using sudo..."
-    sudo cp "$BINARY_NAME" /usr/bin/prasmoid
-else
-    log_step "Installing to /usr/bin..."
-    cp "$BINARY_NAME" /usr/bin/prasmoid
-fi
-
-rm "$BINARY_NAME"
-
-[ ! -f "/usr/bin/prasmoid" ] && log_fail "Installation failed!"
-
-log_done "$BINARY_NAME installed successfully!"
-
-echo ""
-echo "Run it anytime with: prasmoid"
+exit 0
