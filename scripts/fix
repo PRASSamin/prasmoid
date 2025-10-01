@@ -59,11 +59,11 @@ install_deps() {
             ;;
         pacman)
             sudo pacman -Sy --noconfirm curl qt6-declarative plasma-sdk gettext
-            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            sudo ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
             ;;
         apk)
             sudo apk add curl qt6-qttools-dev plasma-sdk gettext
-            ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
+            sudo ln -sf /usr/lib/qt6/bin/qmlformat /usr/bin/qmlformat
             ;;
         *)
             log_warn "Unsupported package manager ($pm). Manual installation required."
