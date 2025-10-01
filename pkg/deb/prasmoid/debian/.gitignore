@@ -4,4 +4,4 @@
 /.debhelper/
 /debhelper-build-stamp
 /files
-
+prasmoid.config.js
