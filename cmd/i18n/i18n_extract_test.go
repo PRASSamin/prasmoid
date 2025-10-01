@@ -34,6 +34,31 @@ func mockExecCommand(t *testing.T, failingCmd string) {
 }
 
 func TestI18nExtractCommand(t *testing.T) {
+	t.Run("dependencies not installed", func(t *testing.T) {
+		// Arrange
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		// Act
+		I18nExtractCmd.Run(I18nExtractCmd, []string{})
+		_ = w.Close()
+
+		// Assert
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		output := buf.String()
+		assert.Contains(t, output, "extract command is disabled due to missing dependencies.")
+	})
 	t.Run("invalid plasmoid", func(t *testing.T) {
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()

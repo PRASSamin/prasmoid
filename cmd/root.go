@@ -4,14 +4,15 @@ Copyright 2025 PRAS
 package cmd
 
 import (
-	"crypto/tls"
+	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,19 +43,13 @@ var (
 	osTempDir      = os.TempDir
 	osReadFile     = os.ReadFile
 	osWriteFile    = os.WriteFile
+	osExecutable   = os.Executable
+	httpGet        = http.Get
 
 	// time
 	timeParse = time.Parse
 	timeSince = time.Since
 	timeNow   = time.Now
-
-	// net/tls
-	tlsDial   = tls.Dial
-	connWrite = func(conn *tls.Conn, b []byte) (n int, err error) { return conn.Write(b) }
-	connClose = func(conn *tls.Conn) error { return conn.Close() }
-
-	// io
-	ioReadAll = io.ReadAll
 
 	// encoding/json
 	jsonUnmarshal = json.Unmarshal
@@ -65,9 +60,6 @@ var (
 
 	// internal
 	internalAppMetaDataVersion = internal.AppMetaData.Version
-
-	// utils
-	utilsIsPackageInstalled = utils.IsPackageInstalled
 
 	// for testing purposes
 	logPrintf = log.Printf
@@ -81,8 +73,15 @@ func init() {
 	RootCmd.Flags().BoolP("version", "v", false, "show Prasmoid version")
 	RootCmd.AddGroup(&cobra.Group{
 		ID:    "custom",
-		Title: "Custom Commands:",
+		Title: "Custom Commands",
 	})
+	
+	RootCmd.AddGroup(&cobra.Group{
+		ID:    "cli",
+		Title: "Maintenance Commands",
+	})
+
+	RootCmd.SetHelpCommandGroupID("cli")
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -106,8 +105,9 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	extendcliDiscoverAndRegisterCustomCommands(RootCmd, ConfigRC)
-	CheckDependenciesMissing()
 	CheckForUpdates()
+	
+	RootCmd.SetUsageTemplate(consts.UsageTemplate)
 
 	err := rootCmdExecute()
 	if err != nil {
@@ -115,24 +115,9 @@ func Execute() {
 	}
 }
 
-var CheckDependenciesMissing = func() {
-	isMissing := false
-	for _, dep := range consts.Dependencies {
-		if !utilsIsPackageInstalled(dep) {
-			isMissing = true
-		}
-	}
-	if isMissing {
-		fmt.Println(color.YellowString("Some features will not work as expected because some dependencies are missing."))
-		fmt.Println(color.BlueString("- Please run `prasmoid fix` to install missing dependencies."))
-	}
-}
-
 // -------- UPDATE CHECKER --------
 
 var CheckForUpdates = func() {
-	const host = "api.github.com"
-	const path = "/repos/PRASSamin/prasmoid/releases/latest"
 	const checkInterval = 24 * time.Hour
 
 	cache, err := readUpdateCache()
@@ -140,9 +125,12 @@ var CheckForUpdates = func() {
 		if lastCheckedStr, ok := cache["last_checked"].(string); ok {
 			lastCheckedTime, err := timeParse(time.RFC3339, lastCheckedStr)
 			if err == nil && timeSince(lastCheckedTime) < checkInterval {
-				if latestTag, ok := cache["latest_tag"].(string); ok {
-					if isUpdateAvailable(latestTag) {
-						printUpdateMessage(latestTag)
+				if latestHash, ok := cache["latest_hash"].(string); ok {
+					isAvailable, currentHash := isUpdateAvailable(latestHash)
+					if isAvailable {
+						if latestTag, ok := cache["latest_tag"].(string); ok {
+							printUpdateMessage(latestTag, latestHash, currentHash)
+						}
 					}
 				}
 				return
@@ -150,114 +138,139 @@ var CheckForUpdates = func() {
 		}
 	}
 
-	// Establish TLS connection to GitHub
-	conn, err := tlsDial("tcp", host+":443", nil)
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err := connClose(conn); err != nil {
-			logPrintf("Error closing connection: %v", err)
-		}
-	}()
-
-	// Manually write the HTTP GET request
-	request := fmt.Sprintf(
-		"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: Prasmoid-Updater\r\nConnection: close\r\n\r\n",
-		path, host,
-	)
-	_, err = connWrite(conn, []byte(request))
+	releaseJSON, err := fetchURL("https://api.github.com/repos/PRASSamin/prasmoid/releases/latest")
 	if err != nil {
 		return
 	}
 
-	// Read the raw HTTP response
-	raw, err := ioReadAll(conn)
+	var releaseData map[string]interface{}
+	if err := jsonUnmarshal([]byte(releaseJSON), &releaseData); err != nil {
+		return
+	}
+
+	sha256sums, err := getSha256Sums(releaseData["assets"])
+
 	if err != nil {
 		return
 	}
 
-	// Parse the body from the response (after \r\n\r\n)
-	parts := strings.SplitN(string(raw), "\r\n\r\n", 2)
-	if len(parts) < 2 {
-		return
-	}
-	headers := parts[0]
-	body := parts[1]
-
-	// parse status code from headers
-	if !strings.Contains(headers, "200 OK") {
-		return
+	assetName := "prasmoid"
+	if strings.Contains(internalAppMetaDataVersion, "-portable") {
+		assetName = "prasmoid-portable"
 	}
 
-	// Extract latest tag and do the same flow
-	latestTag := getLatestTag([]byte(body))
-	writeUpdateCache(latestTag, []byte(body))
-	if isUpdateAvailable(latestTag) {
-		printUpdateMessage(latestTag)
+	latestHash := parseChecksums(sha256sums, assetName)
+	latestTag := getLatestTag(releaseData)
+
+	writeUpdateCache(latestTag, latestHash)
+
+	isAvailable, currentHash := isUpdateAvailable(latestHash)
+	if isAvailable {
+		printUpdateMessage(latestTag, latestHash, currentHash)
 	}
 }
 
-var getLatestTag = func(body []byte) string {
-	var tagData map[string]interface{}
-
-	err := jsonUnmarshal(body, &tagData)
-	if err != nil {
-		return ""
-	}
-
-	tag, ok := tagData["tag_name"].(string)
+var getLatestTag = func(releaseData map[string]interface{}) string {
+	tag, ok := releaseData["tag_name"].(string)
 	if !ok {
 		return ""
 	}
-
 	return strings.TrimPrefix(tag, "v")
 }
 
-// compareVersions returns:
-// -1 if current < latest
-// 0 if current == latest
-// 1 if current > latest
-var compareVersions = func(current, latest string) int {
-	parse := func(v string) []int {
-		v = strings.TrimPrefix(v, "v")
-		parts := strings.Split(v, ".")
-		out := make([]int, 3)
-		for i := 0; i < 3 && i < len(parts); i++ {
-			num, err := strconv.Atoi(parts[i])
-			if err != nil {
-				out[i] = 0
-			} else {
-				out[i] = num
+var parseChecksums = func(content, assetName string) string {
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		parts := strings.Fields(scanner.Text())
+		if len(parts) == 2 && parts[1] == assetName {
+			return parts[0]
+		}
+	}
+	return ""
+}
+
+var calculateFileSHA256 = func(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = file.Close() }()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+var fetchURL = func(rawURL string) (string, error) {
+	resp, err := httpGet(rawURL)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("non-200 status for %s: %s", rawURL, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+
+var getSha256Sums = func(assets interface{}) (string, error) {
+	assetsList, ok := assets.([]interface{})
+
+	if !ok {
+		return "", fmt.Errorf("invalid assets format")
+	}
+
+	var shaURL string
+	for _, asset := range assetsList {
+		assetMap, ok := asset.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if name, ok := assetMap["name"].(string); ok && name == "SHA256SUMS" {
+			if url, ok := assetMap["browser_download_url"].(string); ok {
+				shaURL = url
+				break
 			}
 		}
-		return out
 	}
 
-	curr := parse(current)
-	lat := parse(latest)
-
-	for i := 0; i < 3; i++ {
-		if curr[i] < lat[i] {
-			return -1
-		}
-		if curr[i] > lat[i] {
-			return 1
-		}
+	if shaURL == "" {
+		return "", fmt.Errorf("SHA256SUMS URL not found in release assets")
 	}
-	return 0
+
+	sha256sums, err := fetchURL(shaURL)
+
+	if err != nil {
+		return "", err
+	}
+	return sha256sums, nil
 }
 
-var isUpdateAvailable = func(latestTag string) bool {
-	if latestTag == "" {
-		return false
+var isUpdateAvailable = func(latestHash string) (bool, string) {
+	if latestHash == "" {
+		return false, ""
 	}
-
-	current := strings.Split(internalAppMetaDataVersion, "-")[0]
-	return compareVersions(current, latestTag) < 0
+	exePath, err := osExecutable()
+	if err != nil {
+		return false, ""
+	}
+	currentHash, err := calculateFileSHA256(exePath)
+	if err != nil {
+		return false, ""
+	}
+	return currentHash != latestHash, currentHash
 }
 
-var printUpdateMessage = func(latest string) {
+var printUpdateMessage = func(latest string, latestHash string, currentHash string) {
 	// Get terminal width
 	width, _, err := termGetSize(int(os.Stdout.Fd()))
 	if err != nil {
@@ -272,8 +285,11 @@ var printUpdateMessage = func(latest string) {
 		return fmt.Sprintf(" %s ", content)
 	}
 
+	currentVersion := fmt.Sprintf("%s.%s", strings.Split(internalAppMetaDataVersion, "-")[0], currentHash[:4])
+	latestVersion := fmt.Sprintf("%s.%s", latest, latestHash[:4])
+
 	fmt.Println(star(bottom))
-	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", strings.Split(internalAppMetaDataVersion, "-")[0], latest))))
+	fmt.Println(star(printLine(fmt.Sprintf("💠 Prasmoid update available! %s → %s", currentVersion, latestVersion))))
 	fmt.Println(star(printLine("Run `prasmoid upgrade` to update")))
 	fmt.Println(star(bottom))
 	fmt.Println()
@@ -284,11 +300,12 @@ var GetCacheFilePath = func() string {
 	if err != nil {
 		dir = osTempDir()
 	}
-	return filepath.Join(dir, "prasmoid_update.json")
+	return filepath.Join(dir, ".prasmoid")
 }
 
 var readUpdateCache = func() (map[string]interface{}, error) {
 	path := GetCacheFilePath()
+
 	data, err := osReadFile(path)
 	if err != nil {
 		return nil, err
@@ -299,14 +316,11 @@ var readUpdateCache = func() (map[string]interface{}, error) {
 	return cache, err
 }
 
-var writeUpdateCache = func(tag string, body []byte) {
-	var releaseData map[string]interface{}
-	_ = jsonUnmarshal(body, &releaseData)
-
+var writeUpdateCache = func(tag, hash string) {
 	cache := map[string]interface{}{
 		"last_checked": timeNow().Format(time.RFC3339),
 		"latest_tag":   tag,
-		"data":         releaseData,
+		"latest_hash":  hash,
 	}
 	data, _ := jsonMarshal(cache)
 	_ = osWriteFile(GetCacheFilePath(), data, 0o644)

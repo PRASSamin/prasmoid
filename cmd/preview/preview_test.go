@@ -25,6 +25,33 @@ func TestPreviewCmdRun(t *testing.T) {
 	previewTestMutex.Lock()
 	defer previewTestMutex.Unlock()
 
+	t.Run("plasmoidviewer not installed", func(t *testing.T) {
+		// Arrange
+		_, _, cleanup := tests.SetupTestEnvironment(t)
+		defer cleanup()
+
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		// Capture output
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		// Act
+		PreviewCmd.Run(PreviewCmd, []string{})
+		_ = w.Close()
+
+		// Assert
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		assert.Contains(t, buf.String(), "preview command is disabled due to missing dependencies.")
+	})
+
+
 	originalPreviewPlasmoid := previewPlasmoid
 	defer func() {
 		previewPlasmoid = originalPreviewPlasmoid
@@ -35,6 +62,7 @@ func TestPreviewCmdRun(t *testing.T) {
 		utilsIsValidPlasmoid = func() bool { return true }
 		utilsIsLinked = func() bool { return true }
 		previewPlasmoid = func(watch bool) error { return nil }
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 	}
 
 	t.Run("invalid plasmoid", func(t *testing.T) {

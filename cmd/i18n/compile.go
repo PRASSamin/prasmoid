@@ -23,13 +23,24 @@ var silent bool
 func init() {
 	I18nCompileCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Do not show progress messages")
 
+	if utilsIsPackageInstalled("msgfmt") {
+		I18nCompileCmd.Short = "Compile .po files to binary .mo files"
+	} else {
+		I18nCompileCmd.Short = fmt.Sprintf("Compile .po files to binary .mo files %s", color.RedString("(disabled)"))
+	}
+
 	I18nCmd.AddCommand(I18nCompileCmd)
 }
 
 var I18nCompileCmd = &cobra.Command{
 	Use:   "compile",
-	Short: "Compile .po files to binary .mo files",
 	Run: func(cmd *cobra.Command, args []string) {
+		if !utilsIsPackageInstalled("msgfmt") {
+			fmt.Println(color.RedString("compile command is disabled due to missing msgfmt dependency."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install it."))
+			return
+		}
+
 		if !utilsIsValidPlasmoid() {
 			fmt.Println(color.RedString("Current directory is not a valid plasmoid."))
 			return
@@ -97,10 +108,6 @@ func CompileI18n(config types.Config, silent bool) error {
 		// Create the destination directory
 		if err := osMkdirAll(installDir, 0755); err != nil {
 			return fmt.Errorf("could not create directory %s: %w", installDir, err)
-		}
-
-		if !utilsIsPackageInstalled("msgfmt") {
-			return fmt.Errorf("msgfmt is not installed. Please install it and try again")
 		}
 
 		// Run msgfmt

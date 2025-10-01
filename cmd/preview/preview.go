@@ -87,17 +87,24 @@ var (
 
 func init() {
 	PreviewCmd.Flags().BoolP("watch", "w", false, "Watch for changes and automatically restart the preview. Note: This uses hot restart instead of hot reload, which may be slower.")
+
+	if utilsIsPackageInstalled("plasmoidviewer") {
+		PreviewCmd.Short = "Enter plasmoid preview mode"
+	} else {
+		PreviewCmd.Short = fmt.Sprintf("Enter plasmoid preview mode %s", color.RedString("(disabled)"))
+	}
+
 	cmd.RootCmd.AddCommand(PreviewCmd)
 }
 
 // PreviewCmd represents the preview command
 var PreviewCmd = &cobra.Command{
 	Use:   "preview",
-	Short: "Enter plasmoid preview mode",
 	Long:  "Launch the plasmoid in preview mode for testing and development.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if !utilsIsPackageInstalled("plasmoidviewer") {
-			fmt.Println(color.RedString("plasmoidviewer is not installed. Please install it and try again"))
+			fmt.Println(color.RedString("preview command is disabled due to missing dependencies."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install them."))
 			return
 		}
 		if !utilsIsValidPlasmoid() {

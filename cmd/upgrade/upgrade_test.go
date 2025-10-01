@@ -54,6 +54,7 @@ func TestUpgradeCmd(t *testing.T) {
 	originalExecCommand := execCommand
 	originalOsRemove := osRemove
 	originalRootGetCacheFilePath := rootGetCacheFilePath
+	originalUtilsIsPackageInstalled := utilsIsPackageInstalled
 
 	t.Cleanup(func() {
 		checkRoot = originalCheckRoot
@@ -61,6 +62,7 @@ func TestUpgradeCmd(t *testing.T) {
 		execCommand = originalExecCommand
 		osRemove = originalOsRemove
 		rootGetCacheFilePath = originalRootGetCacheFilePath
+		utilsIsPackageInstalled = originalUtilsIsPackageInstalled
 	})
 
 	// Mock checkRoot to always succeed by default for upgradeCmd tests
@@ -81,8 +83,24 @@ func TestUpgradeCmd(t *testing.T) {
 		}
 	}
 
+	t.Run("curl not installed", func(t *testing.T) {
+		// Arrange
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalUtilsIsPackageInstalled }()
+
+		buf, restoreOutput := captureOutput()
+
+		// Act
+		upgradeCmd.Run(nil, []string{})
+
+		// Assert
+		restoreOutput()
+		assert.Contains(t, buf.String(), "upgrade command is disabled due to missing dependencies.")
+	})
+
 	t.Run("checkRoot fails", func(t *testing.T) {
 		// Arrange
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		checkRoot = func() error { return errors.New("root check failed") }
 		defer func() { checkRoot = func() error { return nil } }()
 
@@ -98,6 +116,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("os.Executable fails", func(t *testing.T) {
 		// Arrange
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		osExecutable = func() (string, error) { return "", errors.New("exec error") }
 
 		buf, restoreOutput := captureOutput()
@@ -112,6 +131,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("command.Run fails", func(t *testing.T) {
 		// Arrange
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to fail
@@ -130,6 +150,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	t.Run("os.Remove fails", func(t *testing.T) {
 		// Arrange
+		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to succeed
@@ -148,3 +169,4 @@ func TestUpgradeCmd(t *testing.T) {
 		assert.Contains(t, buf.String(), "Warning: Failed to remove update cache file: remove error")
 	})
 }
+

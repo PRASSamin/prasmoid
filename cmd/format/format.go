@@ -61,17 +61,24 @@ var dir string
 func init() {
 	FormatCmd.Flags().BoolVarP(&watch, "watch", "w", false, "watch for changes")
 	FormatCmd.Flags().StringVarP(&dir, "dir", "d", "./contents", "directory to format")
+	
+	if utilsIsPackageInstalled("qmlformat") {
+		FormatCmd.Short = "Prettify QML files"
+	} else {
+		FormatCmd.Short = fmt.Sprintf("Prettify QML files %s", color.RedString("(disabled)"))
+	}
+
 	cmd.RootCmd.AddCommand(FormatCmd)
 }
 
 // FormatCmd represents the format command
 var FormatCmd = &cobra.Command{
 	Use:   "format",
-	Short: "Prettify QML files",
 	Long:  "Automatically format QML source files to ensure consistent style and readability.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if !utilsIsPackageInstalled("qmlformat") {
-			fmt.Println(color.RedString("qmlformat is not installed. Please install it and try again"))
+			fmt.Println(color.YellowString("format command is disabled due to missing qmlformat dependency."))
+			fmt.Println(color.BlueString("- Use `prasmoid fix` to install it."))
 			return
 		}
 

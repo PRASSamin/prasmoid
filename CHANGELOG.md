@@ -2,6 +2,19 @@
 
 ---
 
+## [v0.1.0] - 2025-10-01
+
+#### Changed
+
+- Commands with missing binary dependencies (e.g., `qmlformat`, `curl`) are now gracefully disabled and marked with an `(disabled)` tag in the help text.
+- Running a disabled command now prints a clear, user-friendly message explaining which dependency is missing.
+- The previous behavior of auto-installing dependencies has been removed to avoid crashes in different distributions. Similar to [this issue](https://github.com/PRASSamin/prasmoid/issues/16)
+- Added a new `prasmoid fix` command that runs a script to install all required dependencies for your distribution.
+- The `setup` command has been dropped in favor of the `fix` command.
+- The update-checking mechanism has been completely rewritten to use SHA256 checksums for verification instead of version tags, ensuring notifications are always accurate.
+- The CLI's help message has been reorganized with a new "Maintenance Commands" group for better readability.
+- The main `install` and `update` shell scripts have been rewritten to be more robust, POSIX-compliant, and no longer depend on `jq`.
+
 ## [v0.0.4] - 2025-09-12
 
 #### Changed
@@ -58,4 +71,3 @@
 ## [v0.0.1] - 2025-07-28
 
 - **Initial Release**: Initial release of the project
-

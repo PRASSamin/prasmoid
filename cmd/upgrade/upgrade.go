@@ -17,19 +17,28 @@ import (
 )
 
 func init() {
+	if utilsIsPackageInstalled("curl") {
+		upgradeCmd.Short = "Upgrade to latest version of Prasmoid CLI."
+	} else {
+		upgradeCmd.Short = fmt.Sprintf("Upgrade to latest version of Prasmoid CLI %s", color.RedString("(disabled)"))
+	}
+	upgradeCmd.GroupID = "cli"
 	root.RootCmd.AddCommand(upgradeCmd)
 }
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrade to latest version of Prasmoid CLI.",
 	Run: func(cmd *cobra.Command, args []string) {
+		if !utilsIsPackageInstalled("curl") {
+			fmt.Println(color.RedString("upgrade command is disabled due to missing dependencies."))
+			fmt.Println(color.BlueString("Please install curl and try again."))
+			return
+		}
+
 		if err := checkRoot(); err != nil {
 			fmt.Println(color.RedString(err.Error()))
 			return
 		}
-
-		
 
 		exePath, err := osExecutable()
 		if err != nil {
@@ -37,12 +46,7 @@ var upgradeCmd = &cobra.Command{
 			return
 		}
 
-		if !utilsIsPackageInstalled("curl") {
-			fmt.Println(color.RedString("curl is not installed. Please install it and try again"))
-			return
-		}
-
-		cmdStr := fmt.Sprintf("curl -sSL %s | bash -s %s", scriptURL, exePath)
+		cmdStr := fmt.Sprintf("sudo curl -sSL %s | bash -s %s", scriptURL, exePath)
 
 		command := execCommand("bash", "-c", cmdStr)
 		command.Stdout = os.Stdout

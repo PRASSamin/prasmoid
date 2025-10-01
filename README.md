@@ -44,10 +44,10 @@ Prasmoid is designed for quick and easy installation. You can use the provided i
 
 Prasmoid depends on the following tools being available on your system:
 
-- **plasmoidviewer** – for testing and running plasmoids  
-- **qmlformat** – for formatting QML files  
-- **curl** – for fetching release assets  
-- **gettext** – for translation tools (`xgettext`, `msgmerge`, etc.)  
+- **plasmoidviewer** – for testing and running plasmoids
+- **qmlformat** – for formatting QML files
+- **curl** – for fetching release assets
+- **gettext** – for translation tools (`xgettext`, `msgmerge`, etc.)
 
 > [!NOTE]  
 > Package names may differ depending on your Linux distribution.  
@@ -63,7 +63,7 @@ Prasmoid depends on the following tools being available on your system:
 
 ### 📦 Manual Dependency Installation (per distro)
 
-If you prefer to install dependencies manually (instead of using the installer), here are the commands for supported package managers:  
+If you prefer to install dependencies manually (instead of using the installer), here are the commands for supported package managers:
 
 ```bash
 # Debian/Ubuntu
@@ -242,7 +242,6 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 
 | Command             | Description                                                             | Usage & Flags                                                                                                                                 |
 | :------------------ | :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup`             | Bootstraps the development environment (e.g. installs dependencies).    | `prasmoid setup`                                                                                                                              |
 | `init`              | Initializes a new plasmoid project.                                     | `prasmoid init [-n <name>]` <br> `-n, --name`: Project name.                                                                                  |
 | `build`             | Packages the project into a `.plasmoid` archive.                        | `prasmoid build [-o <output_dir>]` <br> `-o, --output`: Output directory (default: `./build`).                                                |
 | `preview`           | Launches the plasmoid in a live preview window.                         | `prasmoid preview [-w]` <br> `-w, --watch`: Auto-restart on file changes.                                                                     |
@@ -266,6 +265,7 @@ Prasmoid provides a comprehensive set of commands to manage your plasmoid projec
 | `regen types`       | Regenerates `prasmoid.d.ts`.                                            | `prasmoid regen types`                                                                                                                        |
 | `regen config`      | Regenerates `prasmoid.config.js`.                                       | `prasmoid regen config`                                                                                                                       |
 | `upgrade`           | Updates Prasmoid itself to the latest version.                          | `prasmoid upgrade`                                                                                                                            |
+| `fix`               | Install missing dependencies or fix other issues.                       | `prasmoid fix`                                                                                                                                |
 
 ## Extending Prasmoid with Custom Commands
 

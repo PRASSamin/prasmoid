@@ -19,6 +19,7 @@ import (
 	_ "github.com/PRASSamin/prasmoid/cmd/uninstall"
 	_ "github.com/PRASSamin/prasmoid/cmd/unlink"
 	_ "github.com/PRASSamin/prasmoid/cmd/upgrade"
+	_ "github.com/PRASSamin/prasmoid/cmd/fix"
 )
 
 func main() {

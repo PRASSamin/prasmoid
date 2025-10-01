@@ -19,6 +19,28 @@ import (
 )
 
 func TestI18nCompileCommand(t *testing.T) {
+	t.Run("msgfmt not installed", func(t *testing.T) {
+		_, cleanup := tests.SetupTestProject(t)
+		defer cleanup()
+
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		I18nCompileCmd.Run(I18nCompileCmd, []string{})
+		_ = w.Close()
+
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		output := buf.String()
+		assert.Contains(t, output, "compile command is disabled due to missing msgfmt dependency.")
+	})
 	// Set up a temporary project
 	t.Run("successfully compiles .po files", func(t *testing.T) {
 		projectDir, cleanup := tests.SetupTestProject(t)

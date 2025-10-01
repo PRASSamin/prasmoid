@@ -271,8 +271,35 @@ func TestPrettify(t *testing.T) {
 }
 
 func TestFormatCmdRun(t *testing.T) {
+	t.Run("qmlformat not installed", func(t *testing.T) {
+		// Arrange
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return false }
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		color.Output = w
+
+		// Act
+		FormatCmd.Run(FormatCmd, []string{})
+		_ = w.Close()
+
+		// Assert
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		os.Stdout = oldStdout
+		output := buf.String()
+		assert.Contains(t, output, "format command is disabled due to missing qmlformat dependency.")
+	})
+
 	t.Run("Not a valid plasmoid", func(t *testing.T) {
-		// Create an empty directory that is not a plasmoid
+		// Arrange
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return true } // Mock as installed
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
 		tmpDir, err := os.MkdirTemp("", "format-invalid-*")
 		require.NoError(t, err)
 		defer func() { require.NoError(t, os.RemoveAll(tmpDir)) }()
@@ -281,34 +308,42 @@ func TestFormatCmdRun(t *testing.T) {
 		require.NoError(t, os.Chdir(tmpDir))
 		defer func() { require.NoError(t, os.Chdir(oldWd)) }()
 
-		// Capture stderr to check for the error message
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
+		color.Output = w
 
+		// Act
 		FormatCmd.Run(FormatCmd, []string{})
+		_ = w.Close()
 
-		require.NoError(t, w.Close())
+		// Assert
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
 		color.Output = os.Stdout
-
 		assert.Contains(t, buf.String(), "Current directory is not a valid plasmoid")
 	})
 
 	t.Run("Run format successfully", func(t *testing.T) {
+		// Arrange
+		originalIsPackageInstalled := utilsIsPackageInstalled
+		utilsIsPackageInstalled = func(pkg string) bool { return true } // Mock as installed
+		defer func() { utilsIsPackageInstalled = originalIsPackageInstalled }()
+
 		_, cleanup := tests.SetupTestProject(t)
 		defer cleanup()
 
-		// Capture stdout
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
+		color.Output = w
 
+		// Act
 		FormatCmd.Run(FormatCmd, []string{})
+		_ = w.Close()
 
-		require.NoError(t, w.Close())
+		// Assert
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
 		os.Stdout = oldStdout
@@ -316,8 +351,6 @@ func TestFormatCmdRun(t *testing.T) {
 		output := buf.String()
 		assert.Contains(t, output, "Formatted 1 files")
 	})
-
-	
 }
 
 func TestPrettifyError(t *testing.T) {
