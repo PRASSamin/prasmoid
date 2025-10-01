@@ -73,7 +73,7 @@ func TestCliFixCmd(t *testing.T) {
 		utilsIsPackageInstalled = func(pkg string) bool { return true }
 		utilsCheckRoot = func() error { return nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
-			return exec.Command("bash", "-c", "exit 1")
+			return exec.Command("sh", "-c", "exit 1")
 		}
 		buf, restore := captureOutput()
 

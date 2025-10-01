@@ -45,9 +45,9 @@ var upgradeCmd = &cobra.Command{
 			return
 		}
 
-		cmdStr := fmt.Sprintf("sudo curl -sSL %s | bash -s %s", scriptURL, exePath)
+		cmdStr := fmt.Sprintf("curl -sSL %s | sh -s %s", scriptURL, exePath)
 
-		command := execCommand("bash", "-c", cmdStr)
+		command := execCommand("sh", "-c", cmdStr)
 		command.Stdout = os.Stdout
 		command.Stderr = os.Stderr
 

@@ -39,9 +39,9 @@ var cliFixCmd = &cobra.Command{
 			return
 		}
 
-		cmdStr := fmt.Sprintf("sudo curl -sSL %s | bash", scriptURL)
+		cmdStr := fmt.Sprintf("sudo curl -sSL %s", scriptURL)
 
-		command := execCommand("bash", "-c", cmdStr)
+		command := execCommand("sh", "-c", cmdStr)
 		command.Stdout = os.Stdout
 		command.Stderr = os.Stderr
 

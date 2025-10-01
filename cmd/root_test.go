@@ -233,14 +233,15 @@ func TestGetCacheFilePath(t *testing.T) {
 	defer cleanup()
 
 	t.Run("uses user cache dir", func(t *testing.T) {
-		osUserCacheDir = func() (string, error) { return "/fake/cache", nil }
-		assert.Equal(t, "/fake/cache/.prasmoid", GetCacheFilePath())
+		tmp := os.TempDir()
+		osUserCacheDir = func() (string, error) { return tmp, nil }
+		assert.Equal(t, fmt.Sprintf("%s/.prasmoid", tmp), GetCacheFilePath())
 	})
 
 	t.Run("falls back to temp dir", func(t *testing.T) {
 		osUserCacheDir = func() (string, error) { return "", errors.New("cache dir error") }
-		osTempDir = func() string { return "/fake/tmp" }
-		assert.Equal(t, "/fake/tmp/.prasmoid", GetCacheFilePath())
+		osTempDir = func() string { return os.TempDir() }
+		assert.Equal(t, fmt.Sprintf("%s/.prasmoid", os.TempDir()), GetCacheFilePath())
 	})
 }
 

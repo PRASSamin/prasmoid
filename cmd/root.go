@@ -44,6 +44,7 @@ var (
 	osReadFile     = os.ReadFile
 	osWriteFile    = os.WriteFile
 	osExecutable   = os.Executable
+	osMkdirAll     = os.MkdirAll
 	httpGet        = http.Get
 
 	// time
@@ -297,8 +298,14 @@ var printUpdateMessage = func(latest string, latestHash string, currentHash stri
 
 var GetCacheFilePath = func() string {
 	dir, err := osUserCacheDir()
-	if err != nil {
+	if err != nil || dir == "" {
 		dir = osTempDir()
+	}
+
+	// Ensure the directory exists; if creation fails, fallback to temp dir
+	if mkErr := osMkdirAll(dir, 0o755); mkErr != nil {
+		dir = osTempDir()
+		_ = osMkdirAll(dir, 0o755)
 	}
 	return filepath.Join(dir, ".prasmoid")
 }

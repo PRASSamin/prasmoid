@@ -102,7 +102,7 @@ func TestUpgradeCmd(t *testing.T) {
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to fail
-			return exec.Command("bash", "-c", "exit 1")
+			return exec.Command("sh", "-c", "exit 1")
 		}
 
 		buf, restoreOutput := captureOutput()
@@ -121,7 +121,7 @@ func TestUpgradeCmd(t *testing.T) {
 		osExecutable = func() (string, error) { return "/usr/local/bin/prasmoid", nil }
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			// Mock the command to succeed
-			return exec.Command("bash", "-c", "exit 0")
+			return exec.Command("sh", "-c", "exit 0")
 		}
 		osRemove = func(name string) error { return errors.New("remove error") }
 		rootGetCacheFilePath = func() string { return "/tmp/cache" }
