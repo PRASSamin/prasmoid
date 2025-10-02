@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# update sha256 sums automatically
+updpkgsums
+
 # check PKGBUILD
 namcap PKGBUILD
 
