@@ -42,8 +42,8 @@ parts:
       craftctl default
     prime:
       - prasmoid
-    build-attributes:
-      - enable-patchelf
+    # build-attributes:
+    #   - enable-patchelf
 
   metadata:
     plugin: dump

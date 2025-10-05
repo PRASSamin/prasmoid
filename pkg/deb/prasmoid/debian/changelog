@@ -1,3 +1,16 @@
+prasmoid (0.1.0-1) plucky; urgency=medium
+
+  * Commands with missing binary dependencies (e.g., qmlformat, curl) are now gracefully disabled and marked with an (disabled) tag in the help text.
+  * Running a disabled command now prints a clear, user-friendly message explaining which dependency is missing.
+  * The previous behavior of auto-installing dependencies has been removed to avoid crashes in different distributions. Similar to this issue
+  * Added a new prasmoid fix command that runs a script to install all required dependencies for your distribution.
+  * The setup command has been dropped in favor of the fix command.
+  * The update checking mechanism has been completely rewritten to use SHA256 checksums for verification instead of version tags, ensuring notifications are always accurate.
+  * The CLI's help message has been reorganized with a new "Maintenance Commands" group for better readability.
+  * The main install and update shell scripts have been rewritten to be more robust, POSIX-compliant, and no longer depend on jq.
+
+ -- Clem Lorteau <clem@lorteau.fr>  Thu, 2 Oct 2025 18:01:12 -0700
+
 prasmoid (0.0.4-1) plucky; urgency=medium
 
   * Prasmoid update me has been renamed to prasmoid upgrade (shorter and clearer).

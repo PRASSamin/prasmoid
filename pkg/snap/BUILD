@@ -5,4 +5,4 @@ set -e
 snapcraft pack
 
 #upload
-#snapcraft upload --release=stable prasmoid_v0.0.4_amd64.snap
+#snapcraft upload --release=stable prasmoid_v0.1.0_amd64.snap
