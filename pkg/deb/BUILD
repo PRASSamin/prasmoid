@@ -8,7 +8,7 @@ set -e
 DIST=plucky
 
 # build in chroot
-sudo cowbuilder build --logfile build.log --distribution $DIST --hookdir $(pwd)/prasmoid/debian/pbuilderhook.d prasmoid_0.0.4-1.dsc
+sudo cowbuilder build --logfile build.log --distribution $DIST --hookdir $(pwd)/prasmoid/debian/pbuilderhook.d prasmoid_0.1.0-1.dsc
 
 # check
 lintian /var/cache/pbuilder/result/*source.changes

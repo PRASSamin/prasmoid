@@ -114,8 +114,8 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 #### Debian/Ubuntu (.deb)
 
 - **Best for**: `Debian`, `(K)Ubuntu`, and other Debian derivatives.
-- **_Tested on_**: 'Debian testing' (nightly snapshot 2025-08-05), 'Kubuntu 25.04'
-- [Debian package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid_0.0.3-1_amd64.deb)
+- **_Tested on_**: 'Debian testing' (nightly snapshot 2025-10-04), 'Kubuntu 25.04'
+- [Debian package](https://launchpad.net/~northern-lights/+archive/ubuntu/prasmoid/+files/prasmoid_0.1.0-1_amd64.deb)
 - [PPA repository](https://launchpad.net/~northern-lights/+archive/ubuntu/prasmoid)
   - Pre-requisite - add repo:
   ```bash
@@ -131,7 +131,7 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
 
 - **Best for**: `Fedora`, `RHEL`, `CentOS` and other Fedora derivatives.
 - **_Tested on_**: 'Fedora 42'
-- [x86_64 Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.x86_64.rpm) | [source Fedora package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-0.0.3-2.fc42.src.rpm)
+- [x86_64 Fedora package](https://download.copr.fedorainfracloud.org/results/northernlights/prasmoid/fedora-42-x86_64/09645218-prasmoid/prasmoid-0.1.0-1.fc42.x86_64.rpm)
 - [COPR repository](https://copr.fedorainfracloud.org/coprs/northernlights/prasmoid/)
   - Pre-requisite - add repo:
   ```bash
@@ -150,16 +150,6 @@ sudo curl -sSL https://raw.githubusercontent.com/PRASSamin/prasmoid/main/install
   ```bash
   snap install prasmoid
   ```
-
-#### Flatpak
-
-- **Best for**: Anywhere with flatpaks available.
-- **_Tested on_**: 'Arch Linux' (fully up-to-date as of 2025-08-10)
-- [Flatpak package](https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak)
-
-```bash
-wget https://github.com/PRASSamin/prasmoid/releases/download/v0.0.3/prasmoid-v0.0.3.flatpak && flatpak install --user prasmoid-v0.0.3.flatpak
-```
 
 #### Installation via Go
 
